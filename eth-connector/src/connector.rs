@@ -1,5 +1,6 @@
 use crate::{connector_impl::FinishDepositCallArgs, Proof, WithdrawResult};
 use aurora_engine_types::types::Address;
+use near_sdk::json_types::U64;
 use near_sdk::{
     borsh, ext_contract,
     json_types::{Base64VecU8, U128},
@@ -37,4 +38,9 @@ pub trait ConnectorFundsFinish {
 pub trait ProofVerifier {
     #[result_serializer(borsh)]
     fn verify_log_entry(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> bool;
+}
+
+#[ext_contract(ext_ft_statistic)]
+pub trait FungibleTokeStatistic {
+    fn get_accounts_counter(&self) -> U64;
 }

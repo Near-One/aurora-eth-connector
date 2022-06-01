@@ -1,5 +1,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
-use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw};
+use crate::connector::{
+    ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, FungibleTokeStatistic,
+};
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
@@ -14,6 +16,7 @@ use near_contract_standards::fungible_token::metadata::{
 use near_contract_standards::fungible_token::receiver::ext_ft_receiver;
 use near_contract_standards::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use near_contract_standards::fungible_token::FungibleToken;
+use near_sdk::json_types::U64;
 use near_sdk::store::LookupMap;
 use near_sdk::{
     assert_one_yocto,
@@ -34,7 +37,6 @@ pub mod log_entry;
 pub mod migration;
 pub mod proof;
 pub mod types;
-pub mod wei;
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -253,14 +255,13 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
     }
 }
 
-/*
 #[near_bindgen]
 impl FungibleTokeStatistic for EthConnectorContract {
     #[result_serializer(borsh)]
     fn get_accounts_counter(&self) -> U64 {
-        self.ft.get_accounts_counter()
+        self.accounts_counter.into()
     }
-}*/
+}
 
 #[near_bindgen]
 impl AdminControlled for EthConnectorContract {
@@ -457,14 +458,12 @@ impl Migration for EthConnectorContract {
                 return MigrationCheckResult::TotalSupply(self.ft.total_supply);
             }
         }
-        // TODO
-        // if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
-        //     if self.ft.statistics_aurora_accounts_counter != statistics_aurora_accounts_counter {
-        //         return MigrationCheckResult::StatisticsCounter(
-        //             self.ft.statistics_aurora_accounts_counter,
-        //         );
-        //     }
-        // }
+
+        if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
+            if self.accounts_counter != statistics_aurora_accounts_counter {
+                return MigrationCheckResult::StatisticsCounter(self.accounts_counter);
+            }
+        }
         MigrationCheckResult::Success
     }
 }
