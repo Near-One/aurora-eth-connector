@@ -24,7 +24,7 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
     contract.call_deposit_eth_to_near().await?;
 
     let transfer_amount = 70;
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = contract.register_user(DEPOSITED_RECIPIENT).await?;
     let res = contract
         .contract
         .call("ft_transfer")
@@ -47,10 +47,6 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
         DEPOSITED_FEE - transfer_amount as u128
     );
     assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
-    assert_eq!(
-        contract.total_eth_supply_on_near().await?.0,
-        DEPOSITED_AMOUNT
-    );
     Ok(())
 }
 
@@ -96,10 +92,6 @@ async fn test_ft_transfer_user() -> anyhow::Result<()> {
         DEPOSITED_FEE + transfer_amount as u128
     );
     assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
-    assert_eq!(
-        contract.total_eth_supply_on_near().await?.0,
-        DEPOSITED_AMOUNT
-    );
     Ok(())
 }
 
@@ -210,12 +202,7 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
         .await?;
     assert_eq!(balance.0, DEPOSITED_FEE);
 
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     Ok(())
 }
 
@@ -228,13 +215,7 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
         contract.call_is_used_proof(PROOF_DATA_ETH).await?,
         "Expected not to fail because the proof should have been already used",
     );
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_EVM_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_EVM_AMOUNT);
-
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_EVM_AMOUNT);
     Ok(())
 }
 
@@ -281,13 +262,7 @@ async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_FEE);
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     Ok(())
 }
 
@@ -349,13 +324,7 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_FEE);
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     Ok(())
 }
 
@@ -505,13 +474,7 @@ async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_FEE);
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     Ok(())
 }
 
@@ -550,13 +513,7 @@ async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_FEE);
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     Ok(())
 }
 
@@ -716,14 +673,12 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
     let res = contract
         .user_deposit_with_proof(&user_acc, &contract.get_proof(PROOF_DATA_ETH))
         .await?;
+    println!("{:#?}", res);
     assert!(res.is_success());
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT + DEPOSITED_EVM_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT + DEPOSITED_EVM_AMOUNT);
-
+    assert_eq!(
+        contract.total_supply().await?.0,
+        DEPOSITED_AMOUNT + DEPOSITED_EVM_AMOUNT
+    );
     Ok(())
 }
 
@@ -866,13 +821,7 @@ async fn test_get_accounts_counter_and_transfer() -> anyhow::Result<()> {
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_FEE - transfer_amount as u128);
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     let res = contract
         .contract
         .call("get_accounts_counter")
@@ -908,13 +857,7 @@ async fn test_deposit_to_near_with_zero_fee() -> anyhow::Result<()> {
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, 0);
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, deposited_amount);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, deposited_amount);
-
+    assert_eq!(contract.total_supply().await?.0, deposited_amount);
     Ok(())
 }
 
@@ -932,13 +875,7 @@ async fn test_deposit_to_aurora_with_zero_fee() -> anyhow::Result<()> {
     );
 
     let deposited_amount = 2000;
-
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, deposited_amount);
-
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, deposited_amount);
-
+    assert_eq!(contract.total_supply().await?.0, deposited_amount);
     Ok(())
 }
 

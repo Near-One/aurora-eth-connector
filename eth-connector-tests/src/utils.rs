@@ -173,17 +173,6 @@ impl TestContract {
         Ok(res)
     }
 
-    pub async fn total_eth_supply_on_near(&self) -> anyhow::Result<U128> {
-        let res = self
-            .contract
-            .call("ft_total_eth_supply_on_near")
-            .view()
-            .await?
-            .json::<U128>()
-            .unwrap();
-        Ok(res)
-    }
-
     pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
         let res = self.deposit_with_proof(&proof).await?;
