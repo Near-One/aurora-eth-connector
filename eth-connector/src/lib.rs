@@ -6,9 +6,11 @@ use crate::connector_impl::{
 use crate::proof::Proof;
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
+use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
 };
+use near_contract_standards::fungible_token::resolver::FungibleTokenResolver;
 use near_contract_standards::fungible_token::FungibleToken;
 use near_sdk::store::LookupMap;
 use near_sdk::{
@@ -44,12 +46,14 @@ pub struct EthConnectorContract {
     ft: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
     used_proofs: LookupMap<String, bool>,
+    accounts_counter: u64,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
 enum StorageKey {
-    Proof = 0x1,
-    Metadata = 0x2,
+    FungibleToken = 0x1,
+    Proof = 0x2,
+    Metadata = 0x3,
 }
 
 impl EthConnectorContract {
@@ -79,6 +83,14 @@ impl EthConnectorContract {
     pub fn is_used_event(&self, key: &str) -> bool {
         self.used_proofs.contains_key(&key.to_string())
     }
+
+    // Register user and calculate counter
+    fn register_if_not_exists(&mut self, account: &AccountId) {
+        if !self.ft.accounts.contains_key(account) {
+            self.accounts_counter += 1;
+            self.ft.internal_register_account(account);
+        }
+    }
 }
 
 #[near_bindgen]
@@ -103,12 +115,13 @@ impl EthConnectorContract {
         };
         let owner_id = env::current_account_id();
         let mut this = Self {
-            ft: FungibleToken::new(b"t".to_vec()),
+            ft: FungibleToken::new(StorageKey::FungibleToken),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
             used_proofs: LookupMap::new(StorageKey::Proof),
+            accounts_counter: 0,
         };
-        this.ft.accounts.insert(&owner_id, &0);
+        this.ft.internal_register_account(&owner_id);
         this
     }
 
@@ -129,7 +142,48 @@ impl EthConnectorContract {
     }
 }
 
-near_contract_standards::impl_fungible_token_core!(EthConnectorContract, ft);
+#[near_bindgen]
+impl FungibleTokenCore for EthConnectorContract {
+    #[payable]
+    fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
+        self.register_if_not_exists(&receiver_id);
+        self.ft.ft_transfer(receiver_id, amount, memo)
+    }
+
+    #[payable]
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        self.register_if_not_exists(&receiver_id);
+        self.ft.ft_transfer_call(receiver_id, amount, memo, msg)
+    }
+
+    fn ft_total_supply(&self) -> U128 {
+        self.ft.ft_total_supply()
+    }
+
+    fn ft_balance_of(&self, account_id: AccountId) -> U128 {
+        self.ft.ft_balance_of(account_id)
+    }
+}
+
+#[near_bindgen]
+impl FungibleTokenResolver for EthConnectorContract {
+    #[private]
+    fn ft_resolve_transfer(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+    ) -> U128 {
+        self.ft.ft_resolve_transfer(sender_id, receiver_id, amount)
+    }
+}
+
 near_contract_standards::impl_fungible_token_storage!(EthConnectorContract, ft);
 
 #[near_bindgen]
