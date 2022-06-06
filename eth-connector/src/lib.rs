@@ -3,6 +3,7 @@ use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
+use crate::deposit_event::FtTransferMessageData;
 use crate::proof::Proof;
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
@@ -103,10 +104,28 @@ impl EthConnectorContract {
         const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.0);
 
         let sender_id = env::predecessor_account_id();
-        crate::log!("{:?} {:?}", &sender_id, &receiver_id);
         let amount: Balance = amount.into();
-        self.ft
-            .internal_transfer(&sender_id, &receiver_id, amount, memo);
+        crate::log!(
+            "Transfer call from {} to {} amount {}",
+            sender_id,
+            receiver_id,
+            amount,
+        );
+
+        // Verify message data before `ft_on_transfer` call to avoid verification panics
+        // It's allowed empty message if `receiver_id =! current_account_id`
+        if sender_id == receiver_id {
+            let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
+            // Check is transfer amount > fee
+            if message_data.fee.as_u128() >= amount {
+                panic_err("insufficient balance");
+            }
+        }
+
+        if sender_id != receiver_id {
+            self.ft
+                .internal_transfer(&sender_id, &receiver_id, amount, memo);
+        }
         let receiver_gas = env::prepaid_gas()
             .0
             .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)

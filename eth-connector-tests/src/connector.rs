@@ -673,7 +673,6 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
     let res = contract
         .user_deposit_with_proof(&user_acc, &contract.get_proof(PROOF_DATA_ETH))
         .await?;
-    println!("{:#?}", res);
     assert!(res.is_success());
     assert_eq!(
         contract.total_supply().await?.0,
