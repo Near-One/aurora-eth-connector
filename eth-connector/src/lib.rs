@@ -122,6 +122,7 @@ impl EthConnectorContract {
             }
         }
 
+        // Special case for Aurora transfer itself - we shouldn't transfer
         if sender_id != receiver_id {
             self.ft
                 .internal_transfer(&sender_id, &receiver_id, amount, memo);
@@ -209,7 +210,8 @@ impl FungibleTokenCore for EthConnectorContract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         self.register_if_not_exists(&receiver_id);
-        self.ft.ft_transfer_call(receiver_id, amount, memo, msg)
+        self.finish_deposit_transfer_call(receiver_id, amount, memo, msg)
+        //self.ft.ft_transfer_call(receiver_id, amount, memo, msg)
     }
 
     fn ft_total_supply(&self) -> U128 {

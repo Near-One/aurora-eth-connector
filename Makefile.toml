@@ -174,7 +174,13 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
-    "test_deposit_pausability",
+#    "test_ft_transfer_call_fee_greater_than_amount",
+#    "test_ft_transfer_max_value",
+#    "test_get_accounts_counter",
+#    "test_get_accounts_counter_and_transfer",
+#    "ctest_storage_deposit",
+#    "test_storage_withdraw",
+    "test_migration_state",
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",

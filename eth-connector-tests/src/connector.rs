@@ -247,14 +247,13 @@ async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
     let res = contract
         .contract
         .call("ft_transfer_call")
-        .args_json((contract.contract.id(), transfer_amount, memo, message))
+        .args_json((&receiver_id, transfer_amount, memo, message))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
     assert!(res.is_success());
 
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
 
@@ -502,6 +501,7 @@ async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
+    println!("{:?}", res);
     assert!(res.is_failure());
     assert!(contract.check_error_message(res, "ERR_NOT_ENOUGH_BALANCE_FOR_FEE"));
 
