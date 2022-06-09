@@ -65,9 +65,7 @@ impl EthConnectorContract {
     fn mint_eth_on_near(&mut self, owner_id: AccountId, amount: Balance) {
         crate::log!("Mint {} nETH tokens for: {}", amount, owner_id);
         // Create account to avoid panic with deposit
-        if self.ft.accounts.get(&owner_id).is_none() {
-            self.ft.accounts.insert(&owner_id, &0);
-        }
+        self.register_if_not_exists(&owner_id);
         self.ft.internal_deposit(&owner_id, amount)
     }
 
@@ -174,7 +172,7 @@ impl EthConnectorContract {
             used_proofs: LookupMap::new(StorageKey::Proof),
             accounts_counter: 0,
         };
-        this.ft.internal_register_account(&owner_id);
+        this.register_if_not_exists(&owner_id);
         this
     }
 

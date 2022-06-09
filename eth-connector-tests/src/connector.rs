@@ -508,6 +508,7 @@ async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
