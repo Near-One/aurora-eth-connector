@@ -1150,6 +1150,7 @@ async fn test_storage_deposit() -> anyhow::Result<()> {
         .deposit(10)
         .transact()
         .await?;
+    println!("{:#?}", res);
     assert!(res.is_success());
     let balance = res.json::<StorageBalance>()?;
     assert_eq!(balance.available.0, 0);
@@ -1165,6 +1166,7 @@ async fn test_storage_deposit() -> anyhow::Result<()> {
         .deposit(10)
         .transact()
         .await?;
+    println!("{:#?}", res);
     assert!(res.is_success());
     let balance = res.json::<StorageBalance>()?;
     assert_eq!(balance.available.0, 0);
@@ -1186,6 +1188,9 @@ async fn test_storage_withdraw() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_NO_AVAILABLE_BALANCE"));
+    assert!(contract.check_error_message(
+        res,
+        "The amount is greater than the available storage balance"
+    ));
     Ok(())
 }
