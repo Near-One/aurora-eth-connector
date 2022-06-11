@@ -10,7 +10,7 @@ use aurora_eth_connector::{
     proof::Proof,
 };
 use byte_slice_cast::AsByteSlice;
-use near_contract_standards::storage_management::StorageBalance;
+use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds};
 use near_sdk::serde_json::json;
 use near_sdk::{
     json_types::{U128, U64},
@@ -1140,6 +1140,13 @@ async fn test_storage_deposit() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
+    let bounds = contract
+        .contract
+        .call("storage_balance_bounds")
+        .view()
+        .await?
+        .json::<StorageBalanceBounds>()?;
+
     let res = contract
         .contract
         .call("storage_deposit")
@@ -1147,14 +1154,13 @@ async fn test_storage_deposit() -> anyhow::Result<()> {
             "account_id": &user_acc.id()
         }))
         .gas(DEFAULT_GAS)
-        .deposit(10)
+        .deposit(bounds.min.0)
         .transact()
         .await?;
-    println!("{:#?}", res);
     assert!(res.is_success());
     let balance = res.json::<StorageBalance>()?;
     assert_eq!(balance.available.0, 0);
-    assert_eq!(balance.total.0, 0);
+    assert!(balance.total.0 >= bounds.min.0);
 
     let res = contract
         .contract
@@ -1166,11 +1172,10 @@ async fn test_storage_deposit() -> anyhow::Result<()> {
         .deposit(10)
         .transact()
         .await?;
-    println!("{:#?}", res);
     assert!(res.is_success());
     let balance = res.json::<StorageBalance>()?;
     assert_eq!(balance.available.0, 0);
-    assert_eq!(balance.total.0, 0);
+    assert!(balance.total.0 >= bounds.min.0);
     Ok(())
 }
 
