@@ -997,7 +997,10 @@ async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_NOT_ENOUGH_BALANCE"));
+    assert!(contract.check_error_message(
+        res,
+        "Smart contract panicked: The account doesn't have enough balance"
+    ));
     Ok(())
 }
 
