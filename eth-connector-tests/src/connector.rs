@@ -501,9 +501,8 @@ async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
-    println!("{:?}", res);
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_NOT_ENOUGH_BALANCE_FOR_FEE"));
+    assert!(contract.check_error_message(res, "insufficient balance for fee"));
 
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
@@ -1160,7 +1159,6 @@ async fn test_storage_deposit() -> anyhow::Result<()> {
         .deposit(bounds.min.0)
         .transact()
         .await?;
-    println!("{:#?}", res);
     assert!(res.is_success());
     let balance = res.json::<StorageBalance>()?;
     assert_eq!(balance.available.0, 0);
@@ -1176,7 +1174,6 @@ async fn test_storage_deposit() -> anyhow::Result<()> {
         .deposit(10)
         .transact()
         .await?;
-    println!("{:#?}", res);
     assert!(res.is_success());
     let balance = res.json::<StorageBalance>()?;
     assert_eq!(balance.available.0, 0);

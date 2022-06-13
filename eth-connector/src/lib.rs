@@ -118,7 +118,7 @@ impl EthConnectorContract {
             let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
             // Check is transfer amount > fee
             if message_data.fee.as_u128() >= amount {
-                panic_err("insufficient balance");
+                panic_err("insufficient balance for fee");
             }
         }
 
@@ -406,8 +406,7 @@ impl Migration for EthConnectorContract {
 
         // Insert statistics_aurora_accounts_counter
         if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
-            // TODO:
-            //self.ft.statistics_aurora_accounts_counter = statistics_aurora_accounts_counter;
+            self.accounts_counter = statistics_aurora_accounts_counter;
             crate::log!(
                 "Inserted statistics_aurora_accounts_counter: {:?}",
                 statistics_aurora_accounts_counter
