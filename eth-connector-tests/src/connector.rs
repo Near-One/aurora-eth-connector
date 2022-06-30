@@ -1455,17 +1455,17 @@ async fn test_engine_ft_transfer_call() {
     assert!(res.is_success());
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
+        DEPOSITED_FEE + transfer_amount.0,
         contract
-            .get_eth_on_near_balance(user_acc.id())
+            .get_eth_on_near_balance(contract.contract.id())
             .await
             .unwrap()
             .0
     );
     assert_eq!(
-        DEPOSITED_FEE + transfer_amount.0,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
         contract
-            .get_eth_on_near_balance(contract.contract.id())
+            .get_eth_on_near_balance(user_acc.id())
             .await
             .unwrap()
             .0
