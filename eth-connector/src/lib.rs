@@ -468,6 +468,7 @@ impl Migration for EthConnectorContract {
         crate::log!("Inserted used_proofs: {:?}", data.used_proofs.len());
     }
 
+    #[result_serializer(borsh)]
     #[private]
     fn check_migration_correctness(
         &self,

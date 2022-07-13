@@ -10,9 +10,9 @@ async fn test_migration_access_right() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     let data = MigrationInputData {
         accounts_eth: HashMap::new(),
-        total_eth_supply_on_near: NEP141Wei::new(0),
-        account_storage_usage: 0,
-        statistics_aurora_accounts_counter: 0,
+        total_eth_supply_on_near: None,
+        account_storage_usage: None,
+        statistics_aurora_accounts_counter: None,
         used_proofs: vec![],
     };
     let user_acc = contract.create_sub_account("any").await?;
@@ -39,9 +39,9 @@ async fn test_migration() -> anyhow::Result<()> {
             .collect();
     let data = MigrationInputData {
         accounts_eth: HashMap::new(),
-        total_eth_supply_on_near: NEP141Wei::new(0),
-        account_storage_usage: 0,
-        statistics_aurora_accounts_counter: 0,
+        total_eth_supply_on_near: None,
+        account_storage_usage: None,
+        statistics_aurora_accounts_counter: None,
         used_proofs: proof_keys,
     };
     let res = contract
@@ -52,6 +52,7 @@ async fn test_migration() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_success());
+    assert!(res.total_gas_burnt as f64 / 1_000_000_000_000. < 95.6);
     println!(
         "Gas burnt: {:.1} TGas",
         res.total_gas_burnt as f64 / 1_000_000_000_000.
@@ -84,9 +85,9 @@ async fn test_migration_state() -> anyhow::Result<()> {
         proofs_count += proofs.len();
         let args = MigrationInputData {
             accounts_eth: HashMap::new(),
-            total_eth_supply_on_near: NEP141Wei::new(0),
-            account_storage_usage: 0,
-            statistics_aurora_accounts_counter: 0,
+            total_eth_supply_on_near: None,
+            account_storage_usage: None,
+            statistics_aurora_accounts_counter: None,
             used_proofs: proofs.to_vec(),
         };
         let res = contract
@@ -110,6 +111,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
         }
     }
     assert_eq!(proofs_count, data.proofs.len());
+    assert!(proofs_gas_burnt as f64 / 1_000_000_000_000. < 5416.1);
     total_gas_burnt += proofs_gas_burnt;
     println!();
 
@@ -128,9 +130,9 @@ async fn test_migration_state() -> anyhow::Result<()> {
 
         let args = MigrationInputData {
             accounts_eth: accounts.clone(),
-            total_eth_supply_on_near: NEP141Wei::new(0),
-            account_storage_usage: 0,
-            statistics_aurora_accounts_counter: 0,
+            total_eth_supply_on_near: None,
+            account_storage_usage: None,
+            statistics_aurora_accounts_counter: None,
             used_proofs: vec![],
         };
         let res = contract
@@ -152,16 +154,17 @@ async fn test_migration_state() -> anyhow::Result<()> {
         accounts = HashMap::new();
     }
     assert_eq!(data.accounts.len(), accounts_count);
+    assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1457.);
     total_gas_burnt += accounts_gas_burnt;
 
     // Migrate Contract data
     let args = MigrationInputData {
         accounts_eth: HashMap::new(),
-        total_eth_supply_on_near: NEP141Wei::new(
+        total_eth_supply_on_near: Some(NEP141Wei::new(
             data.contract_data.total_eth_supply_on_near.as_u128(),
-        ),
-        account_storage_usage: data.contract_data.account_storage_usage,
-        statistics_aurora_accounts_counter: data.accounts_counter,
+        )),
+        account_storage_usage: Some(data.contract_data.account_storage_usage),
+        statistics_aurora_accounts_counter: Some(data.accounts_counter),
         used_proofs: vec![],
     };
     let res = contract
@@ -173,11 +176,11 @@ async fn test_migration_state() -> anyhow::Result<()> {
         .await?;
     assert!(res.is_success());
     total_gas_burnt += res.total_gas_burnt;
+    assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 6878.6);
 
     println!(
         "Total Gas burnt: {:.1} TGas\n",
         total_gas_burnt as f64 / 1_000_000_000_000.
     );
-
     Ok(())
 }

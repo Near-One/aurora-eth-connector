@@ -26,6 +26,8 @@ pub enum MigrationCheckResult {
 #[ext_contract(ext_deposit)]
 pub trait Migration {
     fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData);
+
+    #[result_serializer(borsh)]
     fn check_migration_correctness(
         &self,
         #[serializer(borsh)] data: MigrationInputData,
