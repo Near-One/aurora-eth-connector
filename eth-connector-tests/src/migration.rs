@@ -126,10 +126,10 @@ async fn test_migration_state() -> anyhow::Result<()> {
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
         }
-        accounts_count += accounts.len();
+        accounts_count += &accounts.len();
 
         let args = MigrationInputData {
-            accounts_eth: accounts.clone(),
+            accounts_eth: accounts,
             total_eth_supply_on_near: None,
             account_storage_usage: None,
             statistics_aurora_accounts_counter: None,
@@ -187,6 +187,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     // Verify correctness
     //============================
 
+    // Check basic (NEP-141) contract data
     let args = MigrationInputData {
         accounts_eth: HashMap::new(),
         total_eth_supply_on_near: Some(NEP141Wei::new(
@@ -206,7 +207,8 @@ async fn test_migration_state() -> anyhow::Result<()> {
         .unwrap();
     assert_eq!(res, MigrationCheckResult::Success);
 
-    let limit = 2000;
+    // Check proofs data
+    proofs_count = 0;
     i = 0;
     loop {
         let proofs = if i + limit >= data.proofs.len() {
@@ -214,6 +216,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
         } else {
             &data.proofs[i..i + limit]
         };
+        proofs_count += proofs.len();
         let args = MigrationInputData {
             accounts_eth: HashMap::new(),
             total_eth_supply_on_near: None,
@@ -231,12 +234,43 @@ async fn test_migration_state() -> anyhow::Result<()> {
             .unwrap();
         assert_eq!(res, MigrationCheckResult::Success);
 
-        println!("Proofs checked: [{:?}..{:?}]", i, i + limit);
+        println!("Proofs checked: [{:?}]", proofs_count);
         if i + limit >= data.proofs.len() {
             break;
         } else {
             i += limit;
         }
+    }
+
+    // Check accounts data
+    accounts = HashMap::new();
+    accounts_count = 0;
+    for (i, (account, amount)) in data.accounts.iter().enumerate() {
+        let account = AccountId::try_from(account.to_string()).unwrap();
+        let amount = NEP141Wei::new(amount.as_u128());
+        accounts.insert(account.clone(), amount.clone());
+        if accounts.len() < limit && i < data.accounts.len() - 1 {
+            continue;
+        }
+        accounts_count += accounts.len();
+        let args = MigrationInputData {
+            accounts_eth: accounts,
+            total_eth_supply_on_near: None,
+            account_storage_usage: None,
+            statistics_aurora_accounts_counter: None,
+            used_proofs: vec![],
+        };
+        let res = contract
+            .contract
+            .call("check_migration_correctness")
+            .args_borsh(args)
+            .view()
+            .await?
+            .borsh::<MigrationCheckResult>()
+            .unwrap();
+        assert_eq!(res, MigrationCheckResult::Success);
+        accounts = HashMap::new();
+        println!("Accounts checked: [{:?}]", accounts_count);
     }
 
     Ok(())
