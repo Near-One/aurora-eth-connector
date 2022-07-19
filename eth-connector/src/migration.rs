@@ -12,7 +12,7 @@ pub struct MigrationInputData {
     pub used_proofs: Vec<String>,
 }
 
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(Debug, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
 pub enum MigrationCheckResult {
     Success,
     AccountNotExist(AccountId),

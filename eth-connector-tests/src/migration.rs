@@ -1,7 +1,7 @@
 use crate::utils::*;
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
 use aurora_engine_types::types::NEP141Wei;
-use aurora_eth_connector::migration::MigrationInputData;
+use aurora_eth_connector::migration::{MigrationCheckResult, MigrationInputData};
 use near_sdk::AccountId;
 use std::collections::HashMap;
 
@@ -182,5 +182,30 @@ async fn test_migration_state() -> anyhow::Result<()> {
         "Total Gas burnt: {:.1} TGas\n",
         total_gas_burnt as f64 / 1_000_000_000_000.
     );
+
+    //============================
+    // Verify correctness
+    //============================
+
+    let args = MigrationInputData {
+        accounts_eth: HashMap::new(),
+        total_eth_supply_on_near: Some(NEP141Wei::new(
+            data.contract_data.total_eth_supply_on_near.as_u128(),
+        )),
+        account_storage_usage: Some(data.contract_data.account_storage_usage),
+        statistics_aurora_accounts_counter: Some(data.accounts_counter),
+        used_proofs: data.proofs,
+    };
+    let res = contract
+        .contract
+        .call("check_migration_correctness")
+        .args_borsh(args)
+        .view()
+        .await?
+        .borsh::<MigrationCheckResult>()
+        .unwrap();
+    assert_eq!(res, MigrationCheckResult::Success);
+    println!("[{:#?}]", res);
+
     Ok(())
 }

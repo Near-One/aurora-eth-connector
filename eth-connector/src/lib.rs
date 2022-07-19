@@ -469,7 +469,6 @@ impl Migration for EthConnectorContract {
     }
 
     #[result_serializer(borsh)]
-    #[private]
     fn check_migration_correctness(
         &self,
         #[serializer(borsh)] data: MigrationInputData,
@@ -479,7 +478,7 @@ impl Migration for EthConnectorContract {
             match self.ft.accounts_eth.get(account) {
                 Some(ref value) => {
                     if value != amount {
-                        return MigrationCheckResult::AccountAmount((account.clone(), *amount));
+                        return MigrationCheckResult::AccountAmount((account.clone(), *value));
                     }
                 }
                 _ => return MigrationCheckResult::AccountNotExist(account.clone()),
@@ -491,6 +490,24 @@ impl Migration for EthConnectorContract {
             match self.ft.used_proofs.get(proof) {
                 Some(_) => (),
                 _ => return MigrationCheckResult::Proof(proof.clone()),
+            }
+        }
+
+        if let Some(account_storage_usage) = data.account_storage_usage {
+            if self.ft.account_storage_usage != account_storage_usage {
+                return MigrationCheckResult::StorageUsage(self.ft.account_storage_usage);
+            }
+        }
+        if let Some(total_eth_supply_on_near) = data.total_eth_supply_on_near {
+            if self.ft.total_eth_supply_on_near != total_eth_supply_on_near {
+                return MigrationCheckResult::TotalSupply(self.ft.total_eth_supply_on_near);
+            }
+        }
+        if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
+            if self.ft.statistics_aurora_accounts_counter != statistics_aurora_accounts_counter {
+                return MigrationCheckResult::StatisticsCounter(
+                    self.ft.statistics_aurora_accounts_counter,
+                );
             }
         }
         MigrationCheckResult::Success
