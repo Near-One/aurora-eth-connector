@@ -1,4 +1,6 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, UNPAUSE_ALL};
+use crate::connector::Connector;
+use crate::connector_impl::EthConnector;
 use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
@@ -12,6 +14,7 @@ use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
+    json_types::Base64VecU8,
     json_types::{U128, U64},
     near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue,
 };
@@ -20,15 +23,7 @@ pub mod admin_controlled;
 pub mod connector;
 pub mod connector_impl;
 pub mod fungible_token;
-
-/// Connector specific data. It always should contain `prover account` -
-#[derive(BorshSerialize, BorshDeserialize)]
-pub struct EthConnector {
-    /// It used in the Deposit flow, to verify log entry form incoming proof.
-    pub prover_account: AccountId,
-    /// It is Eth address, used in the Deposit and Withdraw logic.
-    pub eth_custodian_address: Address,
-}
+pub mod proof;
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -38,7 +33,7 @@ pub struct EthConnector {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct EthConnectorContract {
-    contract: EthConnector,
+    connector: EthConnector,
     ft: FungibleToken,
     paused_mask: PausedMask,
     metadata: LazyOption<FungibleTokenMetadata>,
@@ -63,8 +58,8 @@ impl EthConnectorContract {
         require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
 
-        // Get initial contract arguments
-        let contract_data = EthConnector {
+        // Get initial Eth Connector arguments
+        let connector_data = EthConnector {
             prover_account,
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
         };
@@ -72,7 +67,7 @@ impl EthConnectorContract {
         let mut this = Self {
             paused_mask,
             ft: FungibleToken::new(StorageKey::FungibleToken),
-            contract: contract_data,
+            connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         };
         this.ft.internal_register_account(&owner_id);
@@ -86,19 +81,6 @@ impl EthConnectorContract {
     #[allow(dead_code)]
     fn on_tokens_burned(&self, account_id: AccountId, amount: NEP141Wei) {
         near_sdk::log!("Account @{} burned {}", account_id, amount);
-    }
-
-    pub fn withdraw(&mut self) {
-        todo!()
-    }
-
-    pub fn deposit(&mut self) {
-        todo!()
-    }
-
-    #[private]
-    pub fn finish_deposit(&mut self) {
-        todo!()
     }
 
     pub fn is_used_proof(&mut self) {
@@ -183,7 +165,6 @@ impl StorageManagement for EthConnectorContract {
 
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
-        #[allow(unused_variables)]
         if let Some((account_id, balance)) = self.ft.internal_storage_unregister(force) {
             self.on_account_closed(account_id, balance);
             true
@@ -223,5 +204,21 @@ impl AdminControlled for EthConnectorContract {
 
     fn set_paused(&mut self, paused: PausedMask) {
         self.paused_mask = paused;
+    }
+}
+
+#[near_bindgen]
+impl Connector for EthConnectorContract {
+    fn withdraw(&mut self) {
+        todo!()
+    }
+
+    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Base64VecU8) {
+        self.connector.deposit(raw_proof)
+    }
+
+    #[private]
+    fn finish_deposit(&mut self) {
+        todo!()
     }
 }

@@ -84,6 +84,9 @@ impl StorageManagement for FungibleToken {
         if let Some(storage_balance) = self.internal_storage_balance_of(&predecessor_account_id) {
             match amount {
                 Some(amount) if amount.0 > 0 => {
+                    // The available balance is always zero because `StorageBalanceBounds::max` is
+                    // equal to `StorageBalanceBounds::min`. Therefore it is impossible to withdraw
+                    // a positive amount.
                     env::panic_str("The amount is greater than the available storage balance");
                 }
                 _ => storage_balance,
