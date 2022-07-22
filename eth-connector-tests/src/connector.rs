@@ -7,7 +7,7 @@ use aurora_eth_connector::fungible_token::metadata::FungibleTokenMetadata;
 use aurora_eth_connector::log_entry;
 use aurora_eth_connector::proof::Proof;
 use byte_slice_cast::AsByteSlice;
-use near_sdk::json_types::U128;
+use near_sdk::json_types::{U128, U64};
 use near_sdk::{serde_json, ONE_YOCTO};
 use workspaces::AccountId;
 
@@ -810,6 +810,18 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_get_accounts_counter() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let res = contract
+        .contract
+        .call("get_accounts_counter")
+        .view()
+        .await?
+        .json::<U64>()
+        .unwrap();
+    assert_eq!(res.0, 2);
+
     Ok(())
 }
 
