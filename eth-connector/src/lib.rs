@@ -225,6 +225,7 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 
 #[near_bindgen]
 impl FungibleTokeStatistic for EthConnectorContract {
+    #[result_serializer(borsh)]
     fn get_accounts_counter(&self) -> U64 {
         self.ft.get_accounts_counter()
     }

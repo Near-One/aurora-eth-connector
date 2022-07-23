@@ -818,7 +818,7 @@ async fn test_get_accounts_counter() -> anyhow::Result<()> {
         .call("get_accounts_counter")
         .view()
         .await?
-        .json::<U64>()
+        .borsh::<U64>()
         .unwrap();
     assert_eq!(res.0, 2);
 
@@ -827,6 +827,59 @@ async fn test_get_accounts_counter() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_get_accounts_counter_and_transfer() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let res = contract
+        .contract
+        .call("get_accounts_counter")
+        .view()
+        .await?
+        .borsh::<U64>()
+        .unwrap();
+    assert_eq!(res.0, 2);
+
+    let transfer_amount = 70;
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let res = contract
+        .contract
+        .call("ft_transfer")
+        .args_json((&receiver_id, transfer_amount.to_string(), "transfer memo"))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
+    assert_eq!(
+        balance.0,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE + transfer_amount as u128
+    );
+
+    let balance = contract
+        .get_eth_on_near_balance(&contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE - transfer_amount as u128);
+
+    let balance = contract.total_supply().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_aurora().await?;
+    assert_eq!(balance, 0);
+
+    let balance = contract.total_eth_supply_on_near().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
+
+    let res = contract
+        .contract
+        .call("get_accounts_counter")
+        .view()
+        .await?
+        .borsh::<U64>()
+        .unwrap();
+    assert_eq!(res.0, 2);
+
     Ok(())
 }
 
