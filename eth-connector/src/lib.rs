@@ -419,7 +419,10 @@ impl ConnectorFundsFinish for EthConnectorContract {
     }
 }
 
+#[cfg(feature = "migration")]
 use crate::migration::{Migration, MigrationInputData};
+
+#[cfg(feature = "migration")]
 #[near_bindgen]
 impl Migration for EthConnectorContract {
     /// Migrate contract data
