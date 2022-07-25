@@ -6,13 +6,28 @@ use std::collections::HashMap;
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct MigrationInputData {
     pub accounts_eth: HashMap<AccountId, NEP141Wei>,
-    pub total_eth_supply_on_near: NEP141Wei,
-    pub account_storage_usage: StorageUsage,
-    pub statistics_aurora_accounts_counter: u64,
+    pub total_eth_supply_on_near: Option<NEP141Wei>,
+    pub account_storage_usage: Option<StorageUsage>,
+    pub statistics_aurora_accounts_counter: Option<u64>,
     pub used_proofs: Vec<String>,
+}
+
+#[derive(BorshSerialize, BorshDeserialize)]
+pub enum MigrationCheckResult {
+    Success,
+    AccountNotExist(AccountId),
+    AccountAmount((AccountId, NEP141Wei)),
+    TotalSupply(NEP141Wei),
+    StorageUsage(StorageUsage),
+    StatisticsCounter(u64),
+    Proof(String),
 }
 
 #[ext_contract(ext_deposit)]
 pub trait Migration {
     fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData);
+    fn check_migration_correctness(
+        &self,
+        #[serializer(borsh)] data: MigrationInputData,
+    ) -> MigrationCheckResult;
 }

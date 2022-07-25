@@ -420,7 +420,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
 }
 
 #[cfg(feature = "migration")]
-use crate::migration::{Migration, MigrationInputData};
+use crate::migration::{Migration, MigrationCheckResult, MigrationInputData};
 
 #[cfg(feature = "migration")]
 #[near_bindgen]
@@ -435,30 +435,54 @@ impl Migration for EthConnectorContract {
         crate::log!("Inserted accounts_eth: {:?}", data.accounts_eth.len());
 
         // Insert total_eth_supply_on_near
-        self.ft.total_eth_supply_on_near = data.total_eth_supply_on_near;
-        crate::log!(
-            "Inserted total_eth_supply_on_near: {:?}",
-            data.total_eth_supply_on_near.as_u128()
-        );
+        if let Some(total_eth_supply_on_near) = data.total_eth_supply_on_near {
+            self.ft.total_eth_supply_on_near = total_eth_supply_on_near;
+            crate::log!(
+                "Inserted total_eth_supply_on_near: {:?}",
+                total_eth_supply_on_near.as_u128()
+            );
+        }
 
         // Insert account_storage_usage
-        self.ft.account_storage_usage = data.account_storage_usage;
-        crate::log!(
-            "Inserted account_storage_usage: {:?}",
-            data.account_storage_usage
-        );
+        if let Some(account_storage_usage) = data.account_storage_usage {
+            self.ft.account_storage_usage = account_storage_usage;
+            crate::log!(
+                "Inserted account_storage_usage: {:?}",
+                account_storage_usage
+            );
+        }
 
         // Insert statistics_aurora_accounts_counter
-        self.ft.statistics_aurora_accounts_counter = data.statistics_aurora_accounts_counter;
-        crate::log!(
-            "Inserted statistics_aurora_accounts_counter: {:?}",
-            data.statistics_aurora_accounts_counter
-        );
+        if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
+            self.ft.statistics_aurora_accounts_counter = statistics_aurora_accounts_counter;
+            crate::log!(
+                "Inserted statistics_aurora_accounts_counter: {:?}",
+                statistics_aurora_accounts_counter
+            );
+        }
 
         // Insert Proof
         for proof_key in &data.used_proofs {
             self.ft.used_proofs.insert(proof_key, &true);
         }
         crate::log!("Inserted used_proofs: {:?}", data.used_proofs.len());
+    }
+
+    #[private]
+    fn check_migration_correctness(
+        &self,
+        #[serializer(borsh)] data: MigrationInputData,
+    ) -> MigrationCheckResult {
+        for (account, amount) in &data.accounts_eth {
+            match self.ft.accounts_eth.get(account) {
+                Some(ref value) => {
+                    if value != amount {
+                        return MigrationCheckResult::AccountAmount((account.clone(), *amount));
+                    }
+                }
+                _ => return MigrationCheckResult::AccountNotExist(account.clone()),
+            }
+        }
+        MigrationCheckResult::Success
     }
 }

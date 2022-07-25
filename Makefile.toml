@@ -59,7 +59,7 @@ category = "Check"
 command = "${CARGO}"
 args = [
     "clippy",
-    "--no-default-features",
+    "--feature=migration",
     "--",
     "-D",
     "warnings",
