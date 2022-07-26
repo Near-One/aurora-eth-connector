@@ -473,6 +473,7 @@ impl Migration for EthConnectorContract {
         &self,
         #[serializer(borsh)] data: MigrationInputData,
     ) -> MigrationCheckResult {
+        // Check accounts
         for (account, amount) in &data.accounts_eth {
             match self.ft.accounts_eth.get(account) {
                 Some(ref value) => {
@@ -481,6 +482,14 @@ impl Migration for EthConnectorContract {
                     }
                 }
                 _ => return MigrationCheckResult::AccountNotExist(account.clone()),
+            }
+        }
+
+        // Check proofs
+        for proof in &data.used_proofs {
+            match self.ft.used_proofs.get(proof) {
+                Some(_) => (),
+                _ => return MigrationCheckResult::Proof(proof.clone()),
             }
         }
         MigrationCheckResult::Success
