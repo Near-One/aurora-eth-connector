@@ -194,7 +194,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
         )),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
         statistics_aurora_accounts_counter: Some(data.accounts_counter),
-        used_proofs: data.proofs,
+        used_proofs: vec![],
     };
     let res = contract
         .contract
@@ -205,7 +205,39 @@ async fn test_migration_state() -> anyhow::Result<()> {
         .borsh::<MigrationCheckResult>()
         .unwrap();
     assert_eq!(res, MigrationCheckResult::Success);
-    println!("[{:#?}]", res);
+
+    let limit = 2000;
+    i = 0;
+    loop {
+        let proofs = if i + limit >= data.proofs.len() {
+            &data.proofs[i..]
+        } else {
+            &data.proofs[i..i + limit]
+        };
+        let args = MigrationInputData {
+            accounts_eth: HashMap::new(),
+            total_eth_supply_on_near: None,
+            account_storage_usage: None,
+            statistics_aurora_accounts_counter: None,
+            used_proofs: proofs.to_vec(),
+        };
+        let res = contract
+            .contract
+            .call("check_migration_correctness")
+            .args_borsh(args)
+            .view()
+            .await?
+            .borsh::<MigrationCheckResult>()
+            .unwrap();
+        assert_eq!(res, MigrationCheckResult::Success);
+
+        println!("Proofs checked: [{:?}..{:?}]", i, i + limit);
+        if i + limit >= data.proofs.len() {
+            break;
+        } else {
+            i += limit;
+        }
+    }
 
     Ok(())
 }
