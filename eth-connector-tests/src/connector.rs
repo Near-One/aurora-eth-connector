@@ -657,6 +657,77 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
 
 #[tokio::test]
 async fn test_deposit_pausability() -> anyhow::Result<()> {
+    use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, UNPAUSE_ALL};
+
+    let contract = TestContract::new().await?;
+    let user_acc = contract.create_sub_accuount("eth_recipient").await?;
+    let proof: Proof = serde_json::from_str(PROOF_DATA_NEAR).unwrap();
+
+    // 1st deposit call - should succeed
+    let res = user_acc
+        .call(contract.contract.id(), "deposit")
+        .args_borsh(proof)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    // Pause deposit
+    let res = contract
+        .contract
+        .call("set_paused_flags")
+        .args_borsh(PAUSE_DEPOSIT)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    // 2nd deposit call - should fail
+    // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
+    // method which should be paused
+    let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
+    let res = user_acc
+        .call(contract.contract.id(), "deposit")
+        .args_borsh(proof.clone())
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    contract.assert_error_message(res, "ERR_PAUSED");
+
+    // Unpause all
+    let res = contract
+        .contract
+        .call("set_paused_flags")
+        .args_borsh(UNPAUSE_ALL)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    // 3rd deposit call - should succeed
+    let res = user_acc
+        .call(contract.contract.id(), "deposit")
+        .args_borsh(proof)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let balance = contract
+        .get_eth_balance(&validate_eth_address(RECIPIENT_ETH_ADDRESS))
+        .await?;
+    assert_eq!(balance, DEPOSITED_EVM_AMOUNT);
+
+    let balance = contract.total_supply().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT + DEPOSITED_EVM_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_near().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT + DEPOSITED_EVM_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_aurora().await?;
+    assert_eq!(balance, DEPOSITED_EVM_AMOUNT);
+
     Ok(())
 }
 
