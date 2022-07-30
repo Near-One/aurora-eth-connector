@@ -733,6 +733,78 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
+    use aurora_eth_connector::admin_controlled::{PAUSE_WITHDRAW, UNPAUSE_ALL};
+
+    let contract = TestContract::new().await?;
+    let user_acc = contract.create_sub_accuount("eth_recipient").await?;
+
+    contract.call_deposit_eth_to_near().await?;
+
+    let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let withdraw_amount: NEP141Wei = NEP141Wei::new(100);
+    // 1st withdraw - should succeed
+    let res = user_acc
+        .call(contract.contract.id(), "withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+
+    // Pause withdraw
+    let res = contract
+        .contract
+        .call("set_paused_flags")
+        .args_borsh(PAUSE_WITHDRAW)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    // 2nd withdraw - should fail
+    let res = user_acc
+        .call(contract.contract.id(), "withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    //println!("{:#?}", res);
+    contract.assert_error_message(res, "WithdrawErrorPaused");
+
+    // Unpause all
+    let res = contract
+        .contract
+        .call("set_paused_flags")
+        .args_borsh(UNPAUSE_ALL)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let res = user_acc
+        .call(contract.contract.id(), "withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+
     Ok(())
 }
 

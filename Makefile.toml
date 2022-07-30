@@ -154,10 +154,11 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
+#    "test_withdraw_from_near_pausability",
     "--features",
     "${CARGO_FEATURES_TEST}",
-    "--",
-    "--nocapture"
+#    "--",
+#    "--nocapture"
 ]
 
 [tasks.test-flow]
