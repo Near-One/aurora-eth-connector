@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+
+# Visual Studio Code
+.vscode/
+.run/
+
+# IDEA
+.idea
+# Editor backup files
+*~
+
+# ENV
+.env/custom.env
+
+# Rust artifacts
+bin/
+target/
+
+# Solidity artifacts
+artifacts/
+cache/
+node_modules/
+
+# Other
+etc/state-migration-test/target/
+etc/ft-receiver/target/
+etc/self-contained-5bEgfRQ/target/
+
+node_modules/*
+cache
