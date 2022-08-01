@@ -1,0 +1,38 @@
+---
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+
+name: Tests
+jobs:
+  test:
+    name: Test suite (mainnet, testnet)
+    runs-on: [self-hosted, heavy]
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v2
+      - name: Restore cache
+        run: |
+          cache-util restore cargo_git cargo_registry sccache yarn_cache
+          cache-util restore aurora-engine-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
+      - name: List directories
+        run: ls -la target/wasm32-unknown-unknown/release && ls -la
+      - name: Build mainnet test WASM
+        run: cargo make --profile mainnet build-test
+      - name: Test mainnet
+        run: cargo make --profile mainnet test-workspace
+      - name: Build testnet test WASM
+        run: cargo make --profile testnet build-test
+      - name: Test testnet
+        run: cargo make --profile testnet test-workspace
+      - name: Save cache
+        run: |
+          cache-util save cargo_git cargo_registry sccache yarn_cache
+          cache-util msave aurora-engine-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTC_WRAPPER: sccache

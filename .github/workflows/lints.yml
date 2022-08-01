@@ -1,0 +1,30 @@
+---
+on:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
+
+name: Lints
+jobs:
+  fmt:
+    name: Format
+    runs-on: [self-hosted, light]
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v2
+      - name: Run cargo fmt
+        run: cargo make check-fmt
+  clippy:
+    name: Clippy
+    runs-on: [self-hosted, heavy]
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v2
+      - run: cargo make build-contracts
+      - name: Run Contract cargo clippy
+        run: cargo make clippy
+      - name: Run cargo clippy
+        run: cargo clippy
+
