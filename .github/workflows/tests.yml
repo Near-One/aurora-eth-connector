@@ -17,7 +17,7 @@ jobs:
       - name: Restore cache
         run: |
           cache-util restore cargo_git cargo_registry sccache yarn_cache
-          cache-util restore aurora-engine-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
+          cache-util restore aurora-contract-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
       - name: List directories
         run: ls -la target/wasm32-unknown-unknown/release && ls -la
       - name: Build mainnet test WASM
@@ -31,7 +31,7 @@ jobs:
       - name: Save cache
         run: |
           cache-util save cargo_git cargo_registry sccache yarn_cache
-          cache-util msave aurora-engine-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
+          cache-util msave aurora-contract-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0

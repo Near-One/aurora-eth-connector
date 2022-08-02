@@ -12,7 +12,7 @@ skip_core_tasks = true
 
 [env]
 CARGO = "cargo"
-ENGINE_CARGO_TARGET = "wasm32-unknown-unknown"
+CONTRACT_CARGO_TARGET = "wasm32-unknown-unknown"
 SWEEP_DAYS = 30
 
 [tasks.sweep]
@@ -30,15 +30,6 @@ category = "Cleanup"
 command = "${CARGO}"
 args = ["clean"]
 
-[tasks.clean-contracts]
-category = "Cleanup"
-script = '''
-rm -Rf etc/eth-contracts/.pnp
-rm -Rf etc/eth-contracts/artifacts
-rm -Rf etc/eth-contracts/cache
-rm -Rf etc/benchmark-contract/target
-'''
-
 [tasks.clean-bin]
 category = "Cleanup"
 script = '''
@@ -49,7 +40,6 @@ rm -Rf bin
 category = "Cleanup"
 dependencies = [
     "clean-cargo",
-    "clean-contracts",
     "clean-bin",
 ]
 
@@ -70,8 +60,6 @@ command = "${CARGO}"
 args = [
     "clippy",
     "--no-default-features",
-    "--features",
-    "contract",
     "--",
     "-D",
     "warnings",
@@ -86,23 +74,14 @@ args = [
     "--check",
 ]
 
-[tasks.check-contracts]
-category = "Check"
-script = '''
-cd etc/eth-contracts
-yarn
-yarn lint
-'''
-
 [tasks.check]
 category = "Check"
 dependencies = [
-    "check-contracts",
     "check-fmt",
     "clippy",
 ]
 
-[tasks.post-engine-build-env]
+[tasks.post-contract-build-env]
 category = "Tools"
 script = '''
 echo "Environment:"
@@ -115,7 +94,7 @@ echo "    RUSTFLAGS:            ${RUSTFLAGS}"
 echo "    Extra build args:     ${RELEASE} ${@}"
 '''
 
-[tasks.copy-engine-build]
+[tasks.copy-contract-build]
 category = "Post"
 command = "cp"
 args = [
@@ -131,60 +110,37 @@ args = [
     "bin",
 ]
 
-[tasks.build-contracts]
-category = "Build"
-script = '''
-cd etc/eth-contracts
-yarn
-yarn build
-'''
-
-[tasks.build-engine]
+[tasks.build-contract]
 category = "Build"
 command = "${CARGO}"
 args = [
     "build",
     "--target",
-    "${ENGINE_CARGO_TARGET}",
+    "${CONTRACT_CARGO_TARGET}",
     "@@remove-empty(RELEASE)",
     "--no-default-features",
     "--features=${CARGO_FEATURES}",
     "-p",
-    "aurora-engine",
+    "aurora-fungible-token",
     "-Z",
     "avoid-dev-deps",
     "${@}",
 ]
 
-[tasks.build-engine-flow]
+[tasks.build-contract-flow]
 category = "Build"
 dependencies = [
-    "build-contracts",
-    "build-engine",
+    "build-contract",
     "make-bin-directory",
-    "copy-engine-build",
-    "post-engine-build-env",
+    "copy-contract-build",
+    "post-contract-build-env",
 ]
-
-[tasks.build-test]
-condition = { profiles = ["mainnet", "testnet", "custom"] }
-env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATURES_BUILD_TEST}", "WASM_FILE" = "${WASM_FILE_TEST}", "RELEASE" = "--release", "TARGET_DIR" = "release" }
-category = "Build"
-run_task = "build-engine-flow"
 
 [tasks.build]
 condition = { profiles = ["mainnet", "testnet", "localnet", "development", "custom"] }
 env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATURES_BUILD}", "RELEASE" = "--release", "TARGET_DIR" = "release" }
 category = "Build"
-run_task = "build-engine-flow"
-
-[tasks.test-contracts]
-category = "Test"
-script = '''
-cd etc/eth-contracts
-yarn
-yarn test
-'''
+run_task = "build-contract-flow"
 
 [tasks.test-workspace]
 condition = { profiles = ["mainnet", "testnet", "custom"] }
@@ -200,7 +156,6 @@ args = [
 category = "Test"
 dependencies = [
     "build-test",
-    "test-contracts",
     "test-workspace",
 ]
 
