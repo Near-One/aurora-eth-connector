@@ -98,7 +98,7 @@ echo "    Extra build args:     ${RELEASE} ${@}"
 category = "Post"
 command = "cp"
 args = [
-    "target/wasm32-unknown-unknown/${TARGET_DIR}/aurora_engine.wasm",
+    "target/wasm32-unknown-unknown/${TARGET_DIR}/aurora_fungible_token.wasm",
     "bin/${WASM_FILE}",
 ]
 

@@ -9,7 +9,7 @@ Thanks for submitting a pull request! Here are some helpful tips:
 * If the idea changes or adds anything functional which will affect users, an 
 AIP discussion is required first on the Aurora forum: 
 https://forum.aurora.dev/discussions/AIPs%20(Aurora%20Improvement%20Proposals).
-* Avoid breaking the public API (namely in engine/src/lib.rs) unless required.
+* Avoid breaking the public API (namely in fungible-token/src/lib.rs) unless required.
 * If your PR is a WIP, ensure that you enable "draft" mode.
 * Your first PRs won't use the CI automatically unless a maintainer starts.
 If this is not your first PR, please do NOT abuse the CI resources.

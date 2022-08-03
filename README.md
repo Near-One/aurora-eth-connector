@@ -1,6 +1,9 @@
 # Aurora Fungible Token
 
 [![Project license](https://img.shields.io/badge/License-Public%20Domain-blue.svg)](https://creativecommons.org/publicdomain/zero/1.0/)
+[![Lints](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/lints.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/lints.yml)
+[![Tests](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/tests.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/tests.yml)
+[![Builds](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/builds.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/builds.yml)
 
 Aurora Fungible Token implementation is the smart contract on the NEAR Protocol for 
 [Aurora Engine](https://github.com/aurora-is-near/aurora-engine).
@@ -12,11 +15,11 @@ It is base on [AIP:  Split NEP-141 logic outside of Engine](https://github.com/a
 
 ### Prerequisites
 
-- Rust stable (1.62+)
+- Rust nightly (2022-08-08) with the WebAssembly toolchain
 - cargo-make
 
 ```sh
-rustup target add wasm32-unknown-unknown --toolchain nightly-2021-03-25
+rustup target add wasm32-unknown-unknown
 cargo install --force cargo-make
 ```
 
@@ -47,12 +50,11 @@ To build the binaries there are a few commands to do such following the format.
 The current available build `task`s are:
 - `default`, does not need to be specified, runs `build`. Requires a `--profile`
   argument.
-- `build`, builds all engine smart contract and produces the
-  `aurora-<profile>-test.wasm` in the `bin` folder. Requires `build-contracts`.
+- `build`, builds all fungible-token smart contract and produces the
+  `aurora-<profile>-test.wasm` in the `bin` folder.
   Requires a `--profile` argument.
 - `build-test`, builds all the below using test features. Requires a `--profile`
   argument.
-- `build-contracts`, builds all the ETH contracts.
 
 For example, the following will build the mainnet debug binary:
 ```sh
@@ -60,6 +62,6 @@ cargo make --profile mainnet build
 ```
 
 ## License
-**aurora-engine** has multiple licenses:
-* all crates except `engine-test` has **CCO-1.0** license
-* `engine-test` has **GPL-v3** license
+**aurora-fungible-token** has multiple licenses:
+* all crates except `fungible-token-tests` has **CCO-1.0** license
+* `fungible-token-tests` has **GPL-v3** license
