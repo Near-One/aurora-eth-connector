@@ -22,10 +22,7 @@ artifacts/
 cache/
 node_modules/
 
-# Other
-etc/state-migration-test/target/
-etc/ft-receiver/target/
-etc/self-contained-5bEgfRQ/target/
-
 node_modules/*
 cache
+
+Makefile
