@@ -18,8 +18,6 @@ jobs:
         run: |
           cache-util restore cargo_git cargo_registry sccache yarn_cache
           cache-util restore aurora-contract-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
-      - name: List directories
-        run: ls -la target/wasm32-unknown-unknown/release && ls -la
       - name: Build mainnet test WASM
         run: cargo make --profile mainnet build-test
       - name: Test mainnet

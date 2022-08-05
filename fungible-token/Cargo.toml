@@ -17,6 +17,8 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 near-sdk = "4.0.0"
+serde = "1"
+serde_json = "1"
 
 [dev-dependencies]
 

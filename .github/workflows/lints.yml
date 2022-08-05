@@ -22,7 +22,6 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
-      - run: cargo make build-contracts
       - name: Run Contract cargo clippy
         run: cargo make clippy
       - name: Run cargo clippy
