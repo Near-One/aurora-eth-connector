@@ -98,7 +98,7 @@ echo "    Extra build args:     ${RELEASE} ${@}"
 category = "Post"
 command = "cp"
 args = [
-    "target/wasm32-unknown-unknown/${TARGET_DIR}/aurora_fungible_token.wasm",
+    "target/wasm32-unknown-unknown/${TARGET_DIR}/aurora_eth_connector.wasm",
     "bin/${WASM_FILE}",
 ]
 
@@ -121,11 +121,17 @@ args = [
     "--no-default-features",
     "--features=${CARGO_FEATURES}",
     "-p",
-    "aurora-fungible-token",
+    "aurora-eth-connector",
     "-Z",
     "avoid-dev-deps",
     "${@}",
 ]
+
+[tasks.build-test]
+condition = { profiles = ["mainnet", "testnet", "custom"] }
+env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATURES_BUILD_TEST}", "WASM_FILE" = "${WASM_FILE_TEST}", "RELEASE" = "--release", "TARGET_DIR" = "release" }
+category = "Build"
+run_task = "build-contract-flow"
 
 [tasks.build-contract-flow]
 category = "Build"

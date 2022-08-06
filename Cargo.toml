@@ -30,6 +30,6 @@ opt-level = 3
 [workspace]
 resolver = "2"
 members = [
-    "fungible-token",
-    "fungible-token-tests",
+    "eth-connector",
+    "eth-connector-tests",
 ]
