@@ -1,0 +1,21 @@
+[package]
+name = "aurora-eth-connector-tests"
+version = "0.1.0"
+authors = ["Aurora Labs <hello@aurora.dev>"]
+edition = "2021"
+description = ""
+documentation = ""
+readme = true
+homepage = "https://github.com/aurora-is-near/aurora-engine"
+repository = "https://github.com/aurora-is-near/aurora-engine"
+license = "GPL-3.0"
+publish = false
+autobenches = false
+
+[dependencies]
+aurora-eth-connector = { path = "../eth-connector" }
+
+[features]
+mainnet-test = []
+testnet-test = []
+

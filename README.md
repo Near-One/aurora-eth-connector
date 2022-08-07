@@ -86,6 +86,6 @@ cargo make check
 ```
 
 ## License
-**aurora-fungible-token** has multiple licenses:
+**aurora-eth-connector** has multiple licenses:
 * all crates except `eth-connector-tests` has **CCO-1.0** license
 * `eth-connector-tests` has **GPL-v3** license
