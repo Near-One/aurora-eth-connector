@@ -17,6 +17,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 near-sdk = "4.0.0"
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false }
 primitive-types = { version = "0.10.0", default-features = false, features = ["rlp", "impl-serde"] }
 serde = "1"
 serde_json = "1"

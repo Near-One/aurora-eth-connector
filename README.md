@@ -3,7 +3,6 @@
 [![Project license](https://img.shields.io/badge/License-Public%20Domain-blue.svg)](https://creativecommons.org/publicdomain/zero/1.0/)
 [![Lints](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/lints.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/lints.yml)
 [![Tests](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/tests.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/tests.yml)
-[![Builds](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/builds.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/builds.yml)
 
 Aurora Eth Connecotr - Fungible Token implementation is the smart contract on the NEAR Protocol for 
 [Aurora Engine](https://github.com/aurora-is-near/aurora-engine).
@@ -86,6 +85,4 @@ cargo make check
 ```
 
 ## License
-**aurora-eth-connector** has multiple licenses:
-* all crates except `eth-connector-tests` has **CCO-1.0** license
-* `eth-connector-tests` has **GPL-v3** license
+**aurora-eth-connector** has **GPL-v3** license
