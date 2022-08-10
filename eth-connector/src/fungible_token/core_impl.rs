@@ -2,6 +2,7 @@ use super::core::FungibleTokenCore;
 use super::events::{FtBurn, FtTransfer};
 use super::receiver::ext_ft_receiver;
 use super::resolver::{ext_ft_resolver, FungibleTokenResolver};
+use crate::types::wei::NEP141Wei;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::U128;
@@ -31,6 +32,7 @@ pub struct FungibleToken {
 
     /// Total supply of the all token.
     pub total_supply: Balance,
+    pub t: NEP141Wei,
 
     /// The storage size in bytes for one account.
     pub account_storage_usage: StorageUsage,
@@ -45,6 +47,7 @@ impl FungibleToken {
             accounts: LookupMap::new(prefix),
             total_supply: 0,
             account_storage_usage: 0,
+            t: NEP141Wei::default(),
         };
         this.measure_account_storage_usage();
         this

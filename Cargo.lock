@@ -52,6 +52,7 @@ dependencies = [
  "ethabi",
  "hex",
  "primitive-types 0.11.1",
+ "serde",
  "sha3 0.9.1",
 ]
 
@@ -62,7 +63,7 @@ dependencies = [
  "aurora-engine-types",
  "hex",
  "near-sdk",
- "primitive-types 0.10.1",
+ "rand 0.7.3",
  "serde",
  "serde_json",
 ]
@@ -910,8 +911,6 @@ checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
 dependencies = [
  "fixed-hash",
  "impl-codec",
- "impl-rlp",
- "impl-serde",
  "uint",
 ]
 
@@ -923,6 +922,7 @@ checksum = "e28720988bff275df1f51b171e1b2a18c30d194c4d2b61defdacecd625a5d94a"
 dependencies = [
  "fixed-hash",
  "impl-rlp",
+ "impl-serde",
  "uint",
 ]
 

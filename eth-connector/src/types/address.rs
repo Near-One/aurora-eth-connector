@@ -1,5 +1,6 @@
 use near_sdk::borsh::{maybestd::io, BorshDeserialize, BorshSerialize};
-use primitive_types::H160;
+//use primitive_types::H160;
+use aurora_engine_types::H160;
 use serde::{Deserialize, Serialize};
 
 /// Base Eth Address type
