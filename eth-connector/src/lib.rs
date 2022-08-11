@@ -2,7 +2,8 @@ use crate::admin_controlled::{PausedMask, UNPAUSE_ALL};
 use crate::fungible_token::core::FungibleTokenCore;
 use crate::fungible_token::core_impl::FungibleToken;
 use crate::fungible_token::metadata::FungibleTokenMetadata;
-use crate::types::address::Address;
+//use crate::types::address::Address;
+use aurora_engine_types::types::Address;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::U128;
 use near_sdk::{
@@ -11,7 +12,6 @@ use near_sdk::{
 
 pub mod admin_controlled;
 pub mod fungible_token;
-pub mod types;
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:

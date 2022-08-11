@@ -2,7 +2,7 @@ use super::core::FungibleTokenCore;
 use super::events::{FtBurn, FtTransfer};
 use super::receiver::ext_ft_receiver;
 use super::resolver::{ext_ft_resolver, FungibleTokenResolver};
-use crate::types::wei::NEP141Wei;
+use aurora_engine_types::types::NEP141Wei;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::U128;
@@ -30,9 +30,16 @@ pub struct FungibleToken {
     /// AccountID -> Account balance.
     pub accounts: LookupMap<AccountId, Balance>,
 
+    /// Total ETH supply on Near (nETH as NEP-141 token)
+    pub total_eth_supply_on_near: NEP141Wei,
+
+    /// Total ETH supply on Aurora (ETH in Aurora EVM)
+    /// NOTE: For compatibility reasons, we do not use  `Wei` (32 bytes)
+    /// buy `NEP141Wei` (16 bytes)
+    pub total_eth_supply_on_aurora: NEP141Wei,
+
     /// Total supply of the all token.
     pub total_supply: Balance,
-    pub t: NEP141Wei,
 
     /// The storage size in bytes for one account.
     pub account_storage_usage: StorageUsage,
@@ -47,7 +54,8 @@ impl FungibleToken {
             accounts: LookupMap::new(prefix),
             total_supply: 0,
             account_storage_usage: 0,
-            t: NEP141Wei::default(),
+            total_eth_supply_on_near: NEP141Wei::default(),
+            total_eth_supply_on_aurora: NEP141Wei::default(),
         };
         this.measure_account_storage_usage();
         this
