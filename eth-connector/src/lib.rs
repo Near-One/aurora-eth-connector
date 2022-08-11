@@ -3,6 +3,10 @@ use crate::fungible_token::core::FungibleTokenCore;
 use crate::fungible_token::core_impl::FungibleToken;
 use crate::fungible_token::metadata::FungibleTokenMetadata;
 //use crate::types::address::Address;
+use crate::fungible_token::resolver::FungibleTokenResolver;
+use crate::fungible_token::storage_management::{
+    StorageBalance, StorageBalanceBounds, StorageManagement,
+};
 use aurora_engine_types::types::Address;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::U128;
@@ -84,6 +88,62 @@ impl FungibleTokenCore for EthConnectorContract {
 
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
         self.ft.ft_balance_of(account_id)
+    }
+}
+
+#[near_bindgen]
+impl FungibleTokenResolver for EthConnectorContract {
+    #[private]
+    fn ft_resolve_transfer(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+    ) -> U128 {
+        let (used_amount, burned_amount) =
+            self.ft
+                .internal_ft_resolve_transfer(&sender_id, receiver_id, amount);
+        if burned_amount > 0 {
+            // self.on_tokens_burned_fn(sender_id, burned_amount);
+        }
+        used_amount.into()
+    }
+}
+
+#[near_bindgen]
+impl StorageManagement for EthConnectorContract {
+    #[payable]
+    fn storage_deposit(
+        &mut self,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
+        self.ft.storage_deposit(account_id, registration_only)
+    }
+
+    #[payable]
+    fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
+        self.ft.storage_withdraw(amount)
+    }
+
+    #[payable]
+    fn storage_unregister(&mut self, force: Option<bool>) -> bool {
+        #[allow(unused_variables)]
+        if let Some((account_id, balance)) = self.ft.internal_storage_unregister(force) {
+            // self.on_account_closed_fn(account_id, balance);
+            // true
+            todo!("on_account_closed_fn");
+        } else {
+            false
+        }
+    }
+
+    fn storage_balance_bounds(&self) -> StorageBalanceBounds {
+        self.ft.storage_balance_bounds()
+    }
+
+    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
+        self.ft.storage_balance_of(account_id)
     }
 }
 
