@@ -53,4 +53,10 @@ pub trait FungibleTokenCore {
 
     /// Returns the balance of the account. If the account doesn't exist must returns `"0"`.
     fn ft_balance_of(&self, account_id: AccountId) -> U128;
+
+    fn ft_total_eth_supply_on_near(&self) -> U128;
+
+    fn ft_total_eth_supply_on_aurora(&self) -> U128;
+
+    fn ft_balance_of_eth(&self) -> U128;
 }

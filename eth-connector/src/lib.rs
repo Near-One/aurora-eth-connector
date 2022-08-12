@@ -62,6 +62,23 @@ impl EthConnectorContract {
         this.ft.internal_register_account(&owner_id);
         this
     }
+
+    pub fn withdraw(&mut self) {
+        todo!()
+    }
+
+    pub fn deposit(&mut self) {
+        todo!()
+    }
+
+    #[private]
+    pub fn finish_deposit(&mut self) {
+        todo!()
+    }
+
+    pub fn is_used_proof(&mut self) {
+        todo!()
+    }
 }
 
 #[near_bindgen]
@@ -88,6 +105,18 @@ impl FungibleTokenCore for EthConnectorContract {
 
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
         self.ft.ft_balance_of(account_id)
+    }
+
+    fn ft_total_eth_supply_on_near(&self) -> U128 {
+        self.ft.ft_total_eth_supply_on_near()
+    }
+
+    fn ft_total_eth_supply_on_aurora(&self) -> U128 {
+        self.ft.ft_total_eth_supply_on_aurora()
+    }
+
+    fn ft_balance_of_eth(&self) -> U128 {
+        self.ft.ft_balance_of_eth()
     }
 }
 
