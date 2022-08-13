@@ -1,7 +1,7 @@
 use crate::admin_controlled::{PausedMask, UNPAUSE_ALL};
 use crate::fungible_token::core::FungibleTokenCore;
 use crate::fungible_token::core_impl::FungibleToken;
-use crate::fungible_token::metadata::FungibleTokenMetadata;
+use crate::fungible_token::metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider};
 //use crate::types::address::Address;
 use crate::fungible_token::resolver::FungibleTokenResolver;
 use crate::fungible_token::storage_management::{
@@ -9,6 +9,7 @@ use crate::fungible_token::storage_management::{
 };
 use aurora_engine_types::types::Address;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::collections::LazyOption;
 use near_sdk::json_types::U128;
 use near_sdk::{
     env, near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue,
@@ -28,6 +29,7 @@ pub struct EthConnectorContract {
     contract: EthConnector,
     ft: FungibleToken,
     paused_mask: PausedMask,
+    metadata: LazyOption<FungibleTokenMetadata>,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -44,9 +46,10 @@ impl EthConnectorContract {
         owner_id: AccountId,
         prover_account: AccountId,
         eth_custodian_address: String,
-        _metadata: FungibleTokenMetadata,
+        metadata: FungibleTokenMetadata,
     ) -> Self {
         require!(!env::state_exists(), "Already initialized");
+        metadata.assert_valid();
 
         // Get initial contract arguments
         let contract_data = EthConnector {
@@ -58,6 +61,7 @@ impl EthConnectorContract {
             paused_mask,
             ft: FungibleToken::new(StorageKey::FungibleToken),
             contract: contract_data,
+            metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         };
         this.ft.internal_register_account(&owner_id);
         this
@@ -173,6 +177,13 @@ impl StorageManagement for EthConnectorContract {
 
     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
         self.ft.storage_balance_of(account_id)
+    }
+}
+
+#[near_bindgen]
+impl FungibleTokenMetadataProvider for EthConnectorContract {
+    fn ft_metadata(&self) -> FungibleTokenMetadata {
+        self.metadata.get().unwrap_or_default()
     }
 }
 
