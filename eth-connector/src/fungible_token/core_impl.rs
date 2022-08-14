@@ -178,11 +178,11 @@ impl FungibleTokenCore for FungibleToken {
     }
 
     fn ft_total_eth_supply_on_near(&self) -> U128 {
-        todo!()
+        self.total_eth_supply_on_near.as_u128().into()
     }
 
     fn ft_total_eth_supply_on_aurora(&self) -> U128 {
-        todo!()
+        self.total_eth_supply_on_aurora.as_u128().into()
     }
 
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
