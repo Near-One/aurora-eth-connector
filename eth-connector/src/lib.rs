@@ -4,13 +4,14 @@ use crate::fungible_token::core_impl::FungibleToken;
 use crate::fungible_token::metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider};
 //use crate::types::address::Address;
 use crate::fungible_token::resolver::FungibleTokenResolver;
+use crate::fungible_token::statistic::FungibleTokeStatistic;
 use crate::fungible_token::storage_management::{
     StorageBalance, StorageBalanceBounds, StorageManagement,
 };
 use aurora_engine_types::types::Address;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
-use near_sdk::json_types::U128;
+use near_sdk::json_types::{U128, U64};
 use near_sdk::{
     env, near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue,
 };
@@ -184,6 +185,13 @@ impl StorageManagement for EthConnectorContract {
 impl FungibleTokenMetadataProvider for EthConnectorContract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
         self.metadata.get().unwrap_or_default()
+    }
+}
+
+#[near_bindgen]
+impl FungibleTokeStatistic for EthConnectorContract {
+    fn get_accounts_counter(&self) -> U64 {
+        self.ft.get_accounts_counter()
     }
 }
 

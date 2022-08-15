@@ -43,6 +43,8 @@ pub struct FungibleToken {
 
     /// The storage size in bytes for one account.
     pub account_storage_usage: StorageUsage,
+
+    pub statistics_aurora_accounts_counter: u64,
 }
 
 impl FungibleToken {
@@ -56,6 +58,7 @@ impl FungibleToken {
             account_storage_usage: 0,
             total_eth_supply_on_near: NEP141Wei::default(),
             total_eth_supply_on_aurora: NEP141Wei::default(),
+            statistics_aurora_accounts_counter: 0,
         };
         this.measure_account_storage_usage();
         this

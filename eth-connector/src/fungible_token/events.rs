@@ -34,7 +34,6 @@ impl FtMint<'_> {
     pub fn emit(self) {
         Self::emit_many(&[self])
     }
-
     /// Emits an FT mint event, through [`env::log_str`](near_sdk::env::log_str),
     /// where each [`FtMint`] represents the data of each mint.
     pub fn emit_many(data: &[FtMint<'_>]) {

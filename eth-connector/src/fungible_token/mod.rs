@@ -5,5 +5,7 @@ pub mod events;
 pub mod metadata;
 pub mod receiver;
 pub mod resolver;
+pub mod statistic;
+pub mod statistic_impl;
 pub mod storage_impl;
 pub mod storage_management;
