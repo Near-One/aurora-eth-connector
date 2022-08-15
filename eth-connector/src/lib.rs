@@ -1,23 +1,32 @@
-use crate::admin_controlled::{PausedMask, UNPAUSE_ALL};
-use crate::fungible_token::core::FungibleTokenCore;
-use crate::fungible_token::core_impl::FungibleToken;
-use crate::fungible_token::metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider};
-//use crate::types::address::Address;
-use crate::fungible_token::resolver::FungibleTokenResolver;
-use crate::fungible_token::statistic::FungibleTokeStatistic;
-use crate::fungible_token::storage_management::{
-    StorageBalance, StorageBalanceBounds, StorageManagement,
+use crate::fungible_token::admin_controlled::UNPAUSE_ALL;
+use crate::fungible_token::{
+    admin_controlled::{AdminControlled, PausedMask},
+    core::FungibleTokenCore,
+    core_impl::FungibleToken,
+    metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider},
+    resolver::FungibleTokenResolver,
+    statistic::FungibleTokeStatistic,
+    storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
 use aurora_engine_types::types::Address;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LazyOption;
-use near_sdk::json_types::{U128, U64};
 use near_sdk::{
-    env, near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue,
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    collections::LazyOption,
+    env,
+    json_types::{U128, U64},
+    near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue,
 };
 
-pub mod admin_controlled;
 pub mod fungible_token;
+
+/// Connector specific data. It always should contain `prover account` -
+#[derive(BorshSerialize, BorshDeserialize)]
+pub struct EthConnector {
+    /// It used in the Deposit flow, to verify log entry form incoming proof.
+    pub prover_account: AccountId,
+    /// It is Eth address, used in the Deposit and Withdraw logic.
+    pub eth_custodian_address: Address,
+}
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -138,6 +147,7 @@ impl FungibleTokenResolver for EthConnectorContract {
             self.ft
                 .internal_ft_resolve_transfer(&sender_id, receiver_id, amount);
         if burned_amount > 0 {
+            todo!();
             // self.on_tokens_burned_fn(sender_id, burned_amount);
         }
         used_amount.into()
@@ -195,11 +205,13 @@ impl FungibleTokeStatistic for EthConnectorContract {
     }
 }
 
-/// Connector specific data. It always should contain `prover account` -
-#[derive(BorshSerialize, BorshDeserialize)]
-pub struct EthConnector {
-    /// It used in the Deposit flow, to verify log entry form incoming proof.
-    pub prover_account: AccountId,
-    /// It is Eth address, used in the Deposit and Withdraw logic.
-    pub eth_custodian_address: Address,
+#[near_bindgen]
+impl AdminControlled for EthConnectorContract {
+    fn get_paused(&self) -> PausedMask {
+        self.ft.get_paused()
+    }
+
+    fn set_paused(&mut self, paused: PausedMask) {
+        self.ft.set_paused(paused)
+    }
 }

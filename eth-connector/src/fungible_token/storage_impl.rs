@@ -1,7 +1,6 @@
 use super::core_impl::FungibleToken;
 use super::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
-use near_sdk::json_types::U128;
-use near_sdk::{assert_one_yocto, env, log, AccountId, Balance, Promise};
+use near_sdk::{assert_one_yocto, env, json_types::U128, log, AccountId, Balance, Promise};
 
 impl FungibleToken {
     /// Internal method that returns the Account ID and the balance in case the account was
