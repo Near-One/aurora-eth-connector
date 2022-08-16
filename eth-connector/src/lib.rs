@@ -7,7 +7,7 @@ use crate::fungible_token::{
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
-use aurora_engine_types::types::Address;
+use aurora_engine_types::types::{Address, NEP141Wei};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
@@ -17,6 +17,8 @@ use near_sdk::{
 };
 
 pub mod admin_controlled;
+pub mod connector;
+pub mod connector_impl;
 pub mod fungible_token;
 
 /// Connector specific data. It always should contain `prover account` -
@@ -75,6 +77,15 @@ impl EthConnectorContract {
         };
         this.ft.internal_register_account(&owner_id);
         this
+    }
+
+    fn on_account_closed(&self, account_id: AccountId, balance: NEP141Wei) {
+        near_sdk::log!("Closed @{} with {}", account_id, balance);
+    }
+
+    #[allow(dead_code)]
+    fn on_tokens_burned(&self, account_id: AccountId, amount: NEP141Wei) {
+        near_sdk::log!("Account @{} burned {}", account_id, amount);
     }
 
     pub fn withdraw(&mut self) {
@@ -174,9 +185,8 @@ impl StorageManagement for EthConnectorContract {
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
         #[allow(unused_variables)]
         if let Some((account_id, balance)) = self.ft.internal_storage_unregister(force) {
-            // self.on_account_closed_fn(account_id, balance);
-            // true
-            todo!("on_account_closed_fn");
+            self.on_account_closed(account_id, balance);
+            true
         } else {
             false
         }

@@ -135,6 +135,12 @@ impl FungibleToken {
             env::panic_str("The account is already registered");
         }
     }
+
+    /// Balance of nETH (ETH on NEAR token)
+    pub fn get_account_eth_balance(&self, _account_id: &AccountId) -> Option<NEP141Wei> {
+        // self.accounts.get(account_id)
+        todo!()
+    }
 }
 
 impl FungibleTokenCore for FungibleToken {

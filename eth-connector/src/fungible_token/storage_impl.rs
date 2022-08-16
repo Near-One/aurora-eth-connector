@@ -1,5 +1,6 @@
 use super::core_impl::FungibleToken;
 use super::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
+use aurora_engine_types::types::NEP141Wei;
 use near_sdk::{assert_one_yocto, env, json_types::U128, log, AccountId, Balance, Promise};
 
 impl FungibleToken {
@@ -8,14 +9,14 @@ impl FungibleToken {
     pub fn internal_storage_unregister(
         &mut self,
         force: Option<bool>,
-    ) -> Option<(AccountId, Balance)> {
+    ) -> Option<(AccountId, NEP141Wei)> {
         assert_one_yocto();
         let account_id = env::predecessor_account_id();
         let force = force.unwrap_or(false);
-        if let Some(balance) = self.accounts.get(&account_id) {
-            if balance == 0 || force {
+        if let Some(balance) = self.get_account_eth_balance(&account_id) {
+            if balance == NEP141Wei::new(0) || force {
                 self.accounts.remove(&account_id);
-                self.total_supply -= balance;
+                self.total_eth_supply_on_near -= balance;
                 Promise::new(account_id.clone()).transfer(self.storage_balance_bounds().min.0 + 1);
                 Some((account_id, balance))
             } else {
