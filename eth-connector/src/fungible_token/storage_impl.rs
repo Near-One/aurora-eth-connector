@@ -107,7 +107,8 @@ impl StorageManagement for FungibleToken {
         }
     }
 
-    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
+    fn storage_balance_of(&self, account_id: AccountId) -> StorageBalance {
         self.internal_storage_balance_of(&account_id)
+            .unwrap_or_default()
     }
 }

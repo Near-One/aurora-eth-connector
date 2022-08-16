@@ -1,6 +1,5 @@
-use crate::fungible_token::admin_controlled::UNPAUSE_ALL;
+use crate::admin_controlled::{AdminControlled, PausedMask, UNPAUSE_ALL};
 use crate::fungible_token::{
-    admin_controlled::{AdminControlled, PausedMask},
     core::FungibleTokenCore,
     core_impl::FungibleToken,
     metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider},
@@ -17,6 +16,7 @@ use near_sdk::{
     near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue,
 };
 
+pub mod admin_controlled;
 pub mod fungible_token;
 
 /// Connector specific data. It always should contain `prover account` -
@@ -186,7 +186,7 @@ impl StorageManagement for EthConnectorContract {
         self.ft.storage_balance_bounds()
     }
 
-    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
+    fn storage_balance_of(&self, account_id: AccountId) -> StorageBalance {
         self.ft.storage_balance_of(account_id)
     }
 }
@@ -208,10 +208,10 @@ impl FungibleTokeStatistic for EthConnectorContract {
 #[near_bindgen]
 impl AdminControlled for EthConnectorContract {
     fn get_paused(&self) -> PausedMask {
-        self.ft.get_paused()
+        self.paused_mask
     }
 
     fn set_paused(&mut self, paused: PausedMask) {
-        self.ft.set_paused(paused)
+        self.paused_mask = paused;
     }
 }

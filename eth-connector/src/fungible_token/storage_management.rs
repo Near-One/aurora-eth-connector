@@ -11,6 +11,15 @@ pub struct StorageBalance {
     pub available: U128,
 }
 
+impl Default for StorageBalance {
+    fn default() -> Self {
+        Self {
+            total: 0.into(),
+            available: 0.into(),
+        }
+    }
+}
+
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
 #[cfg_attr(feature = "abi", derive(schemars::JsonSchema))]
@@ -59,5 +68,5 @@ pub trait StorageManagement {
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds;
 
-    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance>;
+    fn storage_balance_of(&self, account_id: AccountId) -> StorageBalance;
 }
