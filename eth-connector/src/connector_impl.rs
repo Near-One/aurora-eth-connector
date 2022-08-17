@@ -1,5 +1,6 @@
 use crate::admin_controlled::PAUSE_DEPOSIT;
 use crate::connector::Connector;
+use crate::proof::Proof;
 use crate::{AdminControlled, PausedMask};
 use aurora_engine_types::types::Address;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
@@ -33,7 +34,7 @@ impl Connector for EthConnector {
         todo!()
     }
 
-    fn deposit(&mut self, _raw_proof: Base64VecU8) {
+    fn deposit(&mut self, raw_proof: Base64VecU8) {
         let current_account_id = env::current_account_id();
         let predecessor_account_id = env::predecessor_account_id();
         // Check is current account owner
@@ -43,6 +44,8 @@ impl Connector for EthConnector {
             .unwrap_or_else(|_| env::panic_str("PausedError"));
 
         env::log_str("[Deposit tokens]");
+        let v: Vec<u8> = raw_proof.into();
+        let _: Proof = Proof::try_from_slice(v.as_slice()).unwrap();
     }
 
     fn finish_deposit(&mut self) {

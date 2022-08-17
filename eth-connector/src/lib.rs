@@ -22,7 +22,10 @@ use near_sdk::{
 pub mod admin_controlled;
 pub mod connector;
 pub mod connector_impl;
+pub mod deposit_event;
+pub mod errors;
 pub mod fungible_token;
+pub mod log_entry;
 pub mod proof;
 
 /// Eth-connector contract data. It's stored in the storage.
