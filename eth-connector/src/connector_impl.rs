@@ -1,5 +1,6 @@
 use crate::admin_controlled::PAUSE_DEPOSIT;
 use crate::connector::Connector;
+use crate::deposit_event::DepositedEvent;
 use crate::proof::Proof;
 use crate::{AdminControlled, PausedMask};
 use aurora_engine_types::types::Address;
@@ -44,8 +45,10 @@ impl Connector for EthConnector {
             .unwrap_or_else(|_| env::panic_str("PausedError"));
 
         env::log_str("[Deposit tokens]");
-        let v: Vec<u8> = raw_proof.into();
-        let _: Proof = Proof::try_from_slice(v.as_slice()).unwrap();
+        let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof).as_slice()).unwrap();
+
+        // Fetch event data from Proof
+        let _event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).unwrap();
     }
 
     fn finish_deposit(&mut self) {

@@ -34,9 +34,8 @@ impl FtTransferMessageData {
         if data.len() != 2 {
             return Err(error::ParseOnTransferMessageError::TooManyParts);
         }
-
         // Check relayer account id from 1-th data element
-        let account_id = AccountId::try_from(data[0].as_bytes())
+        let account_id = AccountId::try_from(data[0].to_string())
             .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
 
         // Decode message array from 2-th element of data array
@@ -146,7 +145,7 @@ impl TokenMessageData {
         if data.len() >= 3 {
             return Err(error::ParseEventMessageError::TooManyParts);
         }
-        let account_id = AccountId::try_from(data[0].as_bytes())
+        let account_id = AccountId::try_from(data[0].to_string())
             .map_err(|_| error::ParseEventMessageError::InvalidAccount)?;
 
         // If data array contain only one element it should return NEAR account id
