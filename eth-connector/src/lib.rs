@@ -35,7 +35,6 @@ pub mod proof;
 pub struct EthConnectorContract {
     connector: EthConnector,
     ft: FungibleToken,
-    paused_mask: PausedMask,
     metadata: LazyOption<FungibleTokenMetadata>,
 }
 
@@ -59,13 +58,13 @@ impl EthConnectorContract {
         metadata.assert_valid();
 
         // Get initial Eth Connector arguments
+        let paused_mask = UNPAUSE_ALL;
         let connector_data = EthConnector {
             prover_account,
+            paused_mask,
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
         };
-        let paused_mask = UNPAUSE_ALL;
         let mut this = Self {
-            paused_mask,
             ft: FungibleToken::new(StorageKey::FungibleToken),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
@@ -78,8 +77,7 @@ impl EthConnectorContract {
         near_sdk::log!("Closed @{} with {}", account_id, balance);
     }
 
-    #[allow(dead_code)]
-    fn on_tokens_burned(&self, account_id: AccountId, amount: NEP141Wei) {
+    fn on_tokens_burned(&self, account_id: AccountId, amount: u128) {
         near_sdk::log!("Account @{} burned {}", account_id, amount);
     }
 
@@ -140,8 +138,7 @@ impl FungibleTokenResolver for EthConnectorContract {
             self.ft
                 .internal_ft_resolve_transfer(&sender_id, receiver_id, amount);
         if burned_amount > 0 {
-            todo!();
-            // self.on_tokens_burned_fn(sender_id, burned_amount);
+            self.on_tokens_burned(sender_id, burned_amount);
         }
         used_amount.into()
     }
@@ -199,11 +196,11 @@ impl FungibleTokeStatistic for EthConnectorContract {
 #[near_bindgen]
 impl AdminControlled for EthConnectorContract {
     fn get_paused(&self) -> PausedMask {
-        self.paused_mask
+        self.connector.get_paused()
     }
 
     fn set_paused(&mut self, paused: PausedMask) {
-        self.paused_mask = paused;
+        self.connector.set_paused(paused)
     }
 }
 
