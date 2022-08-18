@@ -27,6 +27,7 @@ pub mod errors;
 pub mod fungible_token;
 pub mod log_entry;
 pub mod proof;
+pub mod types;
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -76,12 +77,14 @@ impl EthConnectorContract {
         this
     }
 
-    fn on_account_closed(&self, account_id: AccountId, balance: NEP141Wei) {
-        near_sdk::log!("Closed @{} with {}", account_id, balance);
+    #[cfg_attr(not(feature = "log"), allow(unused_variables))]
+    fn on_account_closed(&self, _account_id: AccountId, _balance: NEP141Wei) {
+        crate::log!(format!("Closed @{} with {}", _account_id, _balance));
     }
 
+    #[cfg_attr(not(feature = "log"), allow(unused_variables))]
     fn on_tokens_burned(&self, account_id: AccountId, amount: u128) {
-        near_sdk::log!("Account @{} burned {}", account_id, amount);
+        crate::log!(format!("Account @{} burned {}", account_id, amount));
     }
 
     pub fn is_used_proof(&mut self) {

@@ -1,7 +1,8 @@
 use super::core_impl::FungibleToken;
 use super::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
+use crate::log;
 use aurora_engine_types::types::NEP141Wei;
-use near_sdk::{assert_one_yocto, env, json_types::U128, log, AccountId, Balance, Promise};
+use near_sdk::{assert_one_yocto, env, json_types::U128, AccountId, Balance, Promise};
 
 impl FungibleToken {
     /// Internal method that returns the Account ID and the balance in case the account was
@@ -25,7 +26,7 @@ impl FungibleToken {
                 )
             }
         } else {
-            log!("The account {} is not registered", &account_id);
+            log!(format!("The account {} is not registered", &account_id));
             None
         }
     }
