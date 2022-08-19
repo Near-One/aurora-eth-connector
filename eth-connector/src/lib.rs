@@ -1,6 +1,6 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, UNPAUSE_ALL};
 use crate::connector::Connector;
-use crate::connector_impl::EthConnector;
+use crate::connector_impl::{EthConnector, FinishDepositCallArgs};
 use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
@@ -16,7 +16,7 @@ use near_sdk::{
     env,
     json_types::Base64VecU8,
     json_types::{U128, U64},
-    near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue,
+    near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
 };
 
 pub mod admin_controlled;
@@ -216,12 +216,12 @@ impl Connector for EthConnectorContract {
         todo!()
     }
 
-    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Base64VecU8) {
+    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise {
         self.connector.deposit(raw_proof)
     }
 
     #[private]
-    fn finish_deposit(&mut self) {
-        todo!()
+    fn finish_deposit(&mut self, #[serializer(borsh)] deposit_call: FinishDepositCallArgs) {
+        self.connector.finish_deposit(deposit_call)
     }
 }

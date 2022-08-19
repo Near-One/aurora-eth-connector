@@ -1,13 +1,14 @@
 use crate::admin_controlled::PAUSE_DEPOSIT;
-use crate::connector::Connector;
+use crate::connector::{ext_eth_connector, Connector};
 use crate::deposit_event::{DepositedEvent, TokenMessageData};
 use crate::proof::Proof;
+use crate::types::SdkUnwrap;
 use crate::{log, AdminControlled, PausedMask};
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env::panic_str;
 use near_sdk::json_types::Base64VecU8;
-use near_sdk::{env, AccountId};
+use near_sdk::{env, AccountId, Promise};
 
 /// transfer eth-connector call args
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
@@ -56,7 +57,7 @@ impl Connector for EthConnector {
         todo!()
     }
 
-    fn deposit(&mut self, raw_proof: Base64VecU8) {
+    fn deposit(&mut self, raw_proof: Base64VecU8) -> Promise {
         let current_account_id = env::current_account_id();
         let predecessor_account_id = env::predecessor_account_id();
         // Check is current account owner
@@ -69,7 +70,7 @@ impl Connector for EthConnector {
         let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof).as_slice()).unwrap();
 
         // Fetch event data from Proof
-        let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).unwrap();
+        let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
 
         log!(format!(
             "Deposit started: from {} to recipient {:?} with amount: {:?} and fee {:?}",
@@ -94,7 +95,7 @@ impl Connector for EthConnector {
         }
 
         // Finalize deposit
-        let _data = match event.token_message_data {
+        let finish_deposit_data = match event.token_message_data {
             // Deposit to NEAR accounts
             TokenMessageData::Near(account_id) => FinishDepositCallArgs {
                 new_owner_id: account_id,
@@ -123,7 +124,7 @@ impl Connector for EthConnector {
 
                 // Send to self - current account id
                 FinishDepositCallArgs {
-                    new_owner_id: current_account_id,
+                    new_owner_id: current_account_id.clone(),
                     amount: event.amount,
                     proof_key: proof.get_key(),
                     relayer_id: predecessor_account_id,
@@ -132,9 +133,10 @@ impl Connector for EthConnector {
                 }
             }
         };
+        ext_eth_connector::ext(current_account_id).finish_deposit(finish_deposit_data)
     }
 
-    fn finish_deposit(&mut self) {
+    fn finish_deposit(&mut self, _deposit_call: FinishDepositCallArgs) {
         todo!()
     }
 }
