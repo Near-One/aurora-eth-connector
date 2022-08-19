@@ -216,12 +216,19 @@ impl Connector for EthConnectorContract {
         todo!()
     }
 
-    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise {
+    fn deposit(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise {
         self.connector.deposit(raw_proof)
     }
 
     #[private]
-    fn finish_deposit(&mut self, #[serializer(borsh)] deposit_call: FinishDepositCallArgs) {
-        self.connector.finish_deposit(deposit_call)
+    fn finish_deposit(
+        &mut self,
+        #[serializer(borsh)] deposit_call: FinishDepositCallArgs,
+        #[callback_unwrap]
+        #[serializer(borsh)]
+        verify_log_result: bool,
+    ) -> PromiseOrValue<()> {
+        self.connector
+            .finish_deposit(deposit_call, verify_log_result)
     }
 }

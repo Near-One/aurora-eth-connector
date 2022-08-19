@@ -1,5 +1,5 @@
 use crate::admin_controlled::PAUSE_DEPOSIT;
-use crate::connector::{ext_eth_connector, Connector};
+use crate::connector::{ext_eth_connector, ext_proof_verifier, Connector};
 use crate::deposit_event::{DepositedEvent, TokenMessageData};
 use crate::proof::Proof;
 use crate::types::SdkUnwrap;
@@ -8,7 +8,13 @@ use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env::panic_str;
 use near_sdk::json_types::Base64VecU8;
-use near_sdk::{env, AccountId, Promise};
+use near_sdk::{env, AccountId, Gas, Promise, PromiseOrValue};
+
+/// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
+pub const GAS_FOR_FINISH_DEPOSIT: Gas = Gas(50_000_000_000_000);
+/// NEAR Gas for calling `verify_log_entry` promise. Used in the `deposit` logic.
+// Note: Is 40Tgas always enough?
+const GAS_FOR_VERIFY_LOG_ENTRY: Gas = Gas(40_000_000_000_000);
 
 /// transfer eth-connector call args
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
@@ -57,7 +63,7 @@ impl Connector for EthConnector {
         todo!()
     }
 
-    fn deposit(&mut self, raw_proof: Base64VecU8) -> Promise {
+    fn deposit(&self, raw_proof: Base64VecU8) -> Promise {
         let current_account_id = env::current_account_id();
         let predecessor_account_id = env::predecessor_account_id();
         // Check is current account owner
@@ -66,8 +72,8 @@ impl Connector for EthConnector {
         self.assert_not_paused(PAUSE_DEPOSIT, is_owner)
             .unwrap_or_else(|_| env::panic_str("PausedError"));
 
-        env::log_str("[Deposit tokens]");
-        let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof).as_slice()).unwrap();
+        log!("[Deposit tokens]");
+        let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof.clone()).as_slice()).unwrap();
 
         // Fetch event data from Proof
         let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
@@ -80,7 +86,7 @@ impl Connector for EthConnector {
             event.fee
         ));
 
-        log!(&format!(
+        log!(format!(
             "Event's address {}, custodian address {}",
             event.eth_custodian_address.encode(),
             self.eth_custodian_address.encode(),
@@ -93,6 +99,17 @@ impl Connector for EthConnector {
         if NEP141Wei::new(event.fee.as_u128()) >= event.amount {
             panic_str("InsufficientAmountForFee");
         }
+
+        // Verify proof data with cross-contract call to prover account
+        log!(format!(
+            "Deposit verify_log_entry for prover: {}",
+            self.prover_account,
+        ));
+
+        // Do not skip bridge call. This is only used for development and diagnostics.
+        let skip_bridge_call = false.try_to_vec().unwrap();
+        let mut proof_to_verify = raw_proof.0;
+        proof_to_verify.extend(skip_bridge_call);
 
         // Finalize deposit
         let finish_deposit_data = match event.token_message_data {
@@ -133,10 +150,22 @@ impl Connector for EthConnector {
                 }
             }
         };
-        ext_eth_connector::ext(current_account_id).finish_deposit(finish_deposit_data)
+
+        ext_proof_verifier::ext(self.prover_account.clone())
+            .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
+            .verify_log_entry(proof_to_verify.into())
+            .then(
+                ext_eth_connector::ext(current_account_id)
+                    .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
+                    .finish_deposit(finish_deposit_data),
+            )
     }
 
-    fn finish_deposit(&mut self, _deposit_call: FinishDepositCallArgs) {
+    fn finish_deposit(
+        &mut self,
+        _deposit_call: FinishDepositCallArgs,
+        _verify_log_result: bool,
+    ) -> PromiseOrValue<()> {
         todo!()
     }
 }
