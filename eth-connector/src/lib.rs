@@ -45,8 +45,10 @@ pub struct EthConnectorContract {
 #[derive(BorshSerialize, BorshStorageKey)]
 #[allow(dead_code)]
 enum StorageKey {
-    FungibleToken,
-    Metadata,
+    FungibleToken = 0x1,
+    FungibleTokenEth = 0x2,
+    Proof = 0x3,
+    Metadata = 0x4,
 }
 
 #[near_bindgen]
@@ -69,7 +71,11 @@ impl EthConnectorContract {
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
         };
         let mut this = Self {
-            ft: FungibleToken::new(StorageKey::FungibleToken),
+            ft: FungibleToken::new(
+                StorageKey::FungibleToken,
+                StorageKey::FungibleTokenEth,
+                StorageKey::Proof,
+            ),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         };
@@ -119,10 +125,18 @@ impl FungibleTokenCore for EthConnectorContract {
     }
 
     fn ft_total_eth_supply_on_near(&self) -> U128 {
+        log!(format!(
+            "Total ETH supply on NEAR: {}",
+            self.ft.ft_total_eth_supply_on_near().into()
+        ));
         self.ft.ft_total_eth_supply_on_near()
     }
 
     fn ft_total_eth_supply_on_aurora(&self) -> U128 {
+        log!(format!(
+            "Total ETH supply on Aurora: {}",
+            self.ft.ft_total_eth_supply_on_aurora().into * ()
+        ));
         self.ft.ft_total_eth_supply_on_aurora()
     }
 

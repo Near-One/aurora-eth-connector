@@ -30,6 +30,9 @@ pub struct FungibleToken {
     /// AccountID -> Account balance.
     pub accounts: LookupMap<AccountId, Balance>,
 
+    /// Accounts with balance of nETH (ETH on NEAR token)
+    pub accounts_eth: LookupMap<AccountId, NEP141Wei>,
+
     /// Total ETH supply on Near (nETH as NEP-141 token)
     pub total_eth_supply_on_near: NEP141Wei,
 
@@ -44,21 +47,27 @@ pub struct FungibleToken {
     /// The storage size in bytes for one account.
     pub account_storage_usage: StorageUsage,
 
+    /// Accounts counter
     pub statistics_aurora_accounts_counter: u64,
+
+    /// Used proofs
+    pub used_proofs: LookupMap<String, bool>,
 }
 
 impl FungibleToken {
-    pub fn new<S>(prefix: S) -> Self
+    pub fn new<S>(prefix: S, prefix_eth: S, prefix_proof: S) -> Self
     where
         S: IntoStorageKey,
     {
         let mut this = Self {
             accounts: LookupMap::new(prefix),
+            accounts_eth: LookupMap::new(prefix_eth),
             total_supply: 0,
             account_storage_usage: 0,
             total_eth_supply_on_near: NEP141Wei::default(),
             total_eth_supply_on_aurora: NEP141Wei::default(),
             statistics_aurora_accounts_counter: 0,
+            used_proofs: LookupMap::new(prefix_proof),
         };
         this.measure_account_storage_usage();
         this
@@ -137,9 +146,8 @@ impl FungibleToken {
     }
 
     /// Balance of nETH (ETH on NEAR token)
-    pub fn get_account_eth_balance(&self, _account_id: &AccountId) -> Option<NEP141Wei> {
-        // self.accounts.get(account_id)
-        todo!()
+    pub fn get_account_eth_balance(&self, account_id: &AccountId) -> Option<NEP141Wei> {
+        self.accounts_eth.get(account_id)
     }
 }
 
