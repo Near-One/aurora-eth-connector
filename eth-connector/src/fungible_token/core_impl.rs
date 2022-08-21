@@ -2,6 +2,8 @@ use super::core::FungibleTokenCore;
 use super::events::{FtBurn, FtTransfer};
 use super::receiver::ext_ft_receiver;
 use super::resolver::{ext_ft_resolver, FungibleTokenResolver};
+use crate::connector_impl::TransferCallCallArgs;
+use crate::FinishDepositCallArgs;
 use aurora_engine_types::types::NEP141Wei;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
@@ -79,6 +81,46 @@ impl FungibleToken {
         self.accounts.insert(&tmp_account_id, &0u128);
         self.account_storage_usage = env::storage_usage() - initial_storage_usage;
         self.accounts.remove(&tmp_account_id);
+    }
+
+    /// Record used proof as hash key
+    pub fn record_proof(&mut self, key: &str) -> Result<(), error::ProofUsed> {
+        log!(format!("Record proof: {}", key));
+
+        if self.is_used_event(key) {
+            return Err(error::ProofUsed);
+        }
+
+        self.used_proofs.insert(&key.to_string(), &true);
+        Ok(())
+    }
+
+    /// Check is event of proof already used
+    pub fn is_used_event(&self, key: &str) -> bool {
+        self.used_proofs.contains_key(&key.to_string())
+    }
+
+    /// Finish deposit (private method)
+    /// NOTE: we should `record_proof` only after `mint` operation. The reason
+    /// is that in this case we only calculate the amount to be credited but
+    /// do not save it, however, if an error occurs during the calculation,
+    /// this will happen before `record_proof`. After that contract will save.
+    pub fn finish_deposit(
+        &mut self,
+        _data: FinishDepositCallArgs,
+    ) -> Result<Option<TransferCallCallArgs>, error::FinishDepositError> {
+        let _current_account_id = env::current_account_id();
+        let _predecessor_account_id = env::predecessor_account_id();
+        Ok(None)
+    }
+
+    ///  Mint nETH tokens
+    pub fn mint_eth_on_near(
+        &self,
+        _owner_id: AccountId,
+        _amount: NEP141Wei,
+    ) -> Result<(), error::DepositError> {
+        Ok(())
     }
 
     pub fn internal_unwrap_balance_of(&self, account_id: &AccountId) -> Balance {
@@ -295,5 +337,131 @@ impl FungibleTokenResolver for FungibleToken {
         self.internal_ft_resolve_transfer(&sender_id, receiver_id, amount)
             .0
             .into()
+    }
+}
+
+pub mod error {
+    use crate::errors::{
+        ERR_BALANCE_OVERFLOW, ERR_INVALID_ACCOUNT_ID, ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
+        ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT, ERR_INVALID_ON_TRANSFER_MESSAGE_HEX,
+        ERR_NOT_ENOUGH_BALANCE, ERR_NOT_ENOUGH_BALANCE_FOR_FEE, ERR_OVERFLOW_NUMBER,
+        ERR_PROOF_EXIST, ERR_SENDER_EQUALS_RECEIVER, ERR_TOTAL_SUPPLY_UNDERFLOW, ERR_ZERO_AMOUNT,
+    };
+    use crate::fungible_token::core_impl::ERR_TOTAL_SUPPLY_OVERFLOW;
+    use aurora_engine_types::types::balance::error::BalanceOverflowError;
+
+    pub struct ProofUsed;
+
+    impl AsRef<[u8]> for ProofUsed {
+        fn as_ref(&self) -> &[u8] {
+            ERR_PROOF_EXIST
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum DepositError {
+        TotalSupplyOverflow,
+        BalanceOverflow,
+    }
+
+    impl AsRef<[u8]> for DepositError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::TotalSupplyOverflow => ERR_TOTAL_SUPPLY_OVERFLOW.as_bytes(),
+                Self::BalanceOverflow => ERR_BALANCE_OVERFLOW,
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum WithdrawError {
+        TotalSupplyUnderflow,
+        InsufficientFunds,
+        BalanceOverflow(BalanceOverflowError),
+    }
+
+    impl AsRef<[u8]> for WithdrawError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::TotalSupplyUnderflow => ERR_TOTAL_SUPPLY_UNDERFLOW,
+                Self::InsufficientFunds => ERR_NOT_ENOUGH_BALANCE,
+                Self::BalanceOverflow(e) => e.as_ref(),
+            }
+        }
+    }
+
+    pub enum FinishDepositError {
+        TransferCall(FtTransferCallError),
+        ProofUsed,
+    }
+
+    impl AsRef<[u8]> for FinishDepositError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::ProofUsed => ERR_PROOF_EXIST,
+                Self::TransferCall(e) => e.as_ref(),
+            }
+        }
+    }
+
+    pub enum FtTransferCallError {
+        BalanceOverflow(BalanceOverflowError),
+        MessageParseFailed(ParseOnTransferMessageError),
+        InsufficientAmountForFee,
+        Transfer(TransferError),
+    }
+
+    impl AsRef<[u8]> for FtTransferCallError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::MessageParseFailed(e) => e.as_ref(),
+                Self::InsufficientAmountForFee => ERR_NOT_ENOUGH_BALANCE_FOR_FEE.as_bytes(),
+                Self::Transfer(e) => e.as_ref(),
+                Self::BalanceOverflow(e) => e.as_ref(),
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum TransferError {
+        TotalSupplyUnderflow,
+        TotalSupplyOverflow,
+        InsufficientFunds,
+        BalanceOverflow,
+        ZeroAmount,
+        SelfTransfer,
+    }
+
+    impl AsRef<[u8]> for TransferError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::TotalSupplyUnderflow => ERR_TOTAL_SUPPLY_UNDERFLOW,
+                Self::TotalSupplyOverflow => ERR_TOTAL_SUPPLY_OVERFLOW.as_bytes(),
+                Self::InsufficientFunds => ERR_NOT_ENOUGH_BALANCE,
+                Self::BalanceOverflow => ERR_BALANCE_OVERFLOW,
+                Self::ZeroAmount => ERR_ZERO_AMOUNT,
+                Self::SelfTransfer => ERR_SENDER_EQUALS_RECEIVER,
+            }
+        }
+    }
+
+    pub enum ParseOnTransferMessageError {
+        TooManyParts,
+        InvalidHexData,
+        WrongMessageFormat,
+        InvalidAccount,
+        OverflowNumber,
+    }
+
+    impl AsRef<[u8]> for ParseOnTransferMessageError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::TooManyParts => ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT,
+                Self::InvalidHexData => ERR_INVALID_ON_TRANSFER_MESSAGE_HEX,
+                Self::WrongMessageFormat => ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
+                Self::InvalidAccount => ERR_INVALID_ACCOUNT_ID,
+                Self::OverflowNumber => ERR_OVERFLOW_NUMBER,
+            }
+        }
     }
 }
