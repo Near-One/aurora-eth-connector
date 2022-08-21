@@ -127,7 +127,7 @@ impl FungibleTokenCore for EthConnectorContract {
     fn ft_total_eth_supply_on_near(&self) -> U128 {
         log!(format!(
             "Total ETH supply on NEAR: {}",
-            self.ft.ft_total_eth_supply_on_near().into()
+            self.ft.ft_total_eth_supply_on_near().0
         ));
         self.ft.ft_total_eth_supply_on_near()
     }
@@ -135,7 +135,7 @@ impl FungibleTokenCore for EthConnectorContract {
     fn ft_total_eth_supply_on_aurora(&self) -> U128 {
         log!(format!(
             "Total ETH supply on Aurora: {}",
-            self.ft.ft_total_eth_supply_on_aurora().into * ()
+            self.ft.ft_total_eth_supply_on_aurora().0
         ));
         self.ft.ft_total_eth_supply_on_aurora()
     }
