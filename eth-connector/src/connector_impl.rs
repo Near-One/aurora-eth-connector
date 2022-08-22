@@ -3,7 +3,7 @@ use crate::connector::{ext_eth_connector, ext_proof_verifier, Connector};
 use crate::deposit_event::{DepositedEvent, TokenMessageData};
 use crate::proof::Proof;
 use crate::types::SdkUnwrap;
-use crate::{errors, log, AdminControlled, PausedMask};
+use crate::{log, AdminControlled, PausedMask};
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env::panic_str;
@@ -48,23 +48,7 @@ pub struct EthConnector {
     pub paused_mask: PausedMask,
 }
 
-impl EthConnector {
-    /*
-
-    ///  Mint nETH tokens
-    fn mint_eth_on_near(
-        &mut self,
-        owner_id: AccountId,
-        amount: NEP141Wei,
-    ) -> Result<(), fungible_token::error::DepositError> {
-        log!(format!("Mint {} nETH tokens for: {}", amount, owner_id));
-
-        if self.ft.get_account_eth_balance(&owner_id).is_none() {
-            self.ft.accounts_insert(&owner_id, ZERO_NEP141_WEI);
-        }
-        self.ft.internal_deposit_eth_to_near(&owner_id, amount)
-    }*/
-}
+impl EthConnector {}
 
 impl AdminControlled for EthConnector {
     fn get_paused(&self) -> PausedMask {
@@ -182,22 +166,12 @@ impl Connector for EthConnector {
     fn finish_deposit(
         &mut self,
         deposit_call: FinishDepositCallArgs,
-        verify_log_result: bool,
+        _: bool,
     ) -> PromiseOrValue<()> {
-        if !verify_log_result {
-            panic_str(errors::ERR_VERIFY_PROOF);
-        }
-        let _current_account_id = env::current_account_id();
-        let _predecessor_account_id = env::predecessor_account_id();
-        log!(format!(
-            "Finish deposit with the amount: {}",
-            deposit_call.amount
-        ));
-
         // Mint tokens to recipient minus fee
         if let Some(_msg) = deposit_call.msg {
             // Mint - calculate new balances
-            // self.mint_eth_on_near(data.new_owner_id, data.amount)?;
+            // self.ft.mint_eth_on_near(data.new_owner_id, data.amount)?;
             // Store proof only after `mint` calculations
             // self.record_proof(&data.proof_key)?;
             // Save new contract data

@@ -9,7 +9,9 @@ use crate::fungible_token::{
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
+use crate::types::SdkUnwrap;
 use aurora_engine_types::types::{Address, NEP141Wei};
+use near_sdk::env::panic_str;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
@@ -242,7 +244,45 @@ impl Connector for EthConnectorContract {
         #[serializer(borsh)]
         verify_log_result: bool,
     ) -> PromiseOrValue<()> {
-        self.connector
-            .finish_deposit(deposit_call, verify_log_result)
+        if !verify_log_result {
+            panic_str(errors::ERR_VERIFY_PROOF);
+        }
+
+        let _current_account_id = env::current_account_id();
+        let _predecessor_account_id = env::predecessor_account_id();
+        log!(format!(
+            "Finish deposit with the amount: {}",
+            deposit_call.amount
+        ));
+
+        // Mint tokens to recipient minus fee
+        if let Some(_msg) = deposit_call.msg {
+            // Mint - calculate new balances
+            self.ft
+                .mint_eth_on_near(deposit_call.new_owner_id, deposit_call.amount)
+                .sdk_unwrap();
+            // Store proof only after `mint` calculations
+            self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
+
+            // self.ft.ft_transfer_call
+            PromiseOrValue::Value(())
+        } else {
+            // Mint - calculate new balances
+            self.ft
+                .mint_eth_on_near(
+                    deposit_call.new_owner_id.clone(),
+                    deposit_call.amount - NEP141Wei::new(deposit_call.fee.as_u128()),
+                )
+                .sdk_unwrap();
+            self.ft
+                .mint_eth_on_near(
+                    deposit_call.relayer_id,
+                    NEP141Wei::new(deposit_call.fee.as_u128()),
+                )
+                .sdk_unwrap();
+            // Store proof only after `mint` calculations
+            self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
+            PromiseOrValue::Value(())
+        }
     }
 }
