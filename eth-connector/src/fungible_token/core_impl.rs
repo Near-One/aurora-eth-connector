@@ -3,8 +3,9 @@ use super::events::{FtBurn, FtTransfer};
 use super::receiver::ext_ft_receiver;
 use super::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use crate::connector_impl::TransferCallCallArgs;
+use crate::deposit_event::FtTransferMessageData;
 use crate::errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED};
-use crate::FinishDepositCallArgs;
+use crate::{FinishDepositCallArgs, SdkUnwrap};
 use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
@@ -201,6 +202,13 @@ impl FungibleToken {
             "The amount should be a positive number"
         );
 
+        // Check is account receiver_id exist
+        if !self.accounts_eth.contains_key(receiver_id) {
+            // Register receiver_id account with 0 balance. We need it because
+            // when we retire to get the balance of `receiver_id` it will fail
+            // if it does not exist.
+            self.internal_register_account(receiver_id)
+        }
         self.internal_withdraw_eth_from_near(sender_id, amount);
         self.internal_deposit_eth_to_near(receiver_id, amount);
 
@@ -255,7 +263,7 @@ impl FungibleTokenCore for FungibleToken {
         &mut self,
         receiver_id: AccountId,
         amount: U128,
-        _memo: Option<String>,
+        memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
         assert_one_yocto();
@@ -264,8 +272,32 @@ impl FungibleTokenCore for FungibleToken {
             "More gas is required"
         );
         let sender_id = env::predecessor_account_id();
-        let amount: Balance = amount.into();
-        //self.internal_transfer_eth_on_near(&sender_id, &receiver_id, amount, memo);
+
+        // Verify message data before `ft_on_transfer` call to avoid verification panics
+        // It's allowed empty message if `receiver_id =! current_account_id`
+        if sender_id == receiver_id {
+            let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
+            // Check is transfer amount > fee
+            if message_data.fee.as_u128() >= amount.0 {
+                env::panic_str("InsufficientAmountForFee");
+            }
+            // Additional check overflow before process `ft_on_transfer`
+            // But don't check overflow for relayer
+            // Note: It can't overflow because the total supply doesn't change during transfer.
+            // let amount_for_check =
+            //     self.internal_unwrap_balance_of_eth_on_aurora(&message_data.recipient);
+            todo!()
+        }
+
+        // Special case for Aurora transfer itself - we shouldn't transfer
+        if sender_id != receiver_id {
+            self.internal_transfer_eth_on_near(
+                &sender_id,
+                &receiver_id,
+                NEP141Wei::new(amount.0),
+                memo,
+            );
+        }
         let receiver_gas = env::prepaid_gas()
             .0
             .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
@@ -273,11 +305,11 @@ impl FungibleTokenCore for FungibleToken {
         // Initiating receiver's call and the callback
         ext_ft_receiver::ext(receiver_id.clone())
             .with_static_gas(receiver_gas.into())
-            .ft_on_transfer(sender_id.clone(), amount.into(), msg)
+            .ft_on_transfer(sender_id.clone(), amount, msg)
             .then(
                 ext_ft_resolver::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_RESOLVE_TRANSFER)
-                    .ft_resolve_transfer(sender_id, receiver_id, amount.into()),
+                    .ft_resolve_transfer(sender_id, receiver_id, amount),
             )
             .into()
     }
