@@ -117,10 +117,17 @@ impl FungibleToken {
 
     ///  Mint nETH tokens
     pub fn mint_eth_on_near(
-        &self,
-        _owner_id: AccountId,
-        _amount: NEP141Wei,
+        &mut self,
+        owner_id: AccountId,
+        amount: NEP141Wei,
     ) -> Result<(), error::DepositError> {
+        log!(format!("Mint {} nETH tokens for: {}", amount, owner_id));
+
+        if self.get_account_eth_balance(&owner_id).is_none() {
+            self.accounts_insert(&owner_id, ZERO_NEP141_WEI);
+        }
+        self.internal_deposit_eth_to_near(&owner_id, amount);
+
         Ok(())
     }
 
@@ -134,12 +141,14 @@ impl FungibleToken {
     }
 
     /// Internal ETH deposit to NEAR - nETH (NEP-141)
-    pub fn internal_deposit_eth_to_near(&mut self, account_id: &AccountId, amount: Balance) {
-        let balance = self.internal_unwrap_balance_of(account_id);
+    pub fn internal_deposit_eth_to_near(&mut self, account_id: &AccountId, amount: NEP141Wei) {
+        let balance = self
+            .get_account_eth_balance(account_id)
+            .unwrap_or(ZERO_NEP141_WEI);
         if let Some(new_balance) = balance.checked_add(amount) {
-            self.accounts.insert(account_id, &new_balance);
-            self.total_supply = self
-                .total_supply
+            self.accounts_insert(account_id, new_balance);
+            self.total_eth_supply_on_near = self
+                .total_eth_supply_on_near
                 .checked_add(amount)
                 .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
         } else {
@@ -193,7 +202,7 @@ impl FungibleToken {
         );
 
         self.internal_withdraw_eth_from_near(sender_id, amount);
-        // self.internal_deposit_eth_to_near(receiver_id, amount);
+        self.internal_deposit_eth_to_near(receiver_id, amount);
 
         log!(format!(
             "Transfer {} from {} to {}",
