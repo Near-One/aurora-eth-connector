@@ -3,8 +3,9 @@ use super::events::{FtBurn, FtTransfer};
 use super::receiver::ext_ft_receiver;
 use super::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use crate::connector_impl::TransferCallCallArgs;
+use crate::errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED};
 use crate::FinishDepositCallArgs;
-use aurora_engine_types::types::NEP141Wei;
+use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::U128;
@@ -132,7 +133,8 @@ impl FungibleToken {
         }
     }
 
-    pub fn internal_deposit(&mut self, account_id: &AccountId, amount: Balance) {
+    /// Internal ETH deposit to NEAR - nETH (NEP-141)
+    pub fn internal_deposit_eth_to_near(&mut self, account_id: &AccountId, amount: Balance) {
         let balance = self.internal_unwrap_balance_of(account_id);
         if let Some(new_balance) = balance.checked_add(amount) {
             self.accounts.insert(account_id, &new_balance);
@@ -145,12 +147,15 @@ impl FungibleToken {
         }
     }
 
-    pub fn internal_withdraw(&mut self, account_id: &AccountId, amount: Balance) {
-        let balance = self.internal_unwrap_balance_of(account_id);
+    /// Withdraw NEAR tokens
+    pub fn internal_withdraw_eth_from_near(&mut self, account_id: &AccountId, amount: NEP141Wei) {
+        let balance = self
+            .get_account_eth_balance(account_id)
+            .unwrap_or_else(|| env::panic_str(ERR_ACCOUNT_NOT_REGISTERED));
         if let Some(new_balance) = balance.checked_sub(amount) {
-            self.accounts.insert(account_id, &new_balance);
-            self.total_supply = self
-                .total_supply
+            self.accounts_insert(account_id, new_balance);
+            self.total_eth_supply_on_near = self
+                .total_eth_supply_on_near
                 .checked_sub(amount)
                 .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
         } else {
@@ -158,24 +163,51 @@ impl FungibleToken {
         }
     }
 
-    pub fn internal_transfer(
+    /// Insert account.
+    /// Calculate total unique accounts
+    pub fn accounts_insert(&mut self, account_id: &AccountId, amount: NEP141Wei) {
+        if !self.accounts_eth.contains_key(account_id) {
+            self.statistics_aurora_accounts_counter = self
+                .statistics_aurora_accounts_counter
+                .checked_add(1)
+                .unwrap_or_else(|| env::panic_str(ERR_ACCOUNTS_COUNTER_OVERFLOW));
+        }
+        self.accounts_eth.insert(account_id, &amount);
+    }
+
+    /// Transfer NEAR tokens
+    pub fn internal_transfer_eth_on_near(
         &mut self,
         sender_id: &AccountId,
         receiver_id: &AccountId,
-        amount: Balance,
+        amount: NEP141Wei,
         memo: Option<String>,
     ) {
         require!(
             sender_id != receiver_id,
             "Sender and receiver should be different"
         );
-        require!(amount > 0, "The amount should be a positive number");
-        self.internal_withdraw(sender_id, amount);
-        self.internal_deposit(receiver_id, amount);
+        require!(
+            amount > ZERO_NEP141_WEI,
+            "The amount should be a positive number"
+        );
+
+        self.internal_withdraw_eth_from_near(sender_id, amount);
+        // self.internal_deposit_eth_to_near(receiver_id, amount);
+
+        log!(format!(
+            "Transfer {} from {} to {}",
+            amount, sender_id, receiver_id
+        ));
+        #[cfg(feature = "log")]
+        if let Some(memo) = memo.clone() {
+            log!(format!("Memo: {}", memo));
+        }
+
         FtTransfer {
             old_owner_id: sender_id,
             new_owner_id: receiver_id,
-            amount: &U128(amount),
+            amount: &U128(amount.as_u128()),
             memo: memo.as_deref(),
         }
         .emit();
@@ -198,14 +230,23 @@ impl FungibleTokenCore for FungibleToken {
         assert_one_yocto();
         let sender_id = env::predecessor_account_id();
         let amount: Balance = amount.into();
-        self.internal_transfer(&sender_id, &receiver_id, amount, memo);
+        self.internal_transfer_eth_on_near(
+            &sender_id,
+            &receiver_id,
+            NEP141Wei::new(amount),
+            memo.clone(),
+        );
+        log!(format!(
+            "Transfer amount {} to {} success with memo: {:?}",
+            amount, receiver_id, memo
+        ));
     }
 
     fn ft_transfer_call(
         &mut self,
         receiver_id: AccountId,
         amount: U128,
-        memo: Option<String>,
+        _memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
         assert_one_yocto();
@@ -215,7 +256,7 @@ impl FungibleTokenCore for FungibleToken {
         );
         let sender_id = env::predecessor_account_id();
         let amount: Balance = amount.into();
-        self.internal_transfer(&sender_id, &receiver_id, amount, memo);
+        //self.internal_transfer_eth_on_near(&sender_id, &receiver_id, amount, memo);
         let receiver_gas = env::prepaid_gas()
             .0
             .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
