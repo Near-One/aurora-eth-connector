@@ -48,10 +48,9 @@ pub struct EthConnectorContract {
 #[derive(BorshSerialize, BorshStorageKey)]
 #[allow(dead_code)]
 enum StorageKey {
-    FungibleToken = 0x1,
-    FungibleTokenEth = 0x2,
-    Proof = 0x3,
-    Metadata = 0x4,
+    FungibleTokenEth = 0x1,
+    Proof = 0x2,
+    Metadata = 0x3,
 }
 
 #[near_bindgen]
@@ -74,15 +73,11 @@ impl EthConnectorContract {
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
         };
         let mut this = Self {
-            ft: FungibleToken::new(
-                StorageKey::FungibleToken,
-                StorageKey::FungibleTokenEth,
-                StorageKey::Proof,
-            ),
+            ft: FungibleToken::new(StorageKey::FungibleTokenEth, StorageKey::Proof),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         };
-        this.ft.internal_register_account(&owner_id);
+        this.ft.accounts_insert(&owner_id, ZERO_NEP141_WEI);
         this
     }
 
@@ -157,11 +152,13 @@ impl FungibleTokenResolver for EthConnectorContract {
         receiver_id: AccountId,
         amount: U128,
     ) -> U128 {
-        let (used_amount, burned_amount) =
-            self.ft
-                .internal_ft_resolve_transfer(&sender_id, receiver_id, NEP141Wei::new(amount.0));
+        let (used_amount, burned_amount) = self.ft.internal_ft_resolve_transfer(
+            &sender_id,
+            &receiver_id,
+            NEP141Wei::new(amount.0),
+        );
         if burned_amount > ZERO_NEP141_WEI {
-            self.on_tokens_burned(sender_id, burned_amount);
+            self.on_tokens_burned(sender_id.clone(), burned_amount);
         }
         log!(format!(
             "Resolve transfer from {} to {} success",

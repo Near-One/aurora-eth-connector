@@ -1,7 +1,7 @@
 use super::core_impl::FungibleToken;
 use super::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
 use crate::log;
-use aurora_engine_types::types::NEP141Wei;
+use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::{assert_one_yocto, env, json_types::U128, AccountId, Balance, Promise};
 
 impl FungibleToken {
@@ -16,7 +16,7 @@ impl FungibleToken {
         let force = force.unwrap_or(false);
         if let Some(balance) = self.get_account_eth_balance(&account_id) {
             if balance == NEP141Wei::new(0) || force {
-                self.accounts.remove(&account_id);
+                self.accounts_remove(&account_id);
                 self.total_eth_supply_on_near -= balance;
                 Promise::new(account_id.clone()).transfer(self.storage_balance_bounds().min.0 + 1);
                 Some((account_id, balance))
@@ -32,7 +32,7 @@ impl FungibleToken {
     }
 
     fn internal_storage_balance_of(&self, account_id: &AccountId) -> Option<StorageBalance> {
-        if self.accounts.contains_key(account_id) {
+        if self.accounts_eth.contains_key(account_id) {
             Some(StorageBalance {
                 total: self.storage_balance_bounds().min,
                 available: 0.into(),
@@ -53,7 +53,7 @@ impl StorageManagement for FungibleToken {
     ) -> StorageBalance {
         let amount: Balance = env::attached_deposit();
         let account_id = account_id.unwrap_or_else(env::predecessor_account_id);
-        if self.accounts.contains_key(&account_id) {
+        if self.accounts_eth.contains_key(&account_id) {
             log!("The account is already registered, refunding the deposit");
             if amount > 0 {
                 Promise::new(env::predecessor_account_id()).transfer(amount);
@@ -64,7 +64,7 @@ impl StorageManagement for FungibleToken {
                 env::panic_str("The attached deposit is less than the minimum storage balance");
             }
 
-            self.internal_register_account(&account_id);
+            self.accounts_insert(&account_id, ZERO_NEP141_WEI);
             let refund = amount - min_balance;
             if refund > 0 {
                 Promise::new(env::predecessor_account_id()).transfer(refund);

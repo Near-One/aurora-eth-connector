@@ -31,9 +31,6 @@ const ERR_TOTAL_SUPPLY_OVERFLOW: &str = "Total supply overflow";
 /// For example usage, see examples/fungible-token/src/lib.rs.
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct FungibleToken {
-    /// AccountID -> Account balance.
-    pub accounts: LookupMap<AccountId, Balance>,
-
     /// Accounts with balance of nETH (ETH on NEAR token)
     pub accounts_eth: LookupMap<AccountId, NEP141Wei>,
 
@@ -44,9 +41,6 @@ pub struct FungibleToken {
     /// NOTE: For compatibility reasons, we do not use  `Wei` (32 bytes)
     /// buy `NEP141Wei` (16 bytes)
     pub total_eth_supply_on_aurora: NEP141Wei,
-
-    /// Total supply of the all token.
-    pub total_supply: Balance,
 
     /// The storage size in bytes for one account.
     pub account_storage_usage: StorageUsage,
@@ -59,30 +53,18 @@ pub struct FungibleToken {
 }
 
 impl FungibleToken {
-    pub fn new<S>(prefix: S, prefix_eth: S, prefix_proof: S) -> Self
+    pub fn new<S>(prefix_eth: S, prefix_proof: S) -> Self
     where
         S: IntoStorageKey,
     {
-        let mut this = Self {
-            accounts: LookupMap::new(prefix),
+        Self {
             accounts_eth: LookupMap::new(prefix_eth),
-            total_supply: 0,
             account_storage_usage: 0,
             total_eth_supply_on_near: NEP141Wei::default(),
             total_eth_supply_on_aurora: NEP141Wei::default(),
             statistics_aurora_accounts_counter: 0,
             used_proofs: LookupMap::new(prefix_proof),
-        };
-        this.measure_account_storage_usage();
-        this
-    }
-
-    fn measure_account_storage_usage(&mut self) {
-        let initial_storage_usage = env::storage_usage();
-        let tmp_account_id = AccountId::new_unchecked("a".repeat(64));
-        self.accounts.insert(&tmp_account_id, &0u128);
-        self.account_storage_usage = env::storage_usage() - initial_storage_usage;
-        self.accounts.remove(&tmp_account_id);
+        }
     }
 
     /// Record used proof as hash key
@@ -132,15 +114,6 @@ impl FungibleToken {
         Ok(())
     }
 
-    pub fn internal_unwrap_balance_of(&self, account_id: &AccountId) -> Balance {
-        match self.accounts.get(account_id) {
-            Some(balance) => balance,
-            None => {
-                env::panic_str(format!("The account {} is not registered", &account_id).as_str())
-            }
-        }
-    }
-
     /// Internal ETH deposit to NEAR - nETH (NEP-141)
     pub fn internal_deposit_eth_to_near(&mut self, account_id: &AccountId, amount: NEP141Wei) {
         let balance = self
@@ -185,6 +158,17 @@ impl FungibleToken {
         self.accounts_eth.insert(account_id, &amount);
     }
 
+    /// Remove account
+    pub fn accounts_remove(&mut self, account_id: &AccountId) {
+        if self.accounts_eth.contains_key(account_id) {
+            self.statistics_aurora_accounts_counter = self
+                .statistics_aurora_accounts_counter
+                .checked_sub(1)
+                .unwrap_or_else(|| env::panic_str(ERR_ACCOUNTS_COUNTER_OVERFLOW));
+            self.accounts_eth.remove(account_id);
+        }
+    }
+
     /// Transfer NEAR tokens
     pub fn internal_transfer_eth_on_near(
         &mut self,
@@ -207,7 +191,7 @@ impl FungibleToken {
             // Register receiver_id account with 0 balance. We need it because
             // when we retire to get the balance of `receiver_id` it will fail
             // if it does not exist.
-            self.internal_register_account(receiver_id)
+            self.accounts_insert(receiver_id, ZERO_NEP141_WEI);
         }
         self.internal_withdraw_eth_from_near(sender_id, amount);
         self.internal_deposit_eth_to_near(receiver_id, amount);
@@ -228,12 +212,6 @@ impl FungibleToken {
             memo: memo.as_deref(),
         }
         .emit();
-    }
-
-    pub fn internal_register_account(&mut self, account_id: &AccountId) {
-        if self.accounts.insert(account_id, &0).is_some() {
-            env::panic_str("The account is already registered");
-        }
     }
 
     /// Balance of nETH (ETH on NEAR token)
@@ -315,7 +293,7 @@ impl FungibleTokenCore for FungibleToken {
     }
 
     fn ft_total_supply(&self) -> U128 {
-        self.total_supply.into()
+        self.ft_total_eth_supply_on_near()
     }
 
     fn ft_total_eth_supply_on_near(&self) -> U128 {
@@ -327,7 +305,10 @@ impl FungibleTokenCore for FungibleToken {
     }
 
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
-        self.accounts.get(&account_id).unwrap_or(0).into()
+        self.get_account_eth_balance(&account_id)
+            .unwrap_or(ZERO_NEP141_WEI)
+            .as_u128()
+            .into()
     }
 
     fn ft_balance_of_eth(&self) -> U128 {
@@ -342,7 +323,7 @@ impl FungibleToken {
     pub fn internal_ft_resolve_transfer(
         &mut self,
         sender_id: &AccountId,
-        receiver_id: AccountId,
+        receiver_id: &AccountId,
         amount: NEP141Wei,
     ) -> (NEP141Wei, NEP141Wei) {
         // Get the unused amount from the `ft_on_transfer` call result.
@@ -359,16 +340,16 @@ impl FungibleToken {
         };
 
         if unused_amount > ZERO_NEP141_WEI {
-            let receiver_balance =
-                self.get_account_eth_balance(&receiver_id)
-                    .unwrap_or_else(|| {
-                        self.accounts_insert(&receiver_id, ZERO_NEP141_WEI);
-                        ZERO_NEP141_WEI
-                    });
+            let receiver_balance = self
+                .get_account_eth_balance(receiver_id)
+                .unwrap_or_else(|| {
+                    self.accounts_insert(receiver_id, ZERO_NEP141_WEI);
+                    ZERO_NEP141_WEI
+                });
             if receiver_balance > ZERO_NEP141_WEI {
                 let refund_amount = std::cmp::min(receiver_balance, unused_amount);
                 if let Some(new_receiver_balance) = receiver_balance.checked_sub(refund_amount) {
-                    self.accounts_insert(&receiver_id, new_receiver_balance);
+                    self.accounts_insert(receiver_id, new_receiver_balance);
                 } else {
                     env::panic_str("The receiver account doesn't have enough balance");
                 }
@@ -386,7 +367,7 @@ impl FungibleToken {
                     }
 
                     FtTransfer {
-                        old_owner_id: &receiver_id,
+                        old_owner_id: receiver_id,
                         new_owner_id: sender_id,
                         amount: &U128(refund_amount.as_u128()),
                         memo: Some("refund"),
@@ -404,7 +385,7 @@ impl FungibleToken {
                         .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
                     log!("The account of the sender was deleted");
                     FtBurn {
-                        owner_id: &receiver_id,
+                        owner_id: receiver_id,
                         amount: &U128(refund_amount.as_u128()),
                         memo: Some("refund"),
                     }
@@ -424,7 +405,7 @@ impl FungibleTokenResolver for FungibleToken {
         receiver_id: AccountId,
         amount: U128,
     ) -> U128 {
-        self.internal_ft_resolve_transfer(&sender_id, receiver_id, NEP141Wei::new(amount.0))
+        self.internal_ft_resolve_transfer(&sender_id, &receiver_id, NEP141Wei::new(amount.0))
             .0
             .as_u128()
             .into()
