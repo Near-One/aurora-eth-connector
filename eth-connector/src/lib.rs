@@ -1,6 +1,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, UNPAUSE_ALL};
-use crate::connector::Connector;
-use crate::connector_impl::{EthConnector, FinishDepositCallArgs};
+use crate::connector::{ConnectorFunds, ConnectorFundsFinish};
+use crate::connector_impl::{EthConnector, FinishDepositCallArgs, TransferCallCallArgs};
+use crate::fungible_token::receiver::FungibleTokenReceiver;
 use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
@@ -227,7 +228,7 @@ impl AdminControlled for EthConnectorContract {
 }
 
 #[near_bindgen]
-impl Connector for EthConnectorContract {
+impl ConnectorFunds for EthConnectorContract {
     fn withdraw(&mut self) {
         todo!()
     }
@@ -235,7 +236,10 @@ impl Connector for EthConnectorContract {
     fn deposit(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise {
         self.connector.deposit(raw_proof)
     }
+}
 
+#[near_bindgen]
+impl ConnectorFundsFinish for EthConnectorContract {
     #[private]
     fn finish_deposit(
         &mut self,
@@ -243,7 +247,7 @@ impl Connector for EthConnectorContract {
         #[callback_unwrap]
         #[serializer(borsh)]
         verify_log_result: bool,
-    ) -> PromiseOrValue<()> {
+    ) -> PromiseOrValue<Option<U128>> {
         if !verify_log_result {
             panic_str(errors::ERR_VERIFY_PROOF);
         }
@@ -256,7 +260,7 @@ impl Connector for EthConnectorContract {
         ));
 
         // Mint tokens to recipient minus fee
-        if let Some(_msg) = deposit_call.msg {
+        if let Some(msg) = deposit_call.msg {
             // Mint - calculate new balances
             self.ft
                 .mint_eth_on_near(deposit_call.new_owner_id, deposit_call.amount)
@@ -264,8 +268,17 @@ impl Connector for EthConnectorContract {
             // Store proof only after `mint` calculations
             self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
-            // self.ft.ft_transfer_call
-            PromiseOrValue::Value(())
+            let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg).unwrap();
+            let promise = self.ft.ft_transfer_call(
+                data.receiver_id,
+                data.amount.as_u128().into(),
+                data.memo,
+                data.msg,
+            );
+            match promise {
+                PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
+                PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
+            }
         } else {
             // Mint - calculate new balances
             self.ft
@@ -282,7 +295,19 @@ impl Connector for EthConnectorContract {
                 .sdk_unwrap();
             // Store proof only after `mint` calculations
             self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
-            PromiseOrValue::Value(())
+            PromiseOrValue::Value(None)
         }
+    }
+}
+
+#[near_bindgen]
+impl FungibleTokenReceiver for EthConnectorContract {
+    fn ft_on_transfer(
+        &mut self,
+        _sender_id: AccountId,
+        _amount: U128,
+        _msg: String,
+    ) -> PromiseOrValue<U128> {
+        todo!()
     }
 }

@@ -1,14 +1,14 @@
 use crate::admin_controlled::PAUSE_DEPOSIT;
-use crate::connector::{ext_eth_connector, ext_proof_verifier, Connector};
+use crate::connector::{ext_funds_finish, ext_proof_verifier};
 use crate::deposit_event::{DepositedEvent, TokenMessageData};
 use crate::proof::Proof;
 use crate::types::SdkUnwrap;
-use crate::{log, AdminControlled, PausedMask};
+use crate::{log, AdminControlled, ConnectorFunds, PausedMask};
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env::panic_str;
 use near_sdk::json_types::Base64VecU8;
-use near_sdk::{env, AccountId, Gas, Promise, PromiseOrValue};
+use near_sdk::{env, AccountId, Gas, Promise};
 
 /// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
 pub const GAS_FOR_FINISH_DEPOSIT: Gas = Gas(50_000_000_000_000);
@@ -60,7 +60,7 @@ impl AdminControlled for EthConnector {
     }
 }
 
-impl Connector for EthConnector {
+impl ConnectorFunds for EthConnector {
     fn withdraw(&mut self) {
         todo!()
     }
@@ -157,44 +157,9 @@ impl Connector for EthConnector {
             .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
             .verify_log_entry(proof_to_verify.into())
             .then(
-                ext_eth_connector::ext(current_account_id)
+                ext_funds_finish::ext(current_account_id)
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
                     .finish_deposit(finish_deposit_data),
             )
-    }
-
-    fn finish_deposit(
-        &mut self,
-        deposit_call: FinishDepositCallArgs,
-        _: bool,
-    ) -> PromiseOrValue<()> {
-        // Mint tokens to recipient minus fee
-        if let Some(_msg) = deposit_call.msg {
-            // Mint - calculate new balances
-            // self.ft.mint_eth_on_near(data.new_owner_id, data.amount)?;
-            // Store proof only after `mint` calculations
-            // self.record_proof(&data.proof_key)?;
-            // Save new contract data
-            // self.save_ft_contract();
-            // let transfer_call_args = TransferCallCallArgs::try_from_slice(&msg).unwrap();
-            // let promise = self.ft_transfer_call(
-            //     predecessor_account_id,
-            //     current_account_id,
-            //     transfer_call_args,
-            //     prepaid_gas,
-            // )?;
-
-            PromiseOrValue::Value(())
-        } else {
-            // Mint - calculate new balances
-            // self.mint_eth_on_near(
-            //     data.new_owner_id.clone(),
-            //     data.amount - NEP141Wei::new(data.fee.as_u128()),
-            // )?;
-            // self.mint_eth_on_near(data.relayer_id, NEP141Wei::new(data.fee.as_u128()))?;
-            // Store proof only after `mint` calculations
-            // self.record_proof(&data.proof_key)?;
-            PromiseOrValue::Value(())
-        }
     }
 }
