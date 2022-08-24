@@ -6,7 +6,8 @@ use crate::connector_impl::TransferCallCallArgs;
 use crate::deposit_event::FtTransferMessageData;
 use crate::errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED};
 use crate::{FinishDepositCallArgs, SdkUnwrap};
-use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
+use aurora_engine_types::types::{Address, NEP141Wei, Wei, ZERO_NEP141_WEI};
+use aurora_engine_types::U256;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::U128;
@@ -34,6 +35,9 @@ pub struct FungibleToken {
     /// Accounts with balance of nETH (ETH on NEAR token)
     pub accounts_eth: LookupMap<AccountId, NEP141Wei>,
 
+    /// Accounts with balance of ETH (ETH on Aurora token)
+    pub accounts_aurora: LookupMap<Address, Wei>,
+
     /// Total ETH supply on Near (nETH as NEP-141 token)
     pub total_eth_supply_on_near: NEP141Wei,
 
@@ -53,12 +57,13 @@ pub struct FungibleToken {
 }
 
 impl FungibleToken {
-    pub fn new<S>(prefix_eth: S, prefix_proof: S) -> Self
+    pub fn new<S>(prefix_eth: S, prefix_proof: S, prefix_aurora: S) -> Self
     where
         S: IntoStorageKey,
     {
         Self {
             accounts_eth: LookupMap::new(prefix_eth),
+            accounts_aurora: LookupMap::new(prefix_aurora),
             account_storage_usage: 0,
             total_eth_supply_on_near: NEP141Wei::default(),
             total_eth_supply_on_aurora: NEP141Wei::default(),
@@ -164,7 +169,7 @@ impl FungibleToken {
             self.statistics_aurora_accounts_counter = self
                 .statistics_aurora_accounts_counter
                 .checked_sub(1)
-                .unwrap_or_else(|| env::panic_str(ERR_ACCOUNTS_COUNTER_OVERFLOW));
+                .unwrap_or(self.statistics_aurora_accounts_counter);
             self.accounts_eth.remove(account_id);
         }
     }
@@ -218,6 +223,12 @@ impl FungibleToken {
     pub fn get_account_eth_balance(&self, account_id: &AccountId) -> Option<NEP141Wei> {
         self.accounts_eth.get(account_id)
     }
+
+    /// Balance of ETH (ETH on Aurora)
+    pub fn internal_unwrap_balance_of_eth_on_aurora(&self, _address: &Address) -> Wei {
+        Wei::new(U256::from(0))
+        //self.accounts_aurora.get(address).sdk_unwrap()
+    }
 }
 
 impl FungibleTokenCore for FungibleToken {
@@ -262,8 +273,8 @@ impl FungibleTokenCore for FungibleToken {
             // Additional check overflow before process `ft_on_transfer`
             // But don't check overflow for relayer
             // Note: It can't overflow because the total supply doesn't change during transfer.
-            // let amount_for_check =
-            //     self.internal_unwrap_balance_of_eth_on_aurora(&message_data.recipient);
+            let _amount_for_check =
+                self.internal_unwrap_balance_of_eth_on_aurora(&message_data.recipient);
             todo!()
         }
 
@@ -311,8 +322,14 @@ impl FungibleTokenCore for FungibleToken {
             .into()
     }
 
-    fn ft_balance_of_eth(&self) -> U128 {
-        todo!()
+    fn ft_balance_of_eth(&self, address: Address) -> Wei {
+        let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
+        log!(&format!(
+            "Balance of ETH [{}]: {}",
+            address.encode(),
+            balance
+        ));
+        balance
     }
 }
 

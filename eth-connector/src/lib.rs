@@ -11,7 +11,7 @@ use crate::fungible_token::{
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
 use crate::types::SdkUnwrap;
-use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
+use aurora_engine_types::types::{Address, NEP141Wei, Wei, ZERO_NEP141_WEI};
 use near_sdk::env::panic_str;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -51,6 +51,7 @@ enum StorageKey {
     FungibleTokenEth = 0x1,
     Proof = 0x2,
     Metadata = 0x3,
+    FungibleTokenAurora = 0x4,
 }
 
 #[near_bindgen]
@@ -73,7 +74,11 @@ impl EthConnectorContract {
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
         };
         let mut this = Self {
-            ft: FungibleToken::new(StorageKey::FungibleTokenEth, StorageKey::Proof),
+            ft: FungibleToken::new(
+                StorageKey::FungibleTokenEth,
+                StorageKey::Proof,
+                StorageKey::FungibleTokenAurora,
+            ),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         };
@@ -138,8 +143,8 @@ impl FungibleTokenCore for EthConnectorContract {
         self.ft.ft_total_eth_supply_on_aurora()
     }
 
-    fn ft_balance_of_eth(&self) -> U128 {
-        self.ft.ft_balance_of_eth()
+    fn ft_balance_of_eth(&self, address: Address) -> Wei {
+        self.ft.ft_balance_of_eth(address)
     }
 }
 
