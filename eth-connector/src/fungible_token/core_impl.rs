@@ -343,16 +343,14 @@ impl FungibleToken {
         &mut self,
         sender_id: &AccountId,
         receiver_id: AccountId,
-        amount: U128,
-    ) -> (u128, u128) {
-        let amount: Balance = amount.into();
-
+        amount: NEP141Wei,
+    ) -> (NEP141Wei, NEP141Wei) {
         // Get the unused amount from the `ft_on_transfer` call result.
         let unused_amount = match env::promise_result(0) {
             PromiseResult::NotReady => env::abort(),
             PromiseResult::Successful(value) => {
                 if let Ok(unused_amount) = near_sdk::serde_json::from_slice::<U128>(&value) {
-                    std::cmp::min(amount, unused_amount.0)
+                    std::cmp::min(amount, NEP141Wei::new(unused_amount.0))
                 } else {
                     amount
                 }
@@ -360,19 +358,29 @@ impl FungibleToken {
             PromiseResult::Failed => amount,
         };
 
-        if unused_amount > 0 {
-            let receiver_balance = self.accounts.get(&receiver_id).unwrap_or(0);
-            if receiver_balance > 0 {
+        if unused_amount > ZERO_NEP141_WEI {
+            let receiver_balance =
+                self.get_account_eth_balance(&receiver_id)
+                    .unwrap_or_else(|| {
+                        self.accounts_insert(&receiver_id, ZERO_NEP141_WEI);
+                        ZERO_NEP141_WEI
+                    });
+            if receiver_balance > ZERO_NEP141_WEI {
                 let refund_amount = std::cmp::min(receiver_balance, unused_amount);
                 if let Some(new_receiver_balance) = receiver_balance.checked_sub(refund_amount) {
-                    self.accounts.insert(&receiver_id, &new_receiver_balance);
+                    self.accounts_insert(&receiver_id, new_receiver_balance);
                 } else {
                     env::panic_str("The receiver account doesn't have enough balance");
                 }
+                log!(format!(
+                    "Decrease receiver {} balance to: {}",
+                    receiver_id,
+                    receiver_balance - refund_amount
+                ));
 
-                if let Some(sender_balance) = self.accounts.get(sender_id) {
+                if let Some(sender_balance) = self.get_account_eth_balance(sender_id) {
                     if let Some(new_sender_balance) = sender_balance.checked_add(refund_amount) {
-                        self.accounts.insert(sender_id, &new_sender_balance);
+                        self.accounts_insert(sender_id, new_sender_balance);
                     } else {
                         env::panic_str("Sender balance overflow");
                     }
@@ -380,24 +388,24 @@ impl FungibleToken {
                     FtTransfer {
                         old_owner_id: &receiver_id,
                         new_owner_id: sender_id,
-                        amount: &U128(refund_amount),
+                        amount: &U128(refund_amount.as_u128()),
                         memo: Some("refund"),
                     }
                     .emit();
                     let used_amount = amount
                         .checked_sub(refund_amount)
                         .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
-                    return (used_amount, 0);
+                    return (used_amount, ZERO_NEP141_WEI);
                 } else {
                     // Sender's account was deleted, so we need to burn tokens.
-                    self.total_supply = self
-                        .total_supply
+                    self.total_eth_supply_on_near = self
+                        .total_eth_supply_on_near
                         .checked_sub(refund_amount)
                         .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
                     log!("The account of the sender was deleted");
                     FtBurn {
                         owner_id: &receiver_id,
-                        amount: &U128(refund_amount),
+                        amount: &U128(refund_amount.as_u128()),
                         memo: Some("refund"),
                     }
                     .emit();
@@ -405,7 +413,7 @@ impl FungibleToken {
                 }
             }
         }
-        (amount, 0)
+        (amount, ZERO_NEP141_WEI)
     }
 }
 
@@ -416,8 +424,9 @@ impl FungibleTokenResolver for FungibleToken {
         receiver_id: AccountId,
         amount: U128,
     ) -> U128 {
-        self.internal_ft_resolve_transfer(&sender_id, receiver_id, amount)
+        self.internal_ft_resolve_transfer(&sender_id, receiver_id, NEP141Wei::new(amount.0))
             .0
+            .as_u128()
             .into()
     }
 }

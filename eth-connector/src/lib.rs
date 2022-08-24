@@ -11,7 +11,7 @@ use crate::fungible_token::{
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
 use crate::types::SdkUnwrap;
-use aurora_engine_types::types::{Address, NEP141Wei};
+use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::env::panic_str;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -92,7 +92,7 @@ impl EthConnectorContract {
     }
 
     #[cfg_attr(not(feature = "log"), allow(unused_variables))]
-    fn on_tokens_burned(&self, account_id: AccountId, amount: u128) {
+    fn on_tokens_burned(&self, account_id: AccountId, amount: NEP141Wei) {
         crate::log!(format!("Account @{} burned {}", account_id, amount));
     }
 
@@ -159,11 +159,15 @@ impl FungibleTokenResolver for EthConnectorContract {
     ) -> U128 {
         let (used_amount, burned_amount) =
             self.ft
-                .internal_ft_resolve_transfer(&sender_id, receiver_id, amount);
-        if burned_amount > 0 {
+                .internal_ft_resolve_transfer(&sender_id, receiver_id, NEP141Wei::new(amount.0));
+        if burned_amount > ZERO_NEP141_WEI {
             self.on_tokens_burned(sender_id, burned_amount);
         }
-        used_amount.into()
+        log!(format!(
+            "Resolve transfer from {} to {} success",
+            sender_id, receiver_id
+        ));
+        used_amount.as_u128().into()
     }
 }
 
