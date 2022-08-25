@@ -11,7 +11,6 @@ use crate::fungible_token::{
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
 use crate::types::SdkUnwrap;
-use crate::wei::Wei;
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::env::panic_str;
 use near_sdk::{
@@ -137,11 +136,7 @@ impl FungibleTokenCore for EthConnectorContract {
         self.ft.ft_total_eth_supply_on_near()
     }
 
-    fn ft_total_eth_supply_on_aurora(&self) -> U128 {
-        log!(format!(
-            "Total ETH supply on Aurora: {}",
-            self.ft.ft_total_eth_supply_on_aurora().0
-        ));
+    fn ft_total_eth_supply_on_aurora(&self) -> String {
         self.ft.ft_total_eth_supply_on_aurora()
     }
 

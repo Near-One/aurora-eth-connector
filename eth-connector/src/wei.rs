@@ -1,13 +1,13 @@
 use aurora_engine_types::types::balance::error::BalanceOverflowError;
 use aurora_engine_types::types::NEP141Wei;
 use aurora_engine_types::U256;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use byte_slice_cast::AsByteSlice;
+use near_sdk::borsh::{maybestd::io, BorshDeserialize, BorshSerialize};
 use near_sdk::json_types::U128;
+use std::io::Write;
 use std::ops::{Add, Sub};
 
-#[derive(
-    BorshSerialize, BorshDeserialize, Default, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd,
-)]
+#[derive(Default, Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Wei(U256);
 
 impl Wei {
@@ -58,6 +58,26 @@ impl Wei {
     /// NOTICE: Error can contain only overflow
     pub fn try_into_u128(self) -> Result<u128, BalanceOverflowError> {
         self.0.try_into().map_err(|_| BalanceOverflowError)
+    }
+}
+
+impl BorshSerialize for Wei {
+    fn serialize<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_all(self.0.as_byte_slice())
+    }
+}
+
+impl BorshDeserialize for Wei {
+    fn deserialize(buf: &mut &[u8]) -> io::Result<Self> {
+        if buf.len() < 32 {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "IncorrectLength".to_string(),
+            ));
+        }
+        let result = U256::from_big_endian(buf[..32].as_byte_slice());
+        *buf = &buf[32..];
+        Ok(Wei::new(result))
     }
 }
 

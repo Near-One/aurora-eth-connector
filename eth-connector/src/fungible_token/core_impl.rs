@@ -322,8 +322,8 @@ impl FungibleTokenCore for FungibleToken {
     }
 
     fn ft_total_eth_supply_on_aurora(&self) -> String {
-        let total_supply = self.ft_total_eth_supply_on_aurora;
-        sdk::log!(&format!("Total ETH supply on Aurora: {}", total_supply));
+        let total_supply = self.total_eth_supply_on_aurora;
+        log!(format!("Total ETH supply on Aurora: {}", total_supply));
         format!("\"{}\"", total_supply)
     }
 
