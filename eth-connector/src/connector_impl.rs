@@ -48,8 +48,6 @@ pub struct EthConnector {
     pub paused_mask: PausedMask,
 }
 
-impl EthConnector {}
-
 impl AdminControlled for EthConnector {
     fn get_paused(&self) -> PausedMask {
         self.paused_mask

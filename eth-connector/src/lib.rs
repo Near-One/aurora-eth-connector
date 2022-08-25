@@ -10,6 +10,7 @@ use crate::fungible_token::{
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
+use crate::proof::Proof;
 use crate::types::SdkUnwrap;
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::env::panic_str;
@@ -97,8 +98,8 @@ impl EthConnectorContract {
         crate::log!(format!("Account @{} burned {}", account_id, amount));
     }
 
-    pub fn is_used_proof(&mut self) {
-        todo!()
+    pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
+        self.ft.is_used_event(&proof.get_key())
     }
 }
 
