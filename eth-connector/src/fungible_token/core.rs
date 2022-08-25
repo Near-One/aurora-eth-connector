@@ -1,4 +1,5 @@
-use aurora_engine_types::types::{Address, Wei};
+use crate::wei::Wei;
+use aurora_engine_types::types::Address;
 use near_sdk::ext_contract;
 use near_sdk::json_types::U128;
 use near_sdk::AccountId;
@@ -59,5 +60,5 @@ pub trait FungibleTokenCore {
 
     fn ft_total_eth_supply_on_aurora(&self) -> U128;
 
-    fn ft_balance_of_eth(&self, address: Address) -> Wei;
+    fn ft_balance_of_eth(&self, address: Address) -> String;
 }

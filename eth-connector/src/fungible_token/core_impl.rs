@@ -5,8 +5,9 @@ use super::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use crate::connector_impl::TransferCallCallArgs;
 use crate::deposit_event::FtTransferMessageData;
 use crate::errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED};
+use crate::wei::Wei;
 use crate::{FinishDepositCallArgs, SdkUnwrap};
-use aurora_engine_types::types::{Address, NEP141Wei, Wei, ZERO_NEP141_WEI};
+use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
 use aurora_engine_types::U256;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
@@ -44,7 +45,7 @@ pub struct FungibleToken {
     /// Total ETH supply on Aurora (ETH in Aurora EVM)
     /// NOTE: For compatibility reasons, we do not use  `Wei` (32 bytes)
     /// buy `NEP141Wei` (16 bytes)
-    pub total_eth_supply_on_aurora: NEP141Wei,
+    pub total_eth_supply_on_aurora: Wei,
 
     /// The storage size in bytes for one account.
     pub account_storage_usage: StorageUsage,
@@ -66,7 +67,7 @@ impl FungibleToken {
             accounts_aurora: LookupMap::new(prefix_aurora),
             account_storage_usage: 0,
             total_eth_supply_on_near: NEP141Wei::default(),
-            total_eth_supply_on_aurora: NEP141Wei::default(),
+            total_eth_supply_on_aurora: Wei::default(),
             statistics_aurora_accounts_counter: 0,
             used_proofs: LookupMap::new(prefix_proof),
         }
@@ -273,9 +274,18 @@ impl FungibleTokenCore for FungibleToken {
             // Additional check overflow before process `ft_on_transfer`
             // But don't check overflow for relayer
             // Note: It can't overflow because the total supply doesn't change during transfer.
-            let _amount_for_check =
+            let amount_for_check =
                 self.internal_unwrap_balance_of_eth_on_aurora(&message_data.recipient);
-            todo!()
+            if amount_for_check.checked_add(Wei::from(amount)).is_none() {
+                env::panic_str("BalanceOverflow");
+            }
+            if self
+                .total_eth_supply_on_aurora
+                .checked_add(Wei::from(amount))
+                .is_none()
+            {
+                env::panic_str("TotalSupplyOverflow");
+            }
         }
 
         // Special case for Aurora transfer itself - we shouldn't transfer
@@ -311,8 +321,10 @@ impl FungibleTokenCore for FungibleToken {
         self.total_eth_supply_on_near.as_u128().into()
     }
 
-    fn ft_total_eth_supply_on_aurora(&self) -> U128 {
-        self.total_eth_supply_on_aurora.as_u128().into()
+    fn ft_total_eth_supply_on_aurora(&self) -> String {
+        let total_supply = self.ft_total_eth_supply_on_aurora;
+        sdk::log!(&format!("Total ETH supply on Aurora: {}", total_supply));
+        format!("\"{}\"", total_supply)
     }
 
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
@@ -322,14 +334,14 @@ impl FungibleTokenCore for FungibleToken {
             .into()
     }
 
-    fn ft_balance_of_eth(&self, address: Address) -> Wei {
+    fn ft_balance_of_eth(&self, address: Address) -> String {
         let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
         log!(&format!(
             "Balance of ETH [{}]: {}",
             address.encode(),
             balance
         ));
-        balance
+        format!("\"{}\"", balance)
     }
 }
 

@@ -11,7 +11,8 @@ use crate::fungible_token::{
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
 use crate::types::SdkUnwrap;
-use aurora_engine_types::types::{Address, NEP141Wei, Wei, ZERO_NEP141_WEI};
+use crate::wei::Wei;
+use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::env::panic_str;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -31,6 +32,7 @@ pub mod fungible_token;
 pub mod log_entry;
 pub mod proof;
 pub mod types;
+pub mod wei;
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -143,7 +145,7 @@ impl FungibleTokenCore for EthConnectorContract {
         self.ft.ft_total_eth_supply_on_aurora()
     }
 
-    fn ft_balance_of_eth(&self, address: Address) -> Wei {
+    fn ft_balance_of_eth(&self, address: Address) -> String {
         self.ft.ft_balance_of_eth(address)
     }
 }
