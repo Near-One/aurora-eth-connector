@@ -1,9 +1,9 @@
 use crate::admin_controlled::PAUSE_DEPOSIT;
-use crate::connector::{ext_funds_finish, ext_proof_verifier};
+use crate::connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit};
 use crate::deposit_event::{DepositedEvent, TokenMessageData};
 use crate::proof::Proof;
 use crate::types::SdkUnwrap;
-use crate::{log, AdminControlled, ConnectorFunds, PausedMask};
+use crate::{log, AdminControlled, PausedMask};
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::env::panic_str;
@@ -36,6 +36,14 @@ pub struct FinishDepositCallArgs {
     pub msg: Option<Vec<u8>>,
 }
 
+/// withdraw result for eth-connector
+#[derive(BorshSerialize)]
+pub struct WithdrawResult {
+    pub amount: NEP141Wei,
+    pub recipient_id: Address,
+    pub eth_custodian_address: Address,
+}
+
 /// Connector specific data. It always should contain `prover account` -
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct EthConnector {
@@ -58,11 +66,7 @@ impl AdminControlled for EthConnector {
     }
 }
 
-impl ConnectorFunds for EthConnector {
-    fn withdraw(&mut self) {
-        todo!()
-    }
-
+impl ConnectorDeposit for EthConnector {
     fn deposit(&self, raw_proof: Base64VecU8) -> Promise {
         let current_account_id = env::current_account_id();
         let predecessor_account_id = env::predecessor_account_id();

@@ -1,6 +1,8 @@
-use crate::admin_controlled::{AdminControlled, PausedMask, UNPAUSE_ALL};
-use crate::connector::{ConnectorFunds, ConnectorFundsFinish};
-use crate::connector_impl::{EthConnector, FinishDepositCallArgs, TransferCallCallArgs};
+use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
+use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw};
+use crate::connector_impl::{
+    EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
+};
 use crate::fungible_token::receiver::FungibleTokenReceiver;
 use crate::fungible_token::{
     core::FungibleTokenCore,
@@ -15,6 +17,7 @@ use crate::types::SdkUnwrap;
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::env::panic_str;
 use near_sdk::{
+    assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
@@ -232,11 +235,32 @@ impl AdminControlled for EthConnectorContract {
 }
 
 #[near_bindgen]
-impl ConnectorFunds for EthConnectorContract {
-    fn withdraw(&mut self) {
-        todo!()
+impl ConnectorWithdraw for EthConnectorContract {
+    #[result_serializer(borsh)]
+    fn withdraw(
+        &mut self,
+        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] amount: NEP141Wei,
+    ) -> WithdrawResult {
+        assert_one_yocto();
+        // Check is current account id is owner
+        let is_owner = env::current_account_id() == env::predecessor_account_id();
+        // Check is current flow paused. If it's owner just skip asserrion.
+        self.assert_not_paused(PAUSE_WITHDRAW, is_owner)
+            .map_err(|_| "WithdrawErrorPaused")
+            .sdk_unwrap();
+        // Burn tokens to recipient
+        // self.internal_withdraw_eth_from_near(predecessor_account_id, args.amount)?;
+        WithdrawResult {
+            recipient_id: recipient_address,
+            amount,
+            eth_custodian_address: self.connector.eth_custodian_address,
+        }
     }
+}
 
+#[near_bindgen]
+impl ConnectorDeposit for EthConnectorContract {
     fn deposit(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise {
         self.connector.deposit(raw_proof)
     }

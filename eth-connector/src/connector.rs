@@ -1,12 +1,22 @@
 use crate::connector_impl::FinishDepositCallArgs;
+use crate::WithdrawResult;
+use aurora_engine_types::types::{Address, NEP141Wei};
 use near_sdk::json_types::{Base64VecU8, U128};
 use near_sdk::{borsh, ext_contract, Promise, PromiseOrValue};
 
-#[ext_contract(ext_funds)]
-pub trait ConnectorFunds {
-    fn withdraw(&mut self);
-
+#[ext_contract(ext_deposit)]
+pub trait ConnectorDeposit {
     fn deposit(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise;
+}
+
+#[ext_contract(ext_withdraw)]
+pub trait ConnectorWithdraw {
+    #[result_serializer(borsh)]
+    fn withdraw(
+        &mut self,
+        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] amount: NEP141Wei,
+    ) -> WithdrawResult;
 }
 
 #[ext_contract(ext_funds_finish)]
