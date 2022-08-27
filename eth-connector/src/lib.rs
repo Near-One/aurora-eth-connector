@@ -243,14 +243,17 @@ impl ConnectorWithdraw for EthConnectorContract {
         #[serializer(borsh)] amount: NEP141Wei,
     ) -> WithdrawResult {
         assert_one_yocto();
+        let predecessor_account_id = env::predecessor_account_id();
+        let current_account_id = env::current_account_id();
         // Check is current account id is owner
-        let is_owner = env::current_account_id() == env::predecessor_account_id();
+        let is_owner = current_account_id == predecessor_account_id;
         // Check is current flow paused. If it's owner just skip asserrion.
         self.assert_not_paused(PAUSE_WITHDRAW, is_owner)
             .map_err(|_| "WithdrawErrorPaused")
             .sdk_unwrap();
         // Burn tokens to recipient
-        // self.internal_withdraw_eth_from_near(predecessor_account_id, args.amount)?;
+        self.ft
+            .internal_withdraw_eth_from_near(&predecessor_account_id, amount);
         WithdrawResult {
             recipient_id: recipient_address,
             amount,

@@ -8,7 +8,6 @@ use crate::errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED};
 use crate::wei::Wei;
 use crate::{FinishDepositCallArgs, SdkUnwrap};
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
-use aurora_engine_types::U256;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::U128;
@@ -226,9 +225,9 @@ impl FungibleToken {
     }
 
     /// Balance of ETH (ETH on Aurora)
-    pub fn internal_unwrap_balance_of_eth_on_aurora(&self, _address: &Address) -> Wei {
-        Wei::new(U256::from(0))
-        //self.accounts_aurora.get(address).sdk_unwrap()
+    pub fn internal_unwrap_balance_of_eth_on_aurora(&self, address: &Address) -> Wei {
+        //Wei::new(U256::from(0))
+        self.accounts_aurora.get(address).sdk_unwrap()
     }
 }
 
