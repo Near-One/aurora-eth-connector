@@ -229,6 +229,30 @@ impl FungibleToken {
         //Wei::new(U256::from(0))
         self.accounts_aurora.get(address).sdk_unwrap()
     }
+
+    /// Internal ETH deposit to Aurora
+    pub fn internal_deposit_eth_to_aurora(&mut self, address: Address, amount: Wei) {
+        let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
+        let new_balance = balance
+            .checked_add(amount)
+            .ok_or("BalanceOverflow")
+            .sdk_unwrap();
+        self.accounts_aurora.insert(&address, &new_balance);
+        self.total_eth_supply_on_aurora = self
+            .total_eth_supply_on_aurora
+            .checked_add(amount)
+            .ok_or("TotalSupplyOverflow")
+            .sdk_unwrap();
+    }
+
+    /// Withdraw ETH tokens
+    pub fn internal_withdraw_eth_from_aurora(&mut self, amount: Wei) {
+        self.total_eth_supply_on_aurora = self
+            .total_eth_supply_on_aurora
+            .checked_sub(amount)
+            .ok_or("TotalSupplyUnderflow")
+            .sdk_unwrap();
+    }
 }
 
 impl FungibleTokenCore for FungibleToken {
