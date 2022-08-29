@@ -1,20 +1,29 @@
-use super::core::FungibleTokenCore;
-use super::events::{FtBurn, FtTransfer};
-use super::receiver::ext_ft_receiver;
-use super::resolver::{ext_ft_resolver, FungibleTokenResolver};
-use crate::connector_impl::TransferCallCallArgs;
-use crate::deposit_event::FtTransferMessageData;
-use crate::errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED};
-use crate::wei::Wei;
-use crate::{FinishDepositCallArgs, SdkUnwrap};
-use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
-use aurora_engine_types::U256;
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LookupMap;
-use near_sdk::json_types::U128;
+use super::{
+    core::FungibleTokenCore,
+    events::{FtBurn, FtTransfer},
+    receiver::ext_ft_receiver,
+    resolver::{ext_ft_resolver, FungibleTokenResolver},
+};
+use crate::{
+    connector_impl::TransferCallCallArgs,
+    deposit_event::FtTransferMessageData,
+    errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED},
+    wei::Wei,
+    {FinishDepositCallArgs, SdkUnwrap},
+};
+use aurora_engine_types::{
+    types::{Address, NEP141Wei, ZERO_NEP141_WEI},
+    U256,
+};
+
 use near_sdk::{
-    assert_one_yocto, env, log, require, AccountId, Balance, Gas, IntoStorageKey, PromiseOrValue,
-    PromiseResult, StorageUsage,
+    assert_one_yocto,
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    collections::LookupMap,
+    env,
+    json_types::U128,
+    log, require, AccountId, Balance, Gas, IntoStorageKey, PromiseOrValue, PromiseResult,
+    StorageUsage,
 };
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
@@ -227,23 +236,25 @@ impl FungibleToken {
 
     /// Balance of ETH (ETH on Aurora)
     pub fn internal_unwrap_balance_of_eth_on_aurora(&self, address: &Address) -> Wei {
-        //Wei::new(U256::from(0))
-        self.accounts_aurora.get(address).sdk_unwrap()
+        self.accounts_aurora.get(address).unwrap_or_default()
     }
 
     /// Internal ETH deposit to Aurora
-    pub fn internal_deposit_eth_to_aurora(&mut self, address: Address, amount: Wei) {
+    pub fn internal_deposit_eth_to_aurora(
+        &mut self,
+        address: Address,
+        amount: Wei,
+    ) -> Result<(), error::DepositError> {
         let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
         let new_balance = balance
             .checked_add(amount)
-            .ok_or("BalanceOverflow")
-            .sdk_unwrap();
+            .ok_or(error::DepositError::BalanceOverflow)?;
         self.accounts_aurora.insert(&address, &new_balance);
         self.total_eth_supply_on_aurora = self
             .total_eth_supply_on_aurora
             .checked_add(amount)
-            .ok_or("TotalSupplyOverflow")
-            .sdk_unwrap();
+            .ok_or(error::DepositError::TotalSupplyOverflow)?;
+        Ok(())
     }
 
     /// Withdraw ETH tokens
@@ -256,7 +267,11 @@ impl FungibleToken {
     }
 
     ///  Mint ETH tokens
-    pub fn mint_eth_on_aurora(&mut self, owner_id: Address, amount: Wei) {
+    pub fn mint_eth_on_aurora(
+        &mut self,
+        owner_id: Address,
+        amount: Wei,
+    ) -> Result<(), error::DepositError> {
         log!(format!(
             "Mint {} ETH tokens for: {}",
             amount,
@@ -276,12 +291,11 @@ impl FungibleToken {
         _sender_id: AccountId,
         amount: Balance,
         msg: String,
-    ) -> PromiseOrValue<U128> {
+    ) -> Result<U128, error::FtTransferCallError> {
         log!("Call ft_on_transfer");
         // Parse message with specific rules
         let message_data = FtTransferMessageData::parse_on_transfer_message(&msg)
-            .map_err(|_| "MessageParseFailed")
-            .sdk_unwrap();
+            .map_err(error::FtTransferCallError::MessageParseFailed)?;
 
         // Special case when predecessor_account_id is current_account_id
         let wei_fee = Wei::from(message_data.fee);
@@ -290,12 +304,15 @@ impl FungibleToken {
         let relayer = None;
         match (wei_fee, relayer) {
             (fee, Some(evm_relayer_address)) if fee > Wei::new_u64(0) => {
-                self.mint_eth_on_aurora(message_data.recipient, Wei::new(U256::from(amount)) - fee);
-                self.mint_eth_on_aurora(evm_relayer_address, fee);
+                self.mint_eth_on_aurora(
+                    message_data.recipient,
+                    Wei::new(U256::from(amount)) - fee,
+                )?;
+                self.mint_eth_on_aurora(evm_relayer_address, fee)?;
             }
-            _ => self.mint_eth_on_aurora(message_data.recipient, Wei::new(U256::from(amount))),
+            _ => self.mint_eth_on_aurora(message_data.recipient, Wei::new(U256::from(amount)))?,
         }
-        PromiseOrValue::Value(0.into())
+        Ok(0.into())
     }
 }
 
@@ -509,10 +526,9 @@ impl FungibleTokenResolver for FungibleToken {
 }
 
 pub mod error {
+    use crate::deposit_event::error::ParseOnTransferMessageError;
     use crate::errors::{
-        ERR_BALANCE_OVERFLOW, ERR_INVALID_ACCOUNT_ID, ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
-        ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT, ERR_INVALID_ON_TRANSFER_MESSAGE_HEX,
-        ERR_NOT_ENOUGH_BALANCE, ERR_NOT_ENOUGH_BALANCE_FOR_FEE, ERR_OVERFLOW_NUMBER,
+        ERR_BALANCE_OVERFLOW, ERR_NOT_ENOUGH_BALANCE, ERR_NOT_ENOUGH_BALANCE_FOR_FEE,
         ERR_PROOF_EXIST, ERR_SENDER_EQUALS_RECEIVER, ERR_TOTAL_SUPPLY_UNDERFLOW, ERR_ZERO_AMOUNT,
     };
     use crate::fungible_token::core_impl::ERR_TOTAL_SUPPLY_OVERFLOW;
@@ -541,6 +557,15 @@ pub mod error {
         }
     }
 
+    impl From<DepositError> for TransferError {
+        fn from(err: DepositError) -> Self {
+            match err {
+                DepositError::BalanceOverflow => Self::BalanceOverflow,
+                DepositError::TotalSupplyOverflow => Self::TotalSupplyOverflow,
+            }
+        }
+    }
+
     #[derive(Debug)]
     pub enum WithdrawError {
         TotalSupplyUnderflow,
@@ -561,6 +586,18 @@ pub mod error {
     pub enum FinishDepositError {
         TransferCall(FtTransferCallError),
         ProofUsed,
+    }
+
+    impl From<DepositError> for FtTransferCallError {
+        fn from(e: DepositError) -> Self {
+            Self::Transfer(e.into())
+        }
+    }
+
+    impl From<ParseOnTransferMessageError> for FtTransferCallError {
+        fn from(e: ParseOnTransferMessageError) -> Self {
+            Self::MessageParseFailed(e)
+        }
     }
 
     impl AsRef<[u8]> for FinishDepositError {
@@ -609,26 +646,6 @@ pub mod error {
                 Self::BalanceOverflow => ERR_BALANCE_OVERFLOW,
                 Self::ZeroAmount => ERR_ZERO_AMOUNT,
                 Self::SelfTransfer => ERR_SENDER_EQUALS_RECEIVER,
-            }
-        }
-    }
-
-    pub enum ParseOnTransferMessageError {
-        TooManyParts,
-        InvalidHexData,
-        WrongMessageFormat,
-        InvalidAccount,
-        OverflowNumber,
-    }
-
-    impl AsRef<[u8]> for ParseOnTransferMessageError {
-        fn as_ref(&self) -> &[u8] {
-            match self {
-                Self::TooManyParts => ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT,
-                Self::InvalidHexData => ERR_INVALID_ON_TRANSFER_MESSAGE_HEX,
-                Self::WrongMessageFormat => ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
-                Self::InvalidAccount => ERR_INVALID_ACCOUNT_ID,
-                Self::OverflowNumber => ERR_OVERFLOW_NUMBER,
             }
         }
     }

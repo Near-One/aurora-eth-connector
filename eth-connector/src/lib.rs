@@ -339,6 +339,10 @@ impl FungibleTokenReceiver for EthConnectorContract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        self.ft.ft_on_transfer(sender_id, amount.into(), msg)
+        let value = self
+            .ft
+            .ft_on_transfer(sender_id, amount.into(), msg)
+            .sdk_unwrap();
+        PromiseOrValue::Value(value)
     }
 }
