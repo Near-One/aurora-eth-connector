@@ -335,10 +335,10 @@ impl ConnectorFundsFinish for EthConnectorContract {
 impl FungibleTokenReceiver for EthConnectorContract {
     fn ft_on_transfer(
         &mut self,
-        _sender_id: AccountId,
-        _amount: U128,
-        _msg: String,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
     ) -> PromiseOrValue<U128> {
-        todo!()
+        self.ft.ft_on_transfer(sender_id, amount.into(), msg)
     }
 }

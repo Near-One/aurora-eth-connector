@@ -8,6 +8,7 @@ use crate::errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED};
 use crate::wei::Wei;
 use crate::{FinishDepositCallArgs, SdkUnwrap};
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
+use aurora_engine_types::U256;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LookupMap;
 use near_sdk::json_types::U128;
@@ -252,6 +253,49 @@ impl FungibleToken {
             .checked_sub(amount)
             .ok_or("TotalSupplyUnderflow")
             .sdk_unwrap();
+    }
+
+    ///  Mint ETH tokens
+    pub fn mint_eth_on_aurora(&mut self, owner_id: Address, amount: Wei) {
+        log!(format!(
+            "Mint {} ETH tokens for: {}",
+            amount,
+            owner_id.encode()
+        ));
+        self.internal_deposit_eth_to_aurora(owner_id, amount)
+    }
+
+    /// Burn ETH tokens
+    pub fn burn_eth_on_aurora(&mut self, amount: Wei) {
+        self.internal_withdraw_eth_from_aurora(amount)
+    }
+
+    /// ft_on_transfer callback function
+    pub fn ft_on_transfer(
+        &mut self,
+        _sender_id: AccountId,
+        amount: Balance,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        log!("Call ft_on_transfer");
+        // Parse message with specific rules
+        let message_data = FtTransferMessageData::parse_on_transfer_message(&msg)
+            .map_err(|_| "MessageParseFailed")
+            .sdk_unwrap();
+
+        // Special case when predecessor_account_id is current_account_id
+        let wei_fee = Wei::from(message_data.fee);
+        // Mint fee to relayer
+        // TODO: Get relayer evm address
+        let relayer = None;
+        match (wei_fee, relayer) {
+            (fee, Some(evm_relayer_address)) if fee > Wei::new_u64(0) => {
+                self.mint_eth_on_aurora(message_data.recipient, Wei::new(U256::from(amount)) - fee);
+                self.mint_eth_on_aurora(evm_relayer_address, fee);
+            }
+            _ => self.mint_eth_on_aurora(message_data.recipient, Wei::new(U256::from(amount))),
+        }
+        PromiseOrValue::Value(0.into())
     }
 }
 

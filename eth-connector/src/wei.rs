@@ -1,5 +1,5 @@
 use aurora_engine_types::types::balance::error::BalanceOverflowError;
-use aurora_engine_types::types::NEP141Wei;
+use aurora_engine_types::types::{Fee, NEP141Wei};
 use aurora_engine_types::U256;
 use byte_slice_cast::AsByteSlice;
 use near_sdk::borsh::{maybestd::io, BorshDeserialize, BorshSerialize};
@@ -120,4 +120,10 @@ pub fn u256_to_arr(value: &U256) -> [u8; 32] {
     let mut result = [0u8; 32];
     value.to_big_endian(&mut result);
     result
+}
+
+impl From<Fee> for Wei {
+    fn from(value: Fee) -> Self {
+        Wei(U256::from(value.as_u128()))
+    }
 }
