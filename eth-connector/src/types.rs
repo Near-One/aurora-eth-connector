@@ -8,6 +8,11 @@ macro_rules! log {
     };
 }
 
+/// Panic with error dat argument
+pub fn panic_err<E: AsRef<[u8]>>(err: E) -> ! {
+    panic_str(&String::from_utf8(err.as_ref().to_vec()).unwrap())
+}
+
 pub trait SdkExpect<T> {
     fn sdk_expect(self, msg: &str) -> T;
 }

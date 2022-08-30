@@ -1,3 +1,4 @@
+use crate::{errors::ERR_BORSH_SERIALIZE, types::SdkUnwrap};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 
 #[derive(Debug, Default, BorshDeserialize, BorshSerialize, Clone)]
@@ -12,8 +13,17 @@ pub struct Proof {
 
 impl Proof {
     pub fn get_key(&self) -> String {
-        let mut data = self.log_index.try_to_vec().unwrap();
-        data.extend(self.receipt_index.try_to_vec().unwrap());
+        let mut data = self
+            .log_index
+            .try_to_vec()
+            .map_err(|_| ERR_BORSH_SERIALIZE)
+            .sdk_unwrap();
+        data.extend(
+            self.receipt_index
+                .try_to_vec()
+                .map_err(|_| ERR_BORSH_SERIALIZE)
+                .sdk_unwrap(),
+        );
         data.extend(self.header_data.clone());
         near_sdk::env::sha256(&data[..])
             .iter()

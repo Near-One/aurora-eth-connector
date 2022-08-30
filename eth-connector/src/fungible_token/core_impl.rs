@@ -15,8 +15,9 @@ use aurora_engine_types::{
 
 use crate::errors::{
     ERR_BALANCE_OVERFLOW, ERR_MORE_GAS_REQUIRED, ERR_PREPAID_GAS_OVERFLOW,
-    ERR_RECEIVER_BALANCE_NOT_ENOUGH, ERR_TOTAL_SUPPLY_OVERFLOW,
+    ERR_RECEIVER_BALANCE_NOT_ENOUGH, ERR_TOTAL_SUPPLY_OVERFLOW, ERR_USED_AMOUNT_OVERFLOW,
 };
+use crate::types::panic_err;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -358,7 +359,7 @@ impl FungibleTokenCore for FungibleToken {
             let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
             // Check is transfer amount > fee
             if message_data.fee.as_u128() >= amount.0 {
-                Err::<(), _>(error::FtTransferCallError::InsufficientAmountForFee).sdk_unwrap()
+                panic_err(error::FtTransferCallError::InsufficientAmountForFee);
             }
             // Additional check overflow before process `ft_on_transfer`
             // But don't check overflow for relayer
@@ -366,20 +367,18 @@ impl FungibleTokenCore for FungibleToken {
             let amount_for_check =
                 self.internal_unwrap_balance_of_eth_on_aurora(&message_data.recipient);
             if amount_for_check.checked_add(Wei::from(amount)).is_none() {
-                Err::<(), _>(error::FtTransferCallError::Transfer(
+                panic_err(error::FtTransferCallError::Transfer(
                     error::TransferError::BalanceOverflow,
-                ))
-                .sdk_unwrap();
+                ));
             }
             if self
                 .total_eth_supply_on_aurora
                 .checked_add(Wei::from(amount))
                 .is_none()
             {
-                Err::<(), _>(error::FtTransferCallError::Transfer(
+                panic_err(error::FtTransferCallError::Transfer(
                     error::TransferError::TotalSupplyOverflow,
-                ))
-                .sdk_unwrap();
+                ));
             }
         }
 
@@ -502,14 +501,16 @@ impl FungibleToken {
                     .emit();
                     let used_amount = amount
                         .checked_sub(refund_amount)
-                        .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
+                        .ok_or(ERR_USED_AMOUNT_OVERFLOW)
+                        .sdk_unwrap();
                     return (used_amount, ZERO_NEP141_WEI);
                 } else {
                     // Sender's account was deleted, so we need to burn tokens.
                     self.total_eth_supply_on_near = self
                         .total_eth_supply_on_near
                         .checked_sub(refund_amount)
-                        .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
+                        .ok_or(ERR_TOTAL_SUPPLY_OVERFLOW)
+                        .sdk_unwrap();
                     log!("The account of the sender was deleted");
                     FtBurn {
                         owner_id: receiver_id,
@@ -543,10 +544,12 @@ pub mod error {
     use crate::deposit_event::error::ParseOnTransferMessageError;
     use crate::errors::{
         ERR_BALANCE_OVERFLOW, ERR_NOT_ENOUGH_BALANCE, ERR_NOT_ENOUGH_BALANCE_FOR_FEE,
-        ERR_PROOF_EXIST, ERR_SENDER_EQUALS_RECEIVER, ERR_TOTAL_SUPPLY_UNDERFLOW, ERR_ZERO_AMOUNT,
+        ERR_PROOF_EXIST, ERR_SENDER_EQUALS_RECEIVER, ERR_TOTAL_SUPPLY_UNDERFLOW,
+        ERR_WRONG_EVENT_ADDRESS, ERR_ZERO_AMOUNT,
     };
     use crate::fungible_token::core_impl::ERR_TOTAL_SUPPLY_OVERFLOW;
     use aurora_engine_types::types::balance::error::BalanceOverflowError;
+    use aurora_engine_types::types::ERR_FAILED_PARSE;
 
     pub struct ProofUsed;
 
@@ -576,6 +579,22 @@ pub mod error {
             match err {
                 DepositError::BalanceOverflow => Self::BalanceOverflow,
                 DepositError::TotalSupplyOverflow => Self::TotalSupplyOverflow,
+            }
+        }
+    }
+
+    pub enum FtDepositError {
+        ProofParseFailed,
+        CustodianAddressMismatch,
+        InsufficientAmountForFee,
+    }
+
+    impl AsRef<[u8]> for FtDepositError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::ProofParseFailed => ERR_FAILED_PARSE.as_bytes(),
+                Self::CustodianAddressMismatch => ERR_WRONG_EVENT_ADDRESS,
+                Self::InsufficientAmountForFee => ERR_NOT_ENOUGH_BALANCE_FOR_FEE.as_bytes(),
             }
         }
     }

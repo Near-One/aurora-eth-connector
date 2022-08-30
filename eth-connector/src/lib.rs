@@ -1,8 +1,11 @@
+extern crate core;
+
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw};
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
+use crate::errors::ERR_BORSH_DESERIALIZE;
 use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
@@ -13,14 +16,13 @@ use crate::fungible_token::{
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
 use crate::proof::Proof;
-use crate::types::SdkUnwrap;
+use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
-    env::panic_str,
     json_types::Base64VecU8,
     json_types::{U128, U64},
     near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
@@ -281,7 +283,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
         verify_log_result: bool,
     ) -> PromiseOrValue<Option<U128>> {
         if !verify_log_result {
-            panic_str(errors::ERR_VERIFY_PROOF);
+            panic_err(errors::ERR_VERIFY_PROOF);
         }
 
         log!(format!(
@@ -298,7 +300,9 @@ impl ConnectorFundsFinish for EthConnectorContract {
             // Store proof only after `mint` calculations
             self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
-            let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg).unwrap();
+            let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
+                .map_err(|_| ERR_BORSH_DESERIALIZE)
+                .sdk_unwrap();
             let promise = self.ft.ft_transfer_call(
                 data.receiver_id,
                 data.amount.as_u128().into(),

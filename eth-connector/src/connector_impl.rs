@@ -1,8 +1,10 @@
+use crate::errors::ERR_BORSH_SERIALIZE;
+use crate::fungible_token::core_impl::error::FtDepositError;
 use crate::{
     admin_controlled::PAUSE_DEPOSIT,
     connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit},
     deposit_event::{DepositedEvent, TokenMessageData},
-    log,
+    log, panic_err,
     proof::Proof,
     types::SdkUnwrap,
     AdminControlled, PausedMask,
@@ -10,7 +12,7 @@ use crate::{
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env::{self, panic_str},
+    env::{self},
     json_types::Base64VecU8,
     AccountId, Gas, Promise,
 };
@@ -78,11 +80,12 @@ impl ConnectorDeposit for EthConnector {
         // Check is current account owner
         let is_owner = current_account_id == predecessor_account_id;
         // Check is current flow paused. If it's owner account just skip it.
-        self.assert_not_paused(PAUSE_DEPOSIT, is_owner)
-            .unwrap_or_else(|_| env::panic_str("PausedError"));
+        self.assert_not_paused(PAUSE_DEPOSIT, is_owner).sdk_unwrap();
 
         log!("[Deposit tokens]");
-        let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof.clone()).as_slice()).unwrap();
+        let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof.clone()).as_slice())
+            .map_err(|_| FtDepositError::ProofParseFailed)
+            .sdk_unwrap();
 
         // Fetch event data from Proof
         let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
@@ -102,11 +105,11 @@ impl ConnectorDeposit for EthConnector {
         ));
 
         if event.eth_custodian_address != self.eth_custodian_address {
-            panic_str("CustodianAddressMismatch");
+            panic_err(FtDepositError::CustodianAddressMismatch);
         }
 
         if NEP141Wei::new(event.fee.as_u128()) >= event.amount {
-            panic_str("InsufficientAmountForFee");
+            panic_err(FtDepositError::InsufficientAmountForFee);
         }
 
         // Verify proof data with cross-contract call to prover account
@@ -146,7 +149,8 @@ impl ConnectorDeposit for EthConnector {
                     msg: message.encode(),
                 }
                 .try_to_vec()
-                .unwrap();
+                .map_err(|_| ERR_BORSH_SERIALIZE)
+                .sdk_unwrap();
 
                 // Send to self - current account id
                 FinishDepositCallArgs {
