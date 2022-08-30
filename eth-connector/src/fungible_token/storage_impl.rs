@@ -1,6 +1,6 @@
 use super::core_impl::FungibleToken;
 use super::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
-use crate::log;
+use crate::{log, SdkUnwrap};
 use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
 use near_sdk::{assert_one_yocto, env, json_types::U128, AccountId, Balance, Promise};
 
@@ -21,9 +21,8 @@ impl FungibleToken {
                 Promise::new(account_id.clone()).transfer(self.storage_balance_bounds().min.0 + 1);
                 Some((account_id, balance))
             } else {
-                env::panic_str(
-                    "Can't unregister the account with the positive balance without force",
-                )
+                Err::<(), _>(error::StorageFundingError::UnRegisterPositiveBalance).sdk_unwrap();
+                None
             }
         } else {
             log!(format!("The account {} is not registered", &account_id));
@@ -61,7 +60,7 @@ impl StorageManagement for FungibleToken {
         } else {
             let min_balance = self.storage_balance_bounds().min.0;
             if amount < min_balance {
-                env::panic_str("The attached deposit is less than the minimum storage balance");
+                Err::<(), _>(error::StorageFundingError::InsufficientDeposit).sdk_unwrap();
             }
 
             self.accounts_insert(&account_id, ZERO_NEP141_WEI);
@@ -115,5 +114,26 @@ impl StorageManagement for FungibleToken {
     fn storage_balance_of(&self, account_id: AccountId) -> StorageBalance {
         self.internal_storage_balance_of(&account_id)
             .unwrap_or_default()
+    }
+}
+
+mod error {
+    use crate::errors;
+
+    #[derive(Debug)]
+    pub enum StorageFundingError {
+        InsufficientDeposit,
+        UnRegisterPositiveBalance,
+    }
+
+    impl AsRef<[u8]> for StorageFundingError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::InsufficientDeposit => errors::ERR_ATTACHED_DEPOSIT_NOT_ENOUGH,
+                Self::UnRegisterPositiveBalance => {
+                    errors::ERR_FAILED_UNREGISTER_ACCOUNT_POSITIVE_BALANCE
+                }
+            }
+        }
     }
 }

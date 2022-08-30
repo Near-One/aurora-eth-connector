@@ -1,8 +1,5 @@
 use aurora_engine_types::types::Address;
-use near_sdk::ext_contract;
-use near_sdk::json_types::U128;
-use near_sdk::AccountId;
-use near_sdk::PromiseOrValue;
+use near_sdk::{ext_contract, json_types::U128, AccountId, PromiseOrValue};
 
 #[ext_contract(ext_ft_core)]
 pub trait FungibleTokenCore {

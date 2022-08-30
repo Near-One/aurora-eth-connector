@@ -13,7 +13,10 @@ use aurora_engine_types::{
     U256,
 };
 
-use crate::errors::ERR_TOTAL_SUPPLY_OVERFLOW;
+use crate::errors::{
+    ERR_BALANCE_OVERFLOW, ERR_MORE_GAS_REQUIRED, ERR_PREPAID_GAS_OVERFLOW,
+    ERR_RECEIVER_BALANCE_NOT_ENOUGH, ERR_TOTAL_SUPPLY_OVERFLOW,
+};
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -341,8 +344,12 @@ impl FungibleTokenCore for FungibleToken {
         assert_one_yocto();
         require!(
             env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
-            "More gas is required"
+            ERR_MORE_GAS_REQUIRED
         );
+        log!(format!(
+            "Transfer call to {} amount {}",
+            receiver_id, amount.0,
+        ));
         let sender_id = env::predecessor_account_id();
 
         // Verify message data before `ft_on_transfer` call to avoid verification panics
@@ -351,7 +358,7 @@ impl FungibleTokenCore for FungibleToken {
             let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
             // Check is transfer amount > fee
             if message_data.fee.as_u128() >= amount.0 {
-                env::panic_str("InsufficientAmountForFee");
+                Err::<(), _>(error::FtTransferCallError::InsufficientAmountForFee).sdk_unwrap()
             }
             // Additional check overflow before process `ft_on_transfer`
             // But don't check overflow for relayer
@@ -359,14 +366,20 @@ impl FungibleTokenCore for FungibleToken {
             let amount_for_check =
                 self.internal_unwrap_balance_of_eth_on_aurora(&message_data.recipient);
             if amount_for_check.checked_add(Wei::from(amount)).is_none() {
-                env::panic_str("BalanceOverflow");
+                Err::<(), _>(error::FtTransferCallError::Transfer(
+                    error::TransferError::BalanceOverflow,
+                ))
+                .sdk_unwrap();
             }
             if self
                 .total_eth_supply_on_aurora
                 .checked_add(Wei::from(amount))
                 .is_none()
             {
-                env::panic_str("TotalSupplyOverflow");
+                Err::<(), _>(error::FtTransferCallError::Transfer(
+                    error::TransferError::TotalSupplyOverflow,
+                ))
+                .sdk_unwrap();
             }
         }
 
@@ -383,7 +396,8 @@ impl FungibleTokenCore for FungibleToken {
         let receiver_gas = env::prepaid_gas()
             .0
             .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
-            .unwrap_or_else(|| env::panic_str("Prepaid gas overflow"));
+            .ok_or(ERR_PREPAID_GAS_OVERFLOW)
+            .sdk_unwrap();
         // Initiating receiver's call and the callback
         ext_ft_receiver::ext(receiver_id.clone())
             .with_static_gas(receiver_gas.into())
@@ -419,7 +433,7 @@ impl FungibleTokenCore for FungibleToken {
 
     fn ft_balance_of_eth(&self, address: Address) -> String {
         let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
-        log!(&format!(
+        log!(format!(
             "Balance of ETH [{}]: {}",
             address.encode(),
             balance
@@ -460,11 +474,12 @@ impl FungibleToken {
                 });
             if receiver_balance > ZERO_NEP141_WEI {
                 let refund_amount = std::cmp::min(receiver_balance, unused_amount);
-                if let Some(new_receiver_balance) = receiver_balance.checked_sub(refund_amount) {
-                    self.accounts_insert(receiver_id, new_receiver_balance);
-                } else {
-                    env::panic_str("The receiver account doesn't have enough balance");
-                }
+                let new_receiver_balance = receiver_balance
+                    .checked_sub(refund_amount)
+                    .ok_or(ERR_RECEIVER_BALANCE_NOT_ENOUGH)
+                    .sdk_unwrap();
+                self.accounts_insert(receiver_id, new_receiver_balance);
+
                 log!(format!(
                     "Decrease receiver {} balance to: {}",
                     receiver_id,
@@ -472,11 +487,11 @@ impl FungibleToken {
                 ));
 
                 if let Some(sender_balance) = self.get_account_eth_balance(sender_id) {
-                    if let Some(new_sender_balance) = sender_balance.checked_add(refund_amount) {
-                        self.accounts_insert(sender_id, new_sender_balance);
-                    } else {
-                        env::panic_str("Sender balance overflow");
-                    }
+                    let new_sender_balance = sender_balance
+                        .checked_add(refund_amount)
+                        .ok_or(ERR_BALANCE_OVERFLOW)
+                        .sdk_unwrap();
+                    self.accounts_insert(sender_id, new_sender_balance);
 
                     FtTransfer {
                         old_owner_id: receiver_id,

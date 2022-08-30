@@ -1,7 +1,10 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::json_types::Base64VecU8;
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{ext_contract, require};
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    ext_contract,
+    json_types::Base64VecU8,
+    require,
+    serde::{Deserialize, Serialize},
+};
 
 pub const FT_METADATA_SPEC: &str = "ft-1.0.0";
 

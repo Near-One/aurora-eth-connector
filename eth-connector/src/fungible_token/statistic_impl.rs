@@ -1,5 +1,4 @@
-use crate::fungible_token::statistic::FungibleTokeStatistic;
-use crate::FungibleToken;
+use crate::{fungible_token::statistic::FungibleTokeStatistic, FungibleToken};
 use near_sdk::json_types::U64;
 
 impl FungibleTokeStatistic for FungibleToken {

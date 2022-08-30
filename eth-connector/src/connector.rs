@@ -1,8 +1,10 @@
-use crate::connector_impl::FinishDepositCallArgs;
-use crate::WithdrawResult;
+use crate::{connector_impl::FinishDepositCallArgs, WithdrawResult};
 use aurora_engine_types::types::{Address, NEP141Wei};
-use near_sdk::json_types::{Base64VecU8, U128};
-use near_sdk::{borsh, ext_contract, Promise, PromiseOrValue};
+use near_sdk::{
+    borsh, ext_contract,
+    json_types::{Base64VecU8, U128},
+    Promise, PromiseOrValue,
+};
 
 #[ext_contract(ext_deposit)]
 pub trait ConnectorDeposit {

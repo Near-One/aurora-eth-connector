@@ -1,14 +1,19 @@
-use crate::admin_controlled::PAUSE_DEPOSIT;
-use crate::connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit};
-use crate::deposit_event::{DepositedEvent, TokenMessageData};
-use crate::proof::Proof;
-use crate::types::SdkUnwrap;
-use crate::{log, AdminControlled, PausedMask};
+use crate::{
+    admin_controlled::PAUSE_DEPOSIT,
+    connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit},
+    deposit_event::{DepositedEvent, TokenMessageData},
+    log,
+    proof::Proof,
+    types::SdkUnwrap,
+    AdminControlled, PausedMask,
+};
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::env::panic_str;
-use near_sdk::json_types::Base64VecU8;
-use near_sdk::{env, AccountId, Gas, Promise};
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    env::{self, panic_str},
+    json_types::Base64VecU8,
+    AccountId, Gas, Promise,
+};
 
 /// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
 pub const GAS_FOR_FINISH_DEPOSIT: Gas = Gas(50_000_000_000_000);

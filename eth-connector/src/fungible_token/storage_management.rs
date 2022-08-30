@@ -1,7 +1,9 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::json_types::U128;
-use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::AccountId;
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    json_types::U128,
+    serde::{Deserialize, Serialize},
+    AccountId,
+};
 
 #[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]

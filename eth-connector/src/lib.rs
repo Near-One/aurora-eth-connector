@@ -3,11 +3,11 @@ use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
-use crate::fungible_token::receiver::FungibleTokenReceiver;
 use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
     metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider},
+    receiver::FungibleTokenReceiver,
     resolver::FungibleTokenResolver,
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
@@ -15,12 +15,12 @@ use crate::fungible_token::{
 use crate::proof::Proof;
 use crate::types::SdkUnwrap;
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
-use near_sdk::env::panic_str;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
+    env::panic_str,
     json_types::Base64VecU8,
     json_types::{U128, U64},
     near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
@@ -284,8 +284,6 @@ impl ConnectorFundsFinish for EthConnectorContract {
             panic_str(errors::ERR_VERIFY_PROOF);
         }
 
-        let _current_account_id = env::current_account_id();
-        let _predecessor_account_id = env::predecessor_account_id();
         log!(format!(
             "Finish deposit with the amount: {}",
             deposit_call.amount

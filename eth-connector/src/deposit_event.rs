@@ -1,12 +1,14 @@
-use crate::deposit_event::error::ParseEventMessageError;
 use crate::log_entry::LogEntry;
-use aurora_engine_types::types::address::error::AddressError;
-use aurora_engine_types::types::{Address, Fee, NEP141Wei};
-use aurora_engine_types::U256;
+use aurora_engine_types::{
+    types::{address::error::AddressError, Address, Fee, NEP141Wei},
+    U256,
+};
 use byte_slice_cast::AsByteSlice;
 use ethabi::{Event, EventParam, Hash, Log, ParamType, RawLog};
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::AccountId;
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    AccountId,
+};
 
 pub const DEPOSITED_EVENT: &str = "Deposited";
 
@@ -83,7 +85,7 @@ impl FtTransferMessageData {
         relayer_account_id: &AccountId,
         fee: Fee,
         recipient: String,
-    ) -> Result<Self, ParseEventMessageError> {
+    ) -> Result<Self, error::ParseEventMessageError> {
         // The first data section should contain fee data.
         // Pay attention, that for compatibility reasons we used U256 type
         // it means 32 bytes for fee data
@@ -93,19 +95,18 @@ impl FtTransferMessageData {
         let address = if recipient.len() == 42 {
             recipient
                 .strip_prefix("0x")
-                .ok_or(ParseEventMessageError::EthAddressValidationError(
+                .ok_or(error::ParseEventMessageError::EthAddressValidationError(
                     AddressError::FailedDecodeHex,
                 ))?
                 .to_string()
         } else {
             recipient
         };
-        let recipient_address =
-            Address::decode(&address).map_err(ParseEventMessageError::EthAddressValidationError)?;
+        let recipient_address = Address::decode(&address)
+            .map_err(error::ParseEventMessageError::EthAddressValidationError)?;
         // Second data section should contain Eth address
         data.extend(recipient_address.as_bytes());
-        // Add `:` separator between relayer_id and data message
-        //Ok([relayer_account_id.as_ref(), &hex::encode(data)].join(":"))
+
         Ok(Self {
             relayer: relayer_account_id.clone(),
             recipient: recipient_address,
