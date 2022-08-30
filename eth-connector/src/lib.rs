@@ -253,7 +253,8 @@ impl ConnectorWithdraw for EthConnectorContract {
             .sdk_unwrap();
         // Burn tokens to recipient
         self.ft
-            .internal_withdraw_eth_from_near(&predecessor_account_id, amount);
+            .internal_withdraw_eth_from_near(&predecessor_account_id, amount)
+            .sdk_unwrap();
         WithdrawResult {
             recipient_id: recipient_address,
             amount,

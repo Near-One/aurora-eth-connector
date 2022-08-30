@@ -5,17 +5,15 @@ use super::{
     resolver::{ext_ft_resolver, FungibleTokenResolver},
 };
 use crate::{
-    connector_impl::TransferCallCallArgs,
-    deposit_event::FtTransferMessageData,
-    errors::{ERR_ACCOUNTS_COUNTER_OVERFLOW, ERR_ACCOUNT_NOT_REGISTERED},
-    wei::Wei,
-    {FinishDepositCallArgs, SdkUnwrap},
+    deposit_event::FtTransferMessageData, errors::ERR_ACCOUNTS_COUNTER_OVERFLOW, wei::Wei,
+    SdkUnwrap,
 };
 use aurora_engine_types::{
     types::{Address, NEP141Wei, ZERO_NEP141_WEI},
     U256,
 };
 
+use crate::errors::ERR_TOTAL_SUPPLY_OVERFLOW;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -28,8 +26,6 @@ use near_sdk::{
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
 const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.0);
-
-const ERR_TOTAL_SUPPLY_OVERFLOW: &str = "Total supply overflow";
 
 /// Implementation of a FungibleToken standard.
 /// Allows to include NEP-141 compatible token to any contract.
@@ -99,20 +95,6 @@ impl FungibleToken {
         self.used_proofs.contains_key(&key.to_string())
     }
 
-    /// Finish deposit (private method)
-    /// NOTE: we should `record_proof` only after `mint` operation. The reason
-    /// is that in this case we only calculate the amount to be credited but
-    /// do not save it, however, if an error occurs during the calculation,
-    /// this will happen before `record_proof`. After that contract will save.
-    pub fn finish_deposit(
-        &mut self,
-        _data: FinishDepositCallArgs,
-    ) -> Result<Option<TransferCallCallArgs>, error::FinishDepositError> {
-        let _current_account_id = env::current_account_id();
-        let _predecessor_account_id = env::predecessor_account_id();
-        Ok(None)
-    }
-
     ///  Mint nETH tokens
     pub fn mint_eth_on_near(
         &mut self,
@@ -124,41 +106,48 @@ impl FungibleToken {
         if self.get_account_eth_balance(&owner_id).is_none() {
             self.accounts_insert(&owner_id, ZERO_NEP141_WEI);
         }
-        self.internal_deposit_eth_to_near(&owner_id, amount);
-
-        Ok(())
+        self.internal_deposit_eth_to_near(&owner_id, amount)
     }
 
     /// Internal ETH deposit to NEAR - nETH (NEP-141)
-    pub fn internal_deposit_eth_to_near(&mut self, account_id: &AccountId, amount: NEP141Wei) {
+    pub fn internal_deposit_eth_to_near(
+        &mut self,
+        account_id: &AccountId,
+        amount: NEP141Wei,
+    ) -> Result<(), error::DepositError> {
         let balance = self
             .get_account_eth_balance(account_id)
             .unwrap_or(ZERO_NEP141_WEI);
-        if let Some(new_balance) = balance.checked_add(amount) {
-            self.accounts_insert(account_id, new_balance);
-            self.total_eth_supply_on_near = self
-                .total_eth_supply_on_near
-                .checked_add(amount)
-                .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
-        } else {
-            env::panic_str("Balance overflow");
-        }
+        let new_balance = balance
+            .checked_add(amount)
+            .ok_or(error::DepositError::BalanceOverflow)?;
+
+        self.accounts_insert(account_id, new_balance);
+        self.total_eth_supply_on_near = self
+            .total_eth_supply_on_near
+            .checked_add(amount)
+            .ok_or(error::DepositError::TotalSupplyOverflow)?;
+        Ok(())
     }
 
     /// Withdraw NEAR tokens
-    pub fn internal_withdraw_eth_from_near(&mut self, account_id: &AccountId, amount: NEP141Wei) {
+    pub fn internal_withdraw_eth_from_near(
+        &mut self,
+        account_id: &AccountId,
+        amount: NEP141Wei,
+    ) -> Result<(), error::WithdrawError> {
         let balance = self
             .get_account_eth_balance(account_id)
-            .unwrap_or_else(|| env::panic_str(ERR_ACCOUNT_NOT_REGISTERED));
-        if let Some(new_balance) = balance.checked_sub(amount) {
-            self.accounts_insert(account_id, new_balance);
-            self.total_eth_supply_on_near = self
-                .total_eth_supply_on_near
-                .checked_sub(amount)
-                .unwrap_or_else(|| env::panic_str(ERR_TOTAL_SUPPLY_OVERFLOW));
-        } else {
-            env::panic_str("The account doesn't have enough balance");
-        }
+            .unwrap_or(ZERO_NEP141_WEI);
+        let new_balance = balance
+            .checked_sub(amount)
+            .ok_or(error::WithdrawError::InsufficientFunds)?;
+        self.accounts_insert(account_id, new_balance);
+        self.total_eth_supply_on_near = self
+            .total_eth_supply_on_near
+            .checked_sub(amount)
+            .ok_or(error::WithdrawError::TotalSupplyUnderflow)?;
+        Ok(())
     }
 
     /// Insert account.
@@ -168,7 +157,8 @@ impl FungibleToken {
             self.statistics_aurora_accounts_counter = self
                 .statistics_aurora_accounts_counter
                 .checked_add(1)
-                .unwrap_or_else(|| env::panic_str(ERR_ACCOUNTS_COUNTER_OVERFLOW));
+                .ok_or(ERR_ACCOUNTS_COUNTER_OVERFLOW)
+                .sdk_unwrap();
         }
         self.accounts_eth.insert(account_id, &amount);
     }
@@ -191,15 +181,13 @@ impl FungibleToken {
         receiver_id: &AccountId,
         amount: NEP141Wei,
         memo: Option<String>,
-    ) {
-        require!(
-            sender_id != receiver_id,
-            "Sender and receiver should be different"
-        );
-        require!(
-            amount > ZERO_NEP141_WEI,
-            "The amount should be a positive number"
-        );
+    ) -> Result<(), error::TransferError> {
+        if sender_id == receiver_id {
+            return Err(error::TransferError::SelfTransfer);
+        }
+        if amount == ZERO_NEP141_WEI {
+            return Err(error::TransferError::ZeroAmount);
+        }
 
         // Check is account receiver_id exist
         if !self.accounts_eth.contains_key(receiver_id) {
@@ -208,8 +196,8 @@ impl FungibleToken {
             // if it does not exist.
             self.accounts_insert(receiver_id, ZERO_NEP141_WEI);
         }
-        self.internal_withdraw_eth_from_near(sender_id, amount);
-        self.internal_deposit_eth_to_near(receiver_id, amount);
+        self.internal_withdraw_eth_from_near(sender_id, amount)?;
+        self.internal_deposit_eth_to_near(receiver_id, amount)?;
 
         log!(format!(
             "Transfer {} from {} to {}",
@@ -227,6 +215,7 @@ impl FungibleToken {
             memo: memo.as_deref(),
         }
         .emit();
+        Ok(())
     }
 
     /// Balance of nETH (ETH on NEAR token)
@@ -258,12 +247,15 @@ impl FungibleToken {
     }
 
     /// Withdraw ETH tokens
-    pub fn internal_withdraw_eth_from_aurora(&mut self, amount: Wei) {
+    pub fn internal_withdraw_eth_from_aurora(
+        &mut self,
+        amount: Wei,
+    ) -> Result<(), error::WithdrawError> {
         self.total_eth_supply_on_aurora = self
             .total_eth_supply_on_aurora
             .checked_sub(amount)
-            .ok_or("TotalSupplyUnderflow")
-            .sdk_unwrap();
+            .ok_or(error::WithdrawError::TotalSupplyUnderflow)?;
+        Ok(())
     }
 
     ///  Mint ETH tokens
@@ -281,8 +273,13 @@ impl FungibleToken {
     }
 
     /// Burn ETH tokens
-    pub fn burn_eth_on_aurora(&mut self, amount: Wei) {
+    pub fn burn_eth_on_aurora(&mut self, amount: Wei) -> Result<(), error::WithdrawError> {
         self.internal_withdraw_eth_from_aurora(amount)
+    }
+
+    /// Internal ETH withdraw ETH logic
+    pub fn internal_remove_eth(&mut self, amount: Wei) -> Result<(), error::WithdrawError> {
+        self.burn_eth_on_aurora(amount)
     }
 
     /// ft_on_transfer callback function
@@ -326,7 +323,8 @@ impl FungibleTokenCore for FungibleToken {
             &receiver_id,
             NEP141Wei::new(amount),
             memo.clone(),
-        );
+        )
+        .sdk_unwrap();
         log!(format!(
             "Transfer amount {} to {} success with memo: {:?}",
             amount, receiver_id, memo
@@ -379,7 +377,8 @@ impl FungibleTokenCore for FungibleToken {
                 &receiver_id,
                 NEP141Wei::new(amount.0),
                 memo,
-            );
+            )
+            .sdk_unwrap();
         }
         let receiver_gas = env::prepaid_gas()
             .0
@@ -579,6 +578,16 @@ pub mod error {
                 Self::TotalSupplyUnderflow => ERR_TOTAL_SUPPLY_UNDERFLOW,
                 Self::InsufficientFunds => ERR_NOT_ENOUGH_BALANCE,
                 Self::BalanceOverflow(e) => e.as_ref(),
+            }
+        }
+    }
+
+    impl From<WithdrawError> for TransferError {
+        fn from(err: WithdrawError) -> Self {
+            match err {
+                WithdrawError::InsufficientFunds => Self::InsufficientFunds,
+                WithdrawError::TotalSupplyUnderflow => Self::TotalSupplyUnderflow,
+                WithdrawError::BalanceOverflow(_) => Self::BalanceOverflow,
             }
         }
     }
