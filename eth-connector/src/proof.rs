@@ -1,7 +1,8 @@
 use crate::{errors::ERR_BORSH_SERIALIZE, types::SdkUnwrap};
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::serde::Deserialize;
 
-#[derive(Debug, Default, BorshDeserialize, BorshSerialize, Clone)]
+#[derive(Debug, Default, BorshDeserialize, BorshSerialize, Deserialize, Clone)]
 pub struct Proof {
     pub log_index: u64,
     pub log_entry_data: Vec<u8>,
