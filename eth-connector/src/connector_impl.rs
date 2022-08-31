@@ -12,9 +12,7 @@ use crate::{
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env::{self},
-    json_types::Base64VecU8,
-    AccountId, Gas, Promise,
+    env, AccountId, Gas, Promise,
 };
 
 /// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
@@ -74,7 +72,7 @@ impl AdminControlled for EthConnector {
 }
 
 impl ConnectorDeposit for EthConnector {
-    fn deposit(&self, raw_proof: Base64VecU8) -> Promise {
+    fn deposit(&self, raw_proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
         let predecessor_account_id = env::predecessor_account_id();
         // Check is current account owner
@@ -83,9 +81,10 @@ impl ConnectorDeposit for EthConnector {
         self.assert_not_paused(PAUSE_DEPOSIT, is_owner).sdk_unwrap();
 
         log!("[Deposit tokens]");
-        let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof.clone()).as_slice())
-            .map_err(|_| FtDepositError::ProofParseFailed)
-            .sdk_unwrap();
+        // let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof.clone()).as_slice())
+        //     .map_err(|_| FtDepositError::ProofParseFailed)
+        //     .sdk_unwrap();
+        let proof = raw_proof.clone();
 
         // Fetch event data from Proof
         let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
@@ -120,11 +119,11 @@ impl ConnectorDeposit for EthConnector {
 
         // Do not skip bridge call. This is only used for development and diagnostics.
         let skip_bridge_call = false.try_to_vec().unwrap();
-        let mut proof_to_verify = raw_proof.0;
+        let mut proof_to_verify = raw_proof.try_to_vec().unwrap();
         proof_to_verify.extend(skip_bridge_call);
 
         // Finalize deposit
-        let finish_deposit_data = match event.token_message_data {
+        let _finish_deposit_data = match event.token_message_data {
             // Deposit to NEAR accounts
             TokenMessageData::Near(account_id) => FinishDepositCallArgs {
                 new_owner_id: account_id,
@@ -167,10 +166,10 @@ impl ConnectorDeposit for EthConnector {
         ext_proof_verifier::ext(self.prover_account.clone())
             .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
             .verify_log_entry(proof_to_verify.into())
-            .then(
-                ext_funds_finish::ext(current_account_id)
-                    .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
-                    .finish_deposit(finish_deposit_data),
-            )
+        // .then(
+        //     ext_funds_finish::ext(current_account_id)
+        //         .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
+        //         .finish_deposit(finish_deposit_data),
+        // )
     }
 }

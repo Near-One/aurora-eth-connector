@@ -156,6 +156,8 @@ args = [
     "test",
     "--features",
     "${CARGO_FEATURES_TEST}",
+    "--",
+    "--nocapture"
 ]
 
 [tasks.test-flow]

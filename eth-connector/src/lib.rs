@@ -21,7 +21,6 @@ use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
-    json_types::Base64VecU8,
     json_types::{U128, U64},
     near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
 };
@@ -103,6 +102,13 @@ impl EthConnectorContract {
 
     pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
         self.ft.is_used_event(&proof.get_key())
+    }
+
+    #[cfg(feature = "integration-test")]
+    #[result_serializer(borsh)]
+    pub fn verify_log_entry() -> bool {
+        log!("Call from verify_log_entry");
+        true
     }
 }
 
@@ -265,7 +271,7 @@ impl ConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl ConnectorDeposit for EthConnectorContract {
-    fn deposit(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise {
+    fn deposit(&self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
         self.connector.deposit(raw_proof)
     }
 }

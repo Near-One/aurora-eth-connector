@@ -1,4 +1,4 @@
-use crate::{connector_impl::FinishDepositCallArgs, WithdrawResult};
+use crate::{connector_impl::FinishDepositCallArgs, Proof, WithdrawResult};
 use aurora_engine_types::types::{Address, NEP141Wei};
 use near_sdk::{
     borsh, ext_contract,
@@ -8,7 +8,7 @@ use near_sdk::{
 
 #[ext_contract(ext_deposit)]
 pub trait ConnectorDeposit {
-    fn deposit(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> Promise;
+    fn deposit(&self, #[serializer(borsh)] raw_proof: Proof) -> Promise;
 }
 
 #[ext_contract(ext_withdraw)]
