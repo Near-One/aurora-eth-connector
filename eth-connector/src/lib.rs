@@ -1,5 +1,3 @@
-extern crate core;
-
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw};
 use crate::connector_impl::{
@@ -65,7 +63,6 @@ enum StorageKey {
 impl EthConnectorContract {
     #[init]
     pub fn new(
-        owner_id: AccountId,
         prover_account: AccountId,
         eth_custodian_address: String,
         metadata: FungibleTokenMetadata,
@@ -80,6 +77,7 @@ impl EthConnectorContract {
             paused_mask,
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
         };
+        let owner_id = env::current_account_id();
         let mut this = Self {
             ft: FungibleToken::new(
                 StorageKey::FungibleTokenEth,

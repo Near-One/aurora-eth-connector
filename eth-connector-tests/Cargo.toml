@@ -12,14 +12,14 @@ license = "GPL-3.0"
 publish = false
 autobenches = false
 
-[dependencies]
+[dev-dependencies]
 aurora-eth-connector = { path = "../eth-connector" }
 anyhow = "1.0"
-near-sdk = "4.0.0"
-near-primitives = "0.5.0"
-near-units = "0.2.0"
+near-sdk = "4.0"
+near-primitives = "0.5"
+near-units = "0.2"
 tokio = { version = "1.14", features = ["full"] }
-workspaces = "0.3.1"
+workspaces = "0.4"
 
 [features]
 mainnet-test = []
