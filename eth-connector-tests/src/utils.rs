@@ -11,6 +11,8 @@ pub const PROOF_DATA_NEAR: &str = r#"{"log_index":0,"log_entry_data":[248,251,14
 pub const DEPOSITED_RECIPIENT: &str = "eth_recipient.root";
 pub const CUSTODIAN_ADDRESS: &str = "096DE9C2B8A5B8c22cEe3289B101f6960d68E51E";
 pub const DEFAULT_GAS: u64 = 300_000_000_000_000;
+pub const DEPOSITED_AMOUNT: u128 = 800400;
+pub const DEPOSITED_FEE: u128 = 400;
 
 pub struct TestContract {
     pub contract: Contract,
@@ -96,11 +98,45 @@ pub fn print_logs(res: CallExecutionDetails) {
 pub async fn get_eth_on_near_balance(
     worker: &Worker<impl Network>,
     contract: &Contract,
-    account: AccountId,
+    account: &AccountId,
 ) -> anyhow::Result<U128> {
     contract
         .call(&worker, "ft_balance_of")
         .args_json((account,))?
+        .view()
+        .await?
+        .json::<U128>()
+}
+
+pub async fn total_supply(
+    worker: &Worker<impl Network>,
+    contract: &Contract,
+) -> anyhow::Result<U128> {
+    contract
+        .call(&worker, "ft_total_supply")
+        .view()
+        .await?
+        .json::<U128>()
+}
+
+pub async fn total_eth_supply_on_aurora(
+    worker: &Worker<impl Network>,
+    contract: &Contract,
+) -> anyhow::Result<u128> {
+    let res = contract
+        .call(&worker, "ft_total_eth_supply_on_aurora")
+        .view()
+        .await?
+        .json::<String>()?;
+    Ok(res.parse().unwrap())
+}
+
+pub async fn total_eth_supply_on_near(
+    worker: &Worker<impl Network>,
+    contract: &Contract,
+) -> anyhow::Result<U128> {
+    contract
+        .call(&worker, "ft_total_eth_supply_on_near")
         .view()
         .await?
         .json::<U128>()
