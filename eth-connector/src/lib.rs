@@ -242,6 +242,7 @@ impl AdminControlled for EthConnectorContract {
 
 #[near_bindgen]
 impl ConnectorWithdraw for EthConnectorContract {
+    #[payable]
     #[result_serializer(borsh)]
     fn withdraw(
         &mut self,

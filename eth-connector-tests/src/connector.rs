@@ -1,8 +1,10 @@
 use crate::utils::{
     call_deposit_eth_to_near, get_eth_on_near_balance, total_eth_supply_on_aurora,
-    total_eth_supply_on_near, total_supply, TestContract, DEFAULT_GAS, DEPOSITED_AMOUNT,
-    DEPOSITED_FEE, DEPOSITED_RECIPIENT,
+    total_eth_supply_on_near, total_supply, validate_eth_address, TestContract, CUSTODIAN_ADDRESS,
+    DEFAULT_GAS, DEPOSITED_AMOUNT, DEPOSITED_FEE, DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
 };
+use aurora_engine_types::types::NEP141Wei;
+use aurora_eth_connector::connector_impl::WithdrawResult;
 use near_sdk::ONE_YOCTO;
 use workspaces::AccountId;
 
@@ -23,7 +25,6 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_success());
-    super::utils::print_logs(res);
 
     let balance = get_eth_on_near_balance(&worker, &contract.contract, &receiver_id).await?;
     assert_eq!(
@@ -43,6 +44,44 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
 
     let balance = total_eth_supply_on_near(&worker, &contract.contract).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
+    let worker = TestContract::worker().await?;
+    let contract = TestContract::new(&worker).await?;
+    call_deposit_eth_to_near(&worker, &contract.contract).await?;
+
+    let withdraw_amount = NEP141Wei::new(100);
+    let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let res = contract
+        .contract
+        .call(&worker, "withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))?
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+
+    let balance =
+        get_eth_on_near_balance(&worker, &contract.contract, &contract.contract.id()).await?;
+    assert_eq!(balance.0, DEPOSITED_FEE - withdraw_amount.as_u128());
+
+    let balance = get_eth_on_near_balance(&worker, &contract.contract, &receiver_id).await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE as u128);
+
+    let balance = total_supply(&worker, &contract.contract).await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - withdraw_amount.as_u128());
 
     Ok(())
 }

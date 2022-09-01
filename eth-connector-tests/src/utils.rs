@@ -1,3 +1,4 @@
+use aurora_engine_types::types::Address;
 use aurora_eth_connector::fungible_token::metadata::FungibleTokenMetadata;
 use aurora_eth_connector::proof::Proof;
 use near_sdk::json_types::U128;
@@ -13,6 +14,7 @@ pub const CUSTODIAN_ADDRESS: &str = "096DE9C2B8A5B8c22cEe3289B101f6960d68E51E";
 pub const DEFAULT_GAS: u64 = 300_000_000_000_000;
 pub const DEPOSITED_AMOUNT: u128 = 800400;
 pub const DEPOSITED_FEE: u128 = 400;
+pub const RECIPIENT_ETH_ADDRESS: &str = "891b2749238b27ff58e951088e55b04de71dc374";
 
 pub struct TestContract {
     pub contract: Contract,
@@ -85,7 +87,6 @@ pub async fn call_deposit_eth_to_near(
         .transact()
         .await?;
     assert!(res.is_success());
-    print_logs(res);
     Ok(())
 }
 
@@ -140,4 +141,8 @@ pub async fn total_eth_supply_on_near(
         .view()
         .await?
         .json::<U128>()
+}
+
+pub fn validate_eth_address(address: &str) -> Address {
+    Address::decode(address).unwrap()
 }

@@ -233,6 +233,7 @@ name = "aurora-eth-connector-tests"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "aurora-engine-types",
  "aurora-eth-connector",
  "near-primitives 0.5.0",
  "near-sdk",
