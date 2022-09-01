@@ -1,10 +1,9 @@
-use crate::errors::ERR_BORSH_SERIALIZE;
 use crate::fungible_token::core_impl::error::FtDepositError;
 use crate::{
     admin_controlled::PAUSE_DEPOSIT,
     connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit},
     deposit_event::{DepositedEvent, TokenMessageData},
-    log, panic_err,
+    errors, log, panic_err,
     proof::Proof,
     types::SdkUnwrap,
     AdminControlled, PausedMask,
@@ -123,7 +122,7 @@ impl ConnectorDeposit for EthConnector {
         proof_to_verify.extend(skip_bridge_call);
 
         // Finalize deposit
-        let _finish_deposit_data = match event.token_message_data {
+        let finish_deposit_data = match event.token_message_data {
             // Deposit to NEAR accounts
             TokenMessageData::Near(account_id) => FinishDepositCallArgs {
                 new_owner_id: account_id,
@@ -148,7 +147,7 @@ impl ConnectorDeposit for EthConnector {
                     msg: message.encode(),
                 }
                 .try_to_vec()
-                .map_err(|_| ERR_BORSH_SERIALIZE)
+                .map_err(|_| errors::ERR_BORSH_SERIALIZE)
                 .sdk_unwrap();
 
                 // Send to self - current account id
@@ -166,10 +165,10 @@ impl ConnectorDeposit for EthConnector {
         ext_proof_verifier::ext(self.prover_account.clone())
             .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
             .verify_log_entry(proof_to_verify.into())
-        // .then(
-        //     ext_funds_finish::ext(current_account_id)
-        //         .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
-        //         .finish_deposit(finish_deposit_data),
-        // )
+            .then(
+                ext_funds_finish::ext(current_account_id)
+                    .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
+                    .finish_deposit(finish_deposit_data),
+            )
     }
 }
