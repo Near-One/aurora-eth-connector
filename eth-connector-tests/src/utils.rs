@@ -34,7 +34,7 @@ impl TestContract {
         let res = contract
             .call(worker, "new")
             .args_json((prover_account, eth_custodian_address, metadata))?
-            .gas(300_000_000_000_000)
+            .gas(DEFAULT_GAS)
             .transact()
             .await?;
         assert!(res.is_success());
@@ -46,7 +46,7 @@ impl TestContract {
             .transact()
             .await?
             .into_result()?;
-        //Self::register_user(worker, &contract, aurora_account.id()).await?;
+        // contract.register_user(worker, &contract, aurora_account.id()).await?;
 
         Ok(Self {
             contract,
@@ -59,88 +59,115 @@ impl TestContract {
     }
 
     pub async fn register_user(
+        &self,
         worker: &Worker<impl Network>,
-        contract: &Contract,
         account_id: &AccountId,
     ) -> anyhow::Result<()> {
-        let res = contract
+        let res = self
+            .contract
             .call(worker, "storage_deposit")
             .args_json((account_id, Option::<bool>::None))?
-            .gas(300_000_000_000_000)
+            .gas(DEFAULT_GAS)
             .deposit(near_sdk::env::storage_byte_cost() * 125)
             .transact()
             .await?;
         assert!(res.is_success());
         Ok(())
     }
-}
 
-pub async fn call_deposit_eth_to_near(
-    worker: &Worker<impl Network>,
-    contract: &Contract,
-) -> anyhow::Result<()> {
-    let proof: Proof = serde_json::from_str(PROOF_DATA_NEAR).unwrap();
-    let res = contract
-        .call(worker, "deposit")
-        .args_borsh(proof)?
-        .gas(300_000_000_000_000)
-        .transact()
-        .await?;
-    assert!(res.is_success());
-    Ok(())
+    pub async fn assert_proof_was_used(
+        &self,
+        worker: &Worker<impl Network>,
+        proof: &str,
+    ) -> anyhow::Result<()> {
+        let is_used_proof = self.call_is_used_proof(worker, proof).await?;
+        assert!(
+            is_used_proof,
+            "Expected not to fail because the proof should have been already used",
+        );
+        Ok(())
+    }
+
+    pub async fn call_is_used_proof(
+        &self,
+        worker: &Worker<impl Network>,
+        proof: &str,
+    ) -> anyhow::Result<bool> {
+        let proof: Proof = serde_json::from_str(proof).unwrap();
+        self.contract
+            .call(&worker, "is_used_proof")
+            .args_borsh(proof)?
+            .view()
+            .await?
+            .borsh::<bool>()
+    }
+
+    pub async fn total_eth_supply_on_near(
+        &self,
+        worker: &Worker<impl Network>,
+    ) -> anyhow::Result<U128> {
+        self.contract
+            .call(&worker, "ft_total_eth_supply_on_near")
+            .view()
+            .await?
+            .json::<U128>()
+    }
+
+    pub async fn call_deposit_eth_to_near(
+        &self,
+        worker: &Worker<impl Network>,
+    ) -> anyhow::Result<()> {
+        let proof: Proof = serde_json::from_str(PROOF_DATA_NEAR).unwrap();
+        let res = self
+            .contract
+            .call(worker, "deposit")
+            .args_borsh(proof)?
+            .gas(DEFAULT_GAS)
+            .transact()
+            .await?;
+        assert!(res.is_success());
+        Ok(())
+    }
+
+    pub async fn get_eth_on_near_balance(
+        &self,
+        worker: &Worker<impl Network>,
+        account: &AccountId,
+    ) -> anyhow::Result<U128> {
+        self.contract
+            .call(&worker, "ft_balance_of")
+            .args_json((account,))?
+            .view()
+            .await?
+            .json::<U128>()
+    }
+
+    pub async fn total_supply(&self, worker: &Worker<impl Network>) -> anyhow::Result<U128> {
+        self.contract
+            .call(&worker, "ft_total_supply")
+            .view()
+            .await?
+            .json::<U128>()
+    }
+
+    pub async fn total_eth_supply_on_aurora(
+        &self,
+        worker: &Worker<impl Network>,
+    ) -> anyhow::Result<u128> {
+        let res = self
+            .contract
+            .call(&worker, "ft_total_eth_supply_on_aurora")
+            .view()
+            .await?
+            .json::<String>()?;
+        Ok(res.parse().unwrap())
+    }
 }
 
 pub fn print_logs(res: CallExecutionDetails) {
     for log in res.logs().iter() {
         println!("\t[LOG] {}", log);
     }
-}
-
-pub async fn get_eth_on_near_balance(
-    worker: &Worker<impl Network>,
-    contract: &Contract,
-    account: &AccountId,
-) -> anyhow::Result<U128> {
-    contract
-        .call(&worker, "ft_balance_of")
-        .args_json((account,))?
-        .view()
-        .await?
-        .json::<U128>()
-}
-
-pub async fn total_supply(
-    worker: &Worker<impl Network>,
-    contract: &Contract,
-) -> anyhow::Result<U128> {
-    contract
-        .call(&worker, "ft_total_supply")
-        .view()
-        .await?
-        .json::<U128>()
-}
-
-pub async fn total_eth_supply_on_aurora(
-    worker: &Worker<impl Network>,
-    contract: &Contract,
-) -> anyhow::Result<u128> {
-    let res = contract
-        .call(&worker, "ft_total_eth_supply_on_aurora")
-        .view()
-        .await?
-        .json::<String>()?;
-    Ok(res.parse().unwrap())
-}
-
-pub async fn total_eth_supply_on_near(
-    worker: &Worker<impl Network>,
-    contract: &Contract,
-) -> anyhow::Result<U128> {
-    contract
-        .call(&worker, "ft_total_eth_supply_on_near")
-        .view()
-        .await?
-        .json::<U128>()
 }
 
 pub fn validate_eth_address(address: &str) -> Address {

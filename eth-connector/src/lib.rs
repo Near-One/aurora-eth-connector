@@ -100,6 +100,7 @@ impl EthConnectorContract {
         crate::log!(format!("Account @{} burned {}", account_id, amount));
     }
 
+    #[result_serializer(borsh)]
     pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
         self.ft.is_used_event(&proof.get_key())
     }
