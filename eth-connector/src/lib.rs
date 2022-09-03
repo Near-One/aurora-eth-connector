@@ -50,7 +50,6 @@ pub struct EthConnectorContract {
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
-#[allow(dead_code)]
 enum StorageKey {
     FungibleTokenEth = 0x1,
     Proof = 0x2,
@@ -128,6 +127,7 @@ impl FungibleTokenCore for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        assert_one_yocto();
         self.ft.ft_transfer_call(receiver_id, amount, memo, msg)
     }
 
@@ -273,7 +273,7 @@ impl ConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl ConnectorDeposit for EthConnectorContract {
-    fn deposit(&self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
+    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
         self.connector.deposit(raw_proof)
     }
 }
@@ -281,6 +281,7 @@ impl ConnectorDeposit for EthConnectorContract {
 #[near_bindgen]
 impl ConnectorFundsFinish for EthConnectorContract {
     #[private]
+    #[payable]
     fn finish_deposit(
         &mut self,
         #[serializer(borsh)] deposit_call: FinishDepositCallArgs,

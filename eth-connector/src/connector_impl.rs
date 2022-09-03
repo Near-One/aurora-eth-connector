@@ -11,7 +11,7 @@ use crate::{
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, AccountId, Gas, Promise,
+    env, AccountId, Gas, Promise, ONE_YOCTO,
 };
 
 /// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
@@ -71,7 +71,7 @@ impl AdminControlled for EthConnector {
 }
 
 impl ConnectorDeposit for EthConnector {
-    fn deposit(&self, raw_proof: Proof) -> Promise {
+    fn deposit(&mut self, raw_proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
         let predecessor_account_id = env::predecessor_account_id();
         // Check is current account owner
@@ -80,9 +80,6 @@ impl ConnectorDeposit for EthConnector {
         self.assert_not_paused(PAUSE_DEPOSIT, is_owner).sdk_unwrap();
 
         log!("[Deposit tokens]");
-        // let proof: Proof = Proof::try_from_slice(Vec::from(raw_proof.clone()).as_slice())
-        //     .map_err(|_| FtDepositError::ProofParseFailed)
-        //     .sdk_unwrap();
         let proof = raw_proof.clone();
 
         // Fetch event data from Proof
@@ -168,6 +165,7 @@ impl ConnectorDeposit for EthConnector {
             .then(
                 ext_funds_finish::ext(current_account_id)
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
+                    .with_attached_deposit(ONE_YOCTO)
                     .finish_deposit(finish_deposit_data),
             )
     }

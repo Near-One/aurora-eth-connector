@@ -8,7 +8,7 @@ use near_sdk::{
 
 #[ext_contract(ext_deposit)]
 pub trait ConnectorDeposit {
-    fn deposit(&self, #[serializer(borsh)] raw_proof: Proof) -> Promise;
+    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise;
 }
 
 #[ext_contract(ext_withdraw)]

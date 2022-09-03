@@ -1,6 +1,6 @@
 use crate::utils::{
     validate_eth_address, TestContract, CUSTODIAN_ADDRESS, DEFAULT_GAS, DEPOSITED_AMOUNT,
-    DEPOSITED_FEE, DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
+    DEPOSITED_FEE, DEPOSITED_RECIPIENT, PROOF_DATA_ETH, PROOF_DATA_NEAR, RECIPIENT_ETH_ADDRESS,
 };
 use aurora_engine_types::types::NEP141Wei;
 use aurora_eth_connector::connector_impl::WithdrawResult;
@@ -96,6 +96,9 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
     let worker = TestContract::worker().await?;
     let contract = TestContract::new(&worker).await?;
     contract.call_deposit_eth_to_near(&worker).await?;
+    contract
+        .assert_proof_was_used(&worker, PROOF_DATA_NEAR)
+        .await?;
 
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let balance = contract
@@ -122,5 +125,11 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()> {
+    let worker = TestContract::worker().await?;
+    let contract = TestContract::new(&worker).await?;
+    contract.call_deposit_eth_to_aurora(&worker).await?;
+    // contract
+    //     .assert_proof_was_used(&worker, PROOF_DATA_ETH)
+    //     .await?;
     Ok(())
 }

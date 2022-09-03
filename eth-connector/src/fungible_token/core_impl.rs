@@ -342,7 +342,6 @@ impl FungibleTokenCore for FungibleToken {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        assert_one_yocto();
         require!(
             env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
             ERR_MORE_GAS_REQUIRED
