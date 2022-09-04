@@ -11,7 +11,7 @@ use crate::{
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, AccountId, Gas, Promise, ONE_YOCTO,
+    env, AccountId, Gas, Promise,
 };
 
 /// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
@@ -165,7 +165,6 @@ impl ConnectorDeposit for EthConnector {
             .then(
                 ext_funds_finish::ext(current_account_id)
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
-                    .with_attached_deposit(ONE_YOCTO)
                     .finish_deposit(finish_deposit_data),
             )
     }

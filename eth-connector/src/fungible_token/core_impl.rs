@@ -436,7 +436,7 @@ impl FungibleTokenCore for FungibleToken {
             address.encode(),
             balance
         ));
-        format!("\"{}\"", balance)
+        format!("{}", balance)
     }
 }
 

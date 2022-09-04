@@ -281,7 +281,6 @@ impl ConnectorDeposit for EthConnectorContract {
 #[near_bindgen]
 impl ConnectorFundsFinish for EthConnectorContract {
     #[private]
-    #[payable]
     fn finish_deposit(
         &mut self,
         #[serializer(borsh)] deposit_call: FinishDepositCallArgs,

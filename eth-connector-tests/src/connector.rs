@@ -1,6 +1,7 @@
 use crate::utils::{
     validate_eth_address, TestContract, CUSTODIAN_ADDRESS, DEFAULT_GAS, DEPOSITED_AMOUNT,
-    DEPOSITED_FEE, DEPOSITED_RECIPIENT, PROOF_DATA_ETH, PROOF_DATA_NEAR, RECIPIENT_ETH_ADDRESS,
+    DEPOSITED_EVM_AMOUNT, DEPOSITED_EVM_FEE, DEPOSITED_FEE, DEPOSITED_RECIPIENT, PROOF_DATA_ETH,
+    PROOF_DATA_NEAR, RECIPIENT_ETH_ADDRESS,
 };
 use aurora_engine_types::types::NEP141Wei;
 use aurora_eth_connector::connector_impl::WithdrawResult;
@@ -123,13 +124,29 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
     Ok(())
 }
 
+// NOTE: We don't test relayer fee
 #[tokio::test]
 async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()> {
     let worker = TestContract::worker().await?;
     let contract = TestContract::new(&worker).await?;
     contract.call_deposit_eth_to_aurora(&worker).await?;
-    // contract
-    //     .assert_proof_was_used(&worker, PROOF_DATA_ETH)
+    contract
+        .assert_proof_was_used(&worker, PROOF_DATA_ETH)
+        .await?;
+
+    // let balance = contract
+    //     .get_eth_balance(&worker, &validate_eth_address(RECIPIENT_ETH_ADDRESS))
     //     .await?;
+    // assert_eq!(balance, DEPOSITED_EVM_AMOUNT - DEPOSITED_EVM_FEE);
+
+    let balance = contract.total_supply(&worker).await?;
+    assert_eq!(balance.0, DEPOSITED_EVM_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_near(&worker).await?;
+    assert_eq!(balance.0, DEPOSITED_EVM_AMOUNT);
+
+    // let balance = contract.total_eth_supply_on_aurora(&worker).await?;
+    // assert_eq!(balance, DEPOSITED_EVM_AMOUNT);
+
     Ok(())
 }
