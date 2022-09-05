@@ -346,11 +346,11 @@ impl FungibleTokenCore for FungibleToken {
             env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
             ERR_MORE_GAS_REQUIRED
         );
-        log!(format!(
-            "Transfer call to {} amount {}",
-            receiver_id, amount.0,
-        ));
         let sender_id = env::predecessor_account_id();
+        log!(format!(
+            "Transfer call from {} to {} amount {}",
+            sender_id, receiver_id, amount.0,
+        ));
 
         // Verify message data before `ft_on_transfer` call to avoid verification panics
         // It's allowed empty message if `receiver_id =! current_account_id`

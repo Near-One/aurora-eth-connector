@@ -1,7 +1,7 @@
 use crate::utils::{
     validate_eth_address, TestContract, CUSTODIAN_ADDRESS, DEFAULT_GAS, DEPOSITED_AMOUNT,
-    DEPOSITED_EVM_AMOUNT, DEPOSITED_EVM_FEE, DEPOSITED_FEE, DEPOSITED_RECIPIENT, PROOF_DATA_ETH,
-    PROOF_DATA_NEAR, RECIPIENT_ETH_ADDRESS,
+    DEPOSITED_EVM_AMOUNT, DEPOSITED_FEE, DEPOSITED_RECIPIENT, PROOF_DATA_ETH, PROOF_DATA_NEAR,
+    RECIPIENT_ETH_ADDRESS,
 };
 use aurora_engine_types::types::NEP141Wei;
 use aurora_eth_connector::connector_impl::WithdrawResult;
@@ -148,5 +148,125 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
     // let balance = contract.total_eth_supply_on_aurora(&worker).await?;
     // assert_eq!(balance, DEPOSITED_EVM_AMOUNT);
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_with_0x_prefix() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_with_same_proof() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_admin_controlled_only_admin_can_pause() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_admin_controlled_admin_can_peform_actions_when_paused() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_pausability() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_accounts_counter() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_accounts_counter_and_transfer() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_near_with_zero_fee() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_aurora_with_zero_fee() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_near_amount_less_fee() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_aurora_amount_less_fee() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_near_amount_zero_fee_non_zero() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_aurora_amount_zero_fee_non_zero() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_near_amount_equal_fee_non_zero() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_deposit_to_aurora_amount_equal_fee_non_zero() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_empty_value() -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_wrong_u128_json_type() -> anyhow::Result<()> {
     Ok(())
 }
