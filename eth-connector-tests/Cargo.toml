@@ -20,7 +20,8 @@ near-sdk = "4.0"
 near-primitives = "0.5"
 near-units = "0.2"
 tokio = { version = "1.14", features = ["full"] }
-workspaces = "0.4"
+workspaces = "0.5"
+byte-slice-cast = "1.2"
 
 [features]
 mainnet-test = []

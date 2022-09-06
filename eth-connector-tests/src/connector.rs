@@ -4,6 +4,7 @@ use crate::utils::{
     RECIPIENT_ETH_ADDRESS,
 };
 use aurora_engine_types::types::NEP141Wei;
+use aurora_engine_types::U256;
 use aurora_eth_connector::connector_impl::WithdrawResult;
 use near_sdk::ONE_YOCTO;
 use workspaces::AccountId;
@@ -18,8 +19,8 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let res = contract
         .contract
-        .call(&worker, "ft_transfer")
-        .args_json((&receiver_id, transfer_amount.to_string(), "transfer memo"))?
+        .call("ft_transfer")
+        .args_json((&receiver_id, transfer_amount.to_string(), "transfer memo"))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -62,8 +63,8 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let res = contract
         .contract
-        .call(&worker, "withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))?
+        .call("withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -153,6 +154,41 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
 
 #[tokio::test]
 async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
+    use byte_slice_cast::AsByteSlice;
+
+    let worker = TestContract::worker().await?;
+    let contract = TestContract::new(&worker).await?;
+    contract.call_deposit_eth_to_near(&worker).await?;
+
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let balance = contract
+        .get_eth_on_near_balance(&worker, &receiver_id)
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_on_near_balance(&worker, &contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let transfer_amount = 50;
+    let fee: u128 = 30;
+    let mut msg = U256::from(fee).as_byte_slice().to_vec();
+    msg.append(
+        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
+            .as_bytes()
+            .to_vec(),
+    );
+
+    contract
+        .contract
+        .call("ft_transfer_call")
+        .args_json((&receiver_id, transfer_amount, msg))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+
     Ok(())
 }
 
