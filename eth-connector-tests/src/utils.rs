@@ -39,11 +39,11 @@ impl TestContract {
         //     )
         //     .await?
         //     .into();
-        /*
-                let worker = workspaces::sandbox().await?;
-                let testnet = workspaces::testnet().await?;
-                let registrar: AccountId = "registrar".parse()?;
-                let registrar = worker
+
+        let worker = workspaces::sandbox().await?;
+        let testnet = workspaces::testnet().await?;
+        let registrar: AccountId = "registrar".parse()?;
+        /* let registrar = worker
                     .import_contract(&registrar, &testnet)
                     .transact()
                     .await?;
@@ -105,11 +105,7 @@ impl TestContract {
         Ok(workspaces::sandbox().await?)
     }
 
-    pub async fn register_user(
-        &self,
-        worker: &Worker<impl Network>,
-        account_id: &AccountId,
-    ) -> anyhow::Result<()> {
+    pub async fn register_user(&self, account_id: &AccountId) -> anyhow::Result<()> {
         let res = self
             .contract
             .call("storage_deposit")
@@ -122,12 +118,8 @@ impl TestContract {
         Ok(())
     }
 
-    pub async fn assert_proof_was_used(
-        &self,
-        worker: &Worker<impl Network>,
-        proof: &str,
-    ) -> anyhow::Result<()> {
-        let is_used_proof = self.call_is_used_proof(worker, proof).await?;
+    pub async fn assert_proof_was_used(&self, proof: &str) -> anyhow::Result<()> {
+        let is_used_proof = self.call_is_used_proof(proof).await?;
         assert!(
             is_used_proof,
             "Expected not to fail because the proof should have been already used",
@@ -135,11 +127,7 @@ impl TestContract {
         Ok(())
     }
 
-    pub async fn call_is_used_proof(
-        &self,
-        worker: &Worker<impl Network>,
-        proof: &str,
-    ) -> anyhow::Result<bool> {
+    pub async fn call_is_used_proof(&self, proof: &str) -> anyhow::Result<bool> {
         let proof: Proof = serde_json::from_str(proof).unwrap();
         let res = self
             .contract
@@ -152,10 +140,7 @@ impl TestContract {
         Ok(res)
     }
 
-    pub async fn total_eth_supply_on_near(
-        &self,
-        worker: &Worker<impl Network>,
-    ) -> anyhow::Result<U128> {
+    pub async fn total_eth_supply_on_near(&self) -> anyhow::Result<U128> {
         let res = self
             .contract
             .call("ft_total_eth_supply_on_near")
@@ -166,10 +151,7 @@ impl TestContract {
         Ok(res)
     }
 
-    pub async fn call_deposit_eth_to_aurora(
-        &self,
-        worker: &Worker<impl Network>,
-    ) -> anyhow::Result<()> {
+    pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
         let res = self
             .contract
@@ -183,10 +165,7 @@ impl TestContract {
         Ok(())
     }
 
-    pub async fn call_deposit_eth_to_near(
-        &self,
-        worker: &Worker<impl Network>,
-    ) -> anyhow::Result<()> {
+    pub async fn call_deposit_eth_to_near(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_NEAR).unwrap();
         let res = self
             .contract
@@ -199,11 +178,7 @@ impl TestContract {
         Ok(())
     }
 
-    pub async fn get_eth_on_near_balance(
-        &self,
-        worker: &Worker<impl Network>,
-        account: &AccountId,
-    ) -> anyhow::Result<U128> {
+    pub async fn get_eth_on_near_balance(&self, account: &AccountId) -> anyhow::Result<U128> {
         let res = self
             .contract
             .call("ft_balance_of")
@@ -215,11 +190,7 @@ impl TestContract {
         Ok(res)
     }
 
-    pub async fn get_eth_balance(
-        &self,
-        worker: &Worker<impl Network>,
-        address: &Address,
-    ) -> anyhow::Result<u128> {
+    pub async fn get_eth_balance(&self, address: &Address) -> anyhow::Result<u128> {
         let res = self
             .contract
             .call("ft_balance_of_eth")
@@ -231,7 +202,7 @@ impl TestContract {
         Ok(res.parse().unwrap())
     }
 
-    pub async fn total_supply(&self, worker: &Worker<impl Network>) -> anyhow::Result<U128> {
+    pub async fn total_supply(&self) -> anyhow::Result<U128> {
         let res = self
             .contract
             .call("ft_total_supply")
@@ -242,10 +213,7 @@ impl TestContract {
         Ok(res)
     }
 
-    pub async fn total_eth_supply_on_aurora(
-        &self,
-        worker: &Worker<impl Network>,
-    ) -> anyhow::Result<u128> {
+    pub async fn total_eth_supply_on_aurora(&self) -> anyhow::Result<u128> {
         let res = self
             .contract
             .call("ft_total_eth_supply_on_aurora")
