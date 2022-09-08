@@ -64,10 +64,6 @@ impl TestContract {
             .await?
             .into_result()?;
 
-        // let contract = worker
-        //     .dev_deploy(&include_bytes!("../../bin/aurora-mainnet-test.wasm")[..])
-        //     .await?;
-
         let prover_account: AccountId = contract.id().clone();
         let eth_custodian_address = CUSTODIAN_ADDRESS;
         let metadata = FungibleTokenMetadata::default();
@@ -80,20 +76,7 @@ impl TestContract {
             .await?;
         assert!(res.is_success());
 
-        let aurora_account = contract
-            .as_account()
-            .create_subaccount("aurora")
-            .initial_balance(parse_near!("10 N"))
-            .transact()
-            .await?
-            .into_result()?;
-        println!("{:#?}", aurora_account);
-        // contract.register_user(worker, &contract, aurora_account.id()).await?;
-
-        Ok(Self {
-            contract,
-            account: aurora_account,
-        })
+        Ok(Self { contract })
     }
 
     pub async fn worker() -> anyhow::Result<Worker<impl DevNetwork>> {
