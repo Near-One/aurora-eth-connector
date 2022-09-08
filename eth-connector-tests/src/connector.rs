@@ -11,8 +11,7 @@ use workspaces::AccountId;
 
 #[tokio::test]
 async fn test_ft_transfer() -> anyhow::Result<()> {
-    let worker = TestContract::worker().await?;
-    let contract = TestContract::new(&worker).await?;
+    let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
     let transfer_amount = 70;
@@ -52,8 +51,7 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
-    let worker = TestContract::worker().await?;
-    let contract = TestContract::new(&worker).await?;
+    let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
     let withdraw_amount = NEP141Wei::new(100);
@@ -91,8 +89,7 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
-    let worker = TestContract::worker().await?;
-    let contract = TestContract::new(&worker).await?;
+    let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
     contract.assert_proof_was_used(PROOF_DATA_NEAR).await?;
 
@@ -120,8 +117,7 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
 // NOTE: We don't test relayer fee
 #[tokio::test]
 async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()> {
-    let worker = TestContract::worker().await?;
-    let contract = TestContract::new(&worker).await?;
+    let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_aurora().await?;
     contract.assert_proof_was_used(PROOF_DATA_ETH).await?;
 
@@ -146,8 +142,7 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
 async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
     use byte_slice_cast::AsByteSlice;
 
-    let worker = TestContract::worker().await?;
-    let contract = TestContract::new(&worker).await?;
+    let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
