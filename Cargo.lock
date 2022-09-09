@@ -236,6 +236,7 @@ dependencies = [
  "aurora-engine-types",
  "aurora-eth-connector",
  "byte-slice-cast",
+ "hex 0.4.3",
  "near-primitives 0.5.0",
  "near-sdk",
  "near-units",
