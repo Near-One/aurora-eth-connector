@@ -75,7 +75,7 @@ impl BorshDeserialize for Wei {
                 "IncorrectLength".to_string(),
             ));
         }
-        let result = U256::from_big_endian(buf[..32].as_byte_slice());
+        let result = U256::from_little_endian(buf[..32].as_byte_slice());
         *buf = &buf[32..];
         Ok(Wei::new(result))
     }

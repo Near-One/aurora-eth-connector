@@ -121,10 +121,12 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
     contract.call_deposit_eth_to_aurora().await?;
     contract.assert_proof_was_used(PROOF_DATA_ETH).await?;
 
-    // let balance = contract
-    //     .get_eth_balance(&worker, &validate_eth_address(RECIPIENT_ETH_ADDRESS))
-    //     .await?;
+    let balance = contract
+        .get_eth_balance(&validate_eth_address(RECIPIENT_ETH_ADDRESS))
+        .await?;
+    // TODO: relayer FEE not calculated
     // assert_eq!(balance, DEPOSITED_EVM_AMOUNT - DEPOSITED_EVM_FEE);
+    assert_eq!(balance, DEPOSITED_EVM_AMOUNT);
 
     let balance = contract.total_supply().await?;
     assert_eq!(balance.0, DEPOSITED_EVM_AMOUNT);
@@ -132,8 +134,8 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
     let balance = contract.total_eth_supply_on_near().await?;
     assert_eq!(balance.0, DEPOSITED_EVM_AMOUNT);
 
-    // let balance = contract.total_eth_supply_on_aurora(&worker).await?;
-    // assert_eq!(balance, DEPOSITED_EVM_AMOUNT);
+    let balance = contract.total_eth_supply_on_aurora().await?;
+    assert_eq!(balance, DEPOSITED_EVM_AMOUNT);
 
     Ok(())
 }

@@ -3,7 +3,6 @@ use aurora_eth_connector::fungible_token::metadata::FungibleTokenMetadata;
 use aurora_eth_connector::proof::Proof;
 use near_sdk::json_types::U128;
 use near_sdk::serde_json;
-use near_units::parse_near;
 use workspaces::result::ExecutionFinalResult;
 use workspaces::{Account, AccountId, Contract, DevNetwork, Worker};
 
@@ -21,7 +20,6 @@ pub const CONTRACT_ACC: &str = "eth_connector.root";
 
 pub struct TestContract {
     pub contract: Contract,
-    pub account: Account,
 }
 
 impl TestContract {
@@ -139,6 +137,7 @@ impl TestContract {
             .transact()
             .await?;
         print_logs(res.clone());
+        // println!("{:#?}", res);
         assert!(res.is_success());
         Ok(())
     }
@@ -174,9 +173,8 @@ impl TestContract {
             .call("ft_balance_of_eth")
             .args_json((address,))
             .view()
-            .await?;
-        println!("\t{:?}", res);
-        let res = res.json::<String>()?;
+            .await?
+            .json::<String>()?;
         Ok(res.parse().unwrap())
     }
 

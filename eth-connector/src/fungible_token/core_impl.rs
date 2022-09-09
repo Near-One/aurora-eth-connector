@@ -243,6 +243,7 @@ impl FungibleToken {
             .checked_add(amount)
             .ok_or(error::DepositError::BalanceOverflow)?;
         self.accounts_aurora.insert(&address, &new_balance);
+
         self.total_eth_supply_on_aurora = self
             .total_eth_supply_on_aurora
             .checked_add(amount)
