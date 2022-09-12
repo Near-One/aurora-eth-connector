@@ -23,6 +23,8 @@ tokio = { version = "1.14", features = ["full"] }
 workspaces = "0.5"
 byte-slice-cast = "1.2"
 hex = "0.4.3"
+ethabi = "17.1"
+rlp = { version = "0.5.0", default-features = false }
 
 [features]
 mainnet-test = []
