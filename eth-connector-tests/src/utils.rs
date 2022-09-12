@@ -20,6 +20,7 @@ pub const CONTRACT_ACC: &str = "eth_connector.root";
 
 pub struct TestContract {
     pub contract: Contract,
+    pub root_account: Account,
 }
 
 impl TestContract {
@@ -50,8 +51,8 @@ impl TestContract {
             .await?
             .into_result()?;
 
-        let root = Account::from_secret_key(root, sk, &worker);
-        let eth_connector = root
+        let root_account = Account::from_secret_key(root, sk, &worker);
+        let eth_connector = root_account
             .create_subaccount("eth_connector")
             .initial_balance(near_units::parse_near!("15 N"))
             .transact()
@@ -74,11 +75,24 @@ impl TestContract {
             .await?;
         assert!(res.is_success());
 
-        Ok(Self { contract })
+        Ok(Self {
+            contract,
+            root_account,
+        })
     }
 
     pub async fn worker() -> anyhow::Result<Worker<impl DevNetwork>> {
         Ok(workspaces::sandbox().await?)
+    }
+
+    pub async fn create_sub_accuount(&self) -> anyhow::Result<Account> {
+        Ok(self
+            .root_account
+            .create_subaccount("eth_connector")
+            .initial_balance(near_units::parse_near!("15 N"))
+            .transact()
+            .await?
+            .into_result()?)
     }
 
     pub async fn register_user(&self, account_id: &AccountId) -> anyhow::Result<()> {
