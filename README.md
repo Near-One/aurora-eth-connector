@@ -85,4 +85,4 @@ cargo make check
 ```
 
 ## License
-**aurora-eth-connector** has **CCO** license
+**aurora-eth-connector** has [**CCO-1.0** license](LICENSE)
