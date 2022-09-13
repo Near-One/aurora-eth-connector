@@ -6,6 +6,7 @@ use aurora_eth_connector::deposit_event::{DepositedEvent, TokenMessageData, DEPO
 use aurora_eth_connector::fungible_token::metadata::FungibleTokenMetadata;
 use aurora_eth_connector::log_entry;
 use aurora_eth_connector::proof::Proof;
+use byte_slice_cast::AsByteSlice;
 use near_sdk::json_types::U128;
 use near_sdk::{serde_json, ONE_YOCTO};
 use workspaces::AccountId;
@@ -143,8 +144,6 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
 
 #[tokio::test]
 async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
-    use byte_slice_cast::AsByteSlice;
-
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
@@ -445,6 +444,63 @@ async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+
+    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_on_near_balance(&contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let transfer_amount: U128 = 50.into();
+    let fee: u128 = 30;
+    let mut msg = U256::from(fee).as_byte_slice().to_vec();
+    msg.append(
+        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
+            .as_bytes()
+            .to_vec(),
+    );
+    let relayer_id = "relayer.root";
+    let message = [relayer_id, hex::encode(msg).as_str()].join(":");
+
+    let memo: Option<String> = None;
+    let res = contract
+        .contract
+        .call("ft_transfer_call")
+        .args_json((contract.contract.id(), transfer_amount, memo, message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_on_near_balance(&contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_balance(&validate_eth_address(RECIPIENT_ETH_ADDRESS))
+        .await?;
+    assert_eq!(balance, transfer_amount.0);
+
+    let balance = contract.total_supply().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_near().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_aurora().await?;
+    assert_eq!(balance, transfer_amount.0);
+
     Ok(())
 }
 
