@@ -6,7 +6,7 @@ use aurora_eth_connector::deposit_event::{DepositedEvent, TokenMessageData, DEPO
 use aurora_eth_connector::log_entry;
 use aurora_eth_connector::proof::Proof;
 use near_sdk::json_types::U128;
-use near_sdk::ONE_YOCTO;
+use near_sdk::{serde_json, ONE_YOCTO};
 use workspaces::AccountId;
 
 #[tokio::test]
@@ -232,8 +232,7 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    let status = format!("{:?}", res.receipt_outcomes()[0]);
-    assert!(status.contains("ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    contract.assert_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT");
 
     // Assert balances remain unchanged
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
@@ -390,6 +389,21 @@ async fn test_deposit_with_0x_prefix() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_deposit_with_same_proof() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.assert_proof_was_not_used(PROOF_DATA_NEAR).await?;
+    contract.call_deposit_eth_to_near().await?;
+    contract.assert_proof_was_used(PROOF_DATA_NEAR).await?;
+
+    let proof: Proof = serde_json::from_str(PROOF_DATA_NEAR).unwrap();
+    let res = contract
+        .contract
+        .call("deposit")
+        .args_borsh(proof)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    contract.assert_error_message(res, "ERR_PROOF_EXIST");
+
     Ok(())
 }
 

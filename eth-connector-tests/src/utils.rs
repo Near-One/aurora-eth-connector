@@ -117,6 +117,19 @@ impl TestContract {
         Ok(())
     }
 
+    pub fn assert_error_message(&self, res: ExecutionFinalResult, error_msg: &str) {
+        assert!(format!("{:?}", res).contains(error_msg));
+    }
+
+    pub async fn assert_proof_was_not_used(&self, proof: &str) -> anyhow::Result<()> {
+        let is_used_proof = self.call_is_used_proof(proof).await?;
+        assert!(
+            !is_used_proof,
+            "Expected not to fail because the proof should not have been already used",
+        );
+        Ok(())
+    }
+
     pub async fn call_is_used_proof(&self, proof: &str) -> anyhow::Result<bool> {
         let proof: Proof = serde_json::from_str(proof).unwrap();
         let res = self
