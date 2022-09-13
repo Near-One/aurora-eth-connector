@@ -3,6 +3,7 @@ use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use aurora_engine_types::{H256, U256};
 use aurora_eth_connector::connector_impl::WithdrawResult;
 use aurora_eth_connector::deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT};
+use aurora_eth_connector::fungible_token::metadata::FungibleTokenMetadata;
 use aurora_eth_connector::log_entry;
 use aurora_eth_connector::proof::Proof;
 use near_sdk::json_types::U128;
@@ -409,6 +410,36 @@ async fn test_deposit_with_same_proof() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
+    let (contract, root_account) = TestContract::deploy_aurora_contract().await?;
+
+    // Custom init for FT
+    let prover_account: AccountId = contract.id().clone();
+    let eth_custodian_address = "0000000000000000000000000000000000000001";
+    let metadata = FungibleTokenMetadata::default();
+    // Init eth-connector
+    let res = contract
+        .call("new")
+        .args_json((prover_account, eth_custodian_address, metadata))
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+    let contract = TestContract {
+        contract,
+        root_account,
+    };
+
+    let proof: Proof = serde_json::from_str(PROOF_DATA_NEAR).unwrap();
+    let res = contract
+        .contract
+        .call("deposit")
+        .args_borsh(proof)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    contract.assert_error_message(res, "ERR_WRONG_EVENT_ADDRESS");
+    contract.assert_proof_was_not_used(PROOF_DATA_NEAR).await?;
+
     Ok(())
 }
 
