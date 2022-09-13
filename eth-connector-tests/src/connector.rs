@@ -402,6 +402,7 @@ async fn test_deposit_with_same_proof() -> anyhow::Result<()> {
         .gas(DEFAULT_GAS)
         .transact()
         .await?;
+    assert!(res.is_failure());
     contract.assert_error_message(res, "ERR_PROOF_EXIST");
 
     Ok(())
@@ -436,6 +437,7 @@ async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
         .gas(DEFAULT_GAS)
         .transact()
         .await?;
+    assert!(res.is_failure());
     contract.assert_error_message(res, "ERR_WRONG_EVENT_ADDRESS");
     contract.assert_proof_was_not_used(PROOF_DATA_NEAR).await?;
 
@@ -506,6 +508,54 @@ async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let transfer_amount: U128 = 10.into();
+    let fee: u128 = 12;
+    let mut msg = U256::from(fee).as_byte_slice().to_vec();
+    msg.append(
+        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
+            .as_bytes()
+            .to_vec(),
+    );
+    let relayer_id = "relayer.root";
+    let message = [relayer_id, hex::encode(msg).as_str()].join(":");
+    let memo: Option<String> = None;
+    let res = contract
+        .contract
+        .call("ft_transfer_call")
+        .args_json((contract.contract.id(), transfer_amount, memo, message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    contract.assert_error_message(res, "ERR_NOT_ENOUGH_BALANCE_FOR_FEE");
+
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_on_near_balance(&contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_balance(&validate_eth_address(RECIPIENT_ETH_ADDRESS))
+        .await?;
+    assert_eq!(balance, 0);
+
+    let balance = contract.total_supply().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_near().await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
+
+    let balance = contract.total_eth_supply_on_aurora().await?;
+    assert_eq!(balance, 0);
+
     Ok(())
 }
 
