@@ -61,11 +61,11 @@ pub struct EthConnector {
 }
 
 impl AdminControlled for EthConnector {
-    fn get_paused(&self) -> PausedMask {
+    fn get_paused_flags(&self) -> PausedMask {
         self.paused_mask
     }
 
-    fn set_paused(&mut self, paused: PausedMask) {
+    fn set_paused_flags(&mut self, paused: PausedMask) {
         self.paused_mask = paused;
     }
 }

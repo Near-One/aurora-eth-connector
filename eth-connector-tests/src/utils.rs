@@ -86,10 +86,10 @@ impl TestContract {
         Ok((contract, root_account))
     }
 
-    pub async fn create_sub_accuount(&self) -> anyhow::Result<Account> {
+    pub async fn create_sub_accuount(&self, name: &str) -> anyhow::Result<Account> {
         Ok(self
             .root_account
-            .create_subaccount("eth_connector")
+            .create_subaccount(name)
             .initial_balance(near_units::parse_near!("15 N"))
             .transact()
             .await?

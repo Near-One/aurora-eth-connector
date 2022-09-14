@@ -232,12 +232,14 @@ impl FungibleTokeStatistic for EthConnectorContract {
 
 #[near_bindgen]
 impl AdminControlled for EthConnectorContract {
-    fn get_paused(&self) -> PausedMask {
-        self.connector.get_paused()
+    #[result_serializer(borsh)]
+    fn get_paused_flags(&self) -> PausedMask {
+        self.connector.get_paused_flags()
     }
 
-    fn set_paused(&mut self, paused: PausedMask) {
-        self.connector.set_paused(paused)
+    #[private]
+    fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
+        self.connector.set_paused_flags(paused)
     }
 }
 

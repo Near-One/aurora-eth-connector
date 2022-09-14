@@ -561,11 +561,97 @@ async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_admin_controlled_only_admin_can_pause() -> anyhow::Result<()> {
+    use aurora_eth_connector::admin_controlled::PAUSE_DEPOSIT;
+
+    let contract = TestContract::new().await?;
+    let user_acc = contract.create_sub_accuount("eth_recipient").await?;
+    let res = user_acc
+        .call(contract.contract.id(), "set_paused_flags")
+        .args_borsh(PAUSE_DEPOSIT)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    contract.assert_error_message(res, "Method set_paused_flags is private");
+
+    let res = contract
+        .contract
+        .call("set_paused_flags")
+        .args_borsh(PAUSE_DEPOSIT)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
     Ok(())
 }
 
 #[tokio::test]
-async fn test_admin_controlled_admin_can_peform_actions_when_paused() -> anyhow::Result<()> {
+async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow::Result<()> {
+    use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, PAUSE_WITHDRAW};
+
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let withdraw_amount: NEP141Wei = NEP141Wei::new(100);
+
+    let res = contract
+        .contract
+        .call("withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+
+    let res = contract
+        .contract
+        .call("set_paused_flags")
+        .args_borsh(PAUSE_DEPOSIT)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let res = contract
+        .contract
+        .call("set_paused_flags")
+        .args_borsh(PAUSE_WITHDRAW)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    // 2nd deposit call when paused, but the admin is calling it - should succeed
+    // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
+    // method which should be paused
+    contract.call_deposit_eth_to_aurora().await?;
+
+    // 2nd withdraw call when paused, but the admin is calling it - should succeed
+    let res = contract
+        .contract
+        .call("withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+
     Ok(())
 }
 
