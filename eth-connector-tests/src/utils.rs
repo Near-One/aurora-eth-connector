@@ -42,6 +42,26 @@ impl TestContract {
         })
     }
 
+    pub async fn new_with_custodian(eth_custodian_address: &str) -> anyhow::Result<TestContract> {
+        let (contract, root_account) = Self::deploy_aurora_contract().await?;
+
+        let prover_account: AccountId = contract.id().clone();
+        let metadata = FungibleTokenMetadata::default();
+        // Init eth-connector
+        let res = contract
+            .call("new")
+            .args_json((prover_account, eth_custodian_address, metadata))
+            .gas(DEFAULT_GAS)
+            .transact()
+            .await?;
+        assert!(res.is_success());
+
+        Ok(Self {
+            contract,
+            root_account,
+        })
+    }
+
     pub async fn deploy_aurora_contract() -> anyhow::Result<(Contract, Account)> {
         use workspaces::{
             types::{KeyType, SecretKey},
