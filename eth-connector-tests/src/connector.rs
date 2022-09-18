@@ -1007,3 +1007,23 @@ async fn test_deposit_to_aurora_amount_equal_fee_non_zero() -> anyhow::Result<()
     contract.assert_proof_was_not_used(proof_str).await?;
     Ok(())
 }
+
+#[tokio::test]
+async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let transfer_amount: U128 = u128::MAX.into();
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let res = contract
+        .contract
+        .call("ft_transfer")
+        .args_json((&receiver_id, transfer_amount, "transfer memo"))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    contract.assert_error_message(res, "ERR_NOT_ENOUGH_BALANCE");
+    Ok(())
+}
