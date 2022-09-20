@@ -6,7 +6,6 @@ use aurora_engine_types::{
 use aurora_eth_connector::{
     connector_impl::WithdrawResult,
     deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT},
-    fungible_token::metadata::FungibleTokenMetadata,
     log_entry,
     proof::Proof,
 };
@@ -405,25 +404,8 @@ async fn test_deposit_with_same_proof() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
-    let (contract, root_account) = TestContract::deploy_aurora_contract().await?;
-
-    // Custom init for FT
-    let prover_account: AccountId = contract.id().clone();
-    let eth_custodian_address = "0000000000000000000000000000000000000001";
-    let metadata = FungibleTokenMetadata::default();
-    // Init eth-connector
-    let res = contract
-        .call("new")
-        .args_json((prover_account, eth_custodian_address, metadata))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
-    let contract = TestContract {
-        contract,
-        root_account,
-    };
-
+    let contract =
+        TestContract::new_with_custodian("0000000000000000000000000000000000000001").await?;
     let res = contract
         .deposit_with_proof(&contract.get_proof(PROOF_DATA_NEAR))
         .await?;

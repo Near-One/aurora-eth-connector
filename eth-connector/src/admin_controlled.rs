@@ -1,3 +1,5 @@
+use near_sdk::AccountId;
+
 pub type PausedMask = u8;
 
 /// Admin control flow flag indicates that all control flow unpause (unblocked).
@@ -6,8 +8,6 @@ pub const UNPAUSE_ALL: PausedMask = 0;
 pub const PAUSE_DEPOSIT: PausedMask = 1 << 0;
 /// Admin control flow flag indicates that withdrawal is paused.
 pub const PAUSE_WITHDRAW: PausedMask = 1 << 1;
-
-pub const ERR_PAUSED: &str = "ERR_PAUSED";
 
 pub trait AdminControlled {
     /// Return the current mask representing all paused events.
@@ -24,19 +24,49 @@ pub trait AdminControlled {
     }
 
     /// Asserts the passed paused flag is not set. Returns `PausedError` if paused.
-    fn assert_not_paused(&self, flag: PausedMask, is_owner: bool) -> Result<(), PausedError> {
+    fn assert_not_paused(
+        &self,
+        flag: PausedMask,
+        is_owner: bool,
+    ) -> Result<(), error::AdminControlledError> {
         if self.is_paused(flag, is_owner) {
-            Err(PausedError)
+            Err(error::AdminControlledError::Paused)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Set account access right for contract
+    fn set_access_right(&mut self, account: &AccountId);
+
+    /// Get account access right for contract
+    fn get_access_right(&self) -> AccountId;
+
+    /// Check access right for predecessor account
+    fn assert_access_right(&self) -> Result<(), error::AdminControlledError> {
+        if self.get_access_right() == near_sdk::env::predecessor_account_id() {
+            Err(error::AdminControlledError::AccessRight)
         } else {
             Ok(())
         }
     }
 }
 
-pub struct PausedError;
+pub mod error {
+    pub const ERR_PAUSED: &[u8; 10] = b"ERR_PAUSED";
+    pub const ERR_ACCESS_RIGHT: &[u8; 16] = b"ERR_ACCESS_RIGHT";
 
-impl AsRef<[u8]> for PausedError {
-    fn as_ref(&self) -> &[u8] {
-        ERR_PAUSED.as_bytes()
+    pub enum AdminControlledError {
+        Paused,
+        AccessRight,
+    }
+
+    impl AsRef<[u8]> for AdminControlledError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::Paused => ERR_PAUSED,
+                Self::AccessRight => ERR_ACCESS_RIGHT,
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 use aurora_engine_types::types::Address;
 use aurora_eth_connector::{fungible_token::metadata::FungibleTokenMetadata, proof::Proof};
+use near_sdk::serde_json::json;
 use near_sdk::{json_types::U128, serde_json};
 use workspaces::{result::ExecutionFinalResult, Account, AccountId, Contract};
 
@@ -22,18 +23,26 @@ pub struct TestContract {
 
 impl TestContract {
     pub async fn new() -> anyhow::Result<TestContract> {
+        use std::str::FromStr;
         let (contract, root_account) = Self::deploy_aurora_contract().await?;
 
         let prover_account: AccountId = contract.id().clone();
         let eth_custodian_address = CUSTODIAN_ADDRESS;
         let metadata = FungibleTokenMetadata::default();
+        let account_with_access_right: AccountId = AccountId::from_str(CONTRACT_ACC).unwrap();
         // Init eth-connector
         let res = contract
             .call("new")
-            .args_json((prover_account, eth_custodian_address, metadata))
+            .args_json((
+                prover_account,
+                eth_custodian_address,
+                metadata,
+                account_with_access_right,
+            ))
             .gas(DEFAULT_GAS)
             .transact()
             .await?;
+        println!("{:#?}", res);
         assert!(res.is_success());
 
         Ok(Self {
@@ -43,14 +52,21 @@ impl TestContract {
     }
 
     pub async fn new_with_custodian(eth_custodian_address: &str) -> anyhow::Result<TestContract> {
+        use std::str::FromStr;
         let (contract, root_account) = Self::deploy_aurora_contract().await?;
 
         let prover_account: AccountId = contract.id().clone();
         let metadata = FungibleTokenMetadata::default();
+        let account_with_access_right: AccountId = AccountId::from_str(CONTRACT_ACC).unwrap();
         // Init eth-connector
         let res = contract
             .call("new")
-            .args_json((prover_account, eth_custodian_address, metadata))
+            .args_json(json!({
+                "prover_account": prover_account,
+                "account_with_access_right": account_with_access_right,
+                "eth_custodian_address": eth_custodian_address,
+                "metadata": metadata,
+            }))
             .gas(DEFAULT_GAS)
             .transact()
             .await?;

@@ -56,8 +56,11 @@ pub struct EthConnector {
     /// It is Eth address, used in the Deposit and Withdraw logic.
     pub eth_custodian_address: Address,
 
-    // Admin controlled
+    /// Admin controlled
     pub paused_mask: PausedMask,
+
+    /// Account with access right for current contract
+    pub account_with_access_right: AccountId,
 }
 
 impl AdminControlled for EthConnector {
@@ -67,6 +70,14 @@ impl AdminControlled for EthConnector {
 
     fn set_paused_flags(&mut self, paused: PausedMask) {
         self.paused_mask = paused;
+    }
+
+    fn set_access_right(&mut self, account: &AccountId) {
+        self.account_with_access_right = account.clone();
+    }
+
+    fn get_access_right(&self) -> AccountId {
+        self.account_with_access_right.clone()
     }
 }
 

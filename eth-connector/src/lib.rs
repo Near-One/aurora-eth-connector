@@ -64,6 +64,7 @@ impl EthConnectorContract {
         prover_account: AccountId,
         eth_custodian_address: String,
         metadata: FungibleTokenMetadata,
+        account_with_access_right: AccountId,
     ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
@@ -74,6 +75,7 @@ impl EthConnectorContract {
             prover_account,
             paused_mask,
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
+            account_with_access_right,
         };
         let owner_id = env::current_account_id();
         let mut this = Self {
@@ -241,6 +243,16 @@ impl AdminControlled for EthConnectorContract {
     #[private]
     fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
         self.connector.set_paused_flags(paused)
+    }
+
+    #[private]
+    fn set_access_right(&mut self, account: &AccountId) {
+        self.connector.set_access_right(account)
+    }
+
+    #[private]
+    fn get_access_right(&self) -> AccountId {
+        self.connector.get_access_right()
     }
 }
 
