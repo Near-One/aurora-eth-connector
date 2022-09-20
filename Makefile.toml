@@ -154,11 +154,11 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
-#    "test_ft_transfer_wrong_u128_json_type",
+#    "test_ft_transfer_call_without_message",
     "--features",
     "${CARGO_FEATURES_TEST}",
-#    "--",
-#    "--nocapture"
+    "--",
+    "--nocapture"
 ]
 
 [tasks.test-flow]

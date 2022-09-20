@@ -42,7 +42,6 @@ impl TestContract {
             .gas(DEFAULT_GAS)
             .transact()
             .await?;
-        println!("{:#?}", res);
         assert!(res.is_success());
 
         Ok(Self {
@@ -266,6 +265,7 @@ impl TestContract {
             .await?
             .json::<U128>()
             .unwrap();
+
         Ok(res)
     }
 

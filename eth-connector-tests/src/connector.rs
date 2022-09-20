@@ -31,6 +31,7 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
+    println!("{:#?}", res);
     assert!(res.is_success());
 
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;

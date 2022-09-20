@@ -103,6 +103,7 @@ impl EthConnectorContract {
 
     #[result_serializer(borsh)]
     pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
+        // self.assert_access_right().sdk_unwrap();
         self.ft.is_used_event(&proof.get_key())
     }
 
@@ -118,6 +119,7 @@ impl EthConnectorContract {
 impl FungibleTokenCore for EthConnectorContract {
     #[payable]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
+        self.assert_access_right().sdk_unwrap();
         self.ft.ft_transfer(receiver_id, amount, memo)
     }
 
@@ -129,6 +131,7 @@ impl FungibleTokenCore for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        self.assert_access_right().sdk_unwrap();
         assert_one_yocto();
         self.ft.ft_transfer_call(receiver_id, amount, memo, msg)
     }
@@ -167,6 +170,7 @@ impl FungibleTokenResolver for EthConnectorContract {
         receiver_id: AccountId,
         amount: U128,
     ) -> U128 {
+        self.assert_access_right().sdk_unwrap();
         let (used_amount, burned_amount) = self.ft.internal_ft_resolve_transfer(
             &sender_id,
             &receiver_id,
@@ -191,16 +195,19 @@ impl StorageManagement for EthConnectorContract {
         account_id: Option<AccountId>,
         registration_only: Option<bool>,
     ) -> StorageBalance {
+        self.assert_access_right().sdk_unwrap();
         self.ft.storage_deposit(account_id, registration_only)
     }
 
     #[payable]
     fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
+        self.assert_access_right().sdk_unwrap();
         self.ft.storage_withdraw(amount)
     }
 
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
+        self.assert_access_right().sdk_unwrap();
         if let Some((account_id, balance)) = self.ft.internal_storage_unregister(force) {
             self.on_account_closed(account_id, balance);
             true
@@ -265,6 +272,7 @@ impl ConnectorWithdraw for EthConnectorContract {
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: NEP141Wei,
     ) -> WithdrawResult {
+        self.assert_access_right().sdk_unwrap();
         assert_one_yocto();
         let predecessor_account_id = env::predecessor_account_id();
         let current_account_id = env::current_account_id();
@@ -289,6 +297,7 @@ impl ConnectorWithdraw for EthConnectorContract {
 #[near_bindgen]
 impl ConnectorDeposit for EthConnectorContract {
     fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
+        self.assert_access_right().sdk_unwrap();
         self.connector.deposit(raw_proof)
     }
 }
@@ -363,6 +372,7 @@ impl FungibleTokenReceiver for EthConnectorContract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        self.assert_access_right().sdk_unwrap();
         let value = self
             .ft
             .ft_on_transfer(sender_id, amount.into(), msg)
