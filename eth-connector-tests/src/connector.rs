@@ -756,7 +756,6 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    //println!("{:#?}", res);
     contract.assert_error_message(res, "WithdrawErrorPaused");
 
     // Unpause all

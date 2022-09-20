@@ -186,6 +186,11 @@ impl TestContract {
         Ok(res)
     }
 
+    pub async fn assert_total_eth_supply_on_near(&self, balance: u128) -> anyhow::Result<()> {
+        assert_eq!(balance, self.total_eth_supply_on_near().await?.0);
+        Ok(())
+    }
+
     pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
         let res = self.deposit_with_proof(&proof).await?;
@@ -212,6 +217,15 @@ impl TestContract {
         Ok(res)
     }
 
+    pub async fn assert_eth_on_near_balance(
+        &self,
+        account: &AccountId,
+        balance: u128,
+    ) -> anyhow::Result<()> {
+        assert_eq!(balance, self.get_eth_on_near_balance(account).await?.0);
+        Ok(())
+    }
+
     pub async fn get_eth_balance(&self, address: &Address) -> anyhow::Result<u128> {
         let res = self
             .contract
@@ -221,6 +235,11 @@ impl TestContract {
             .await?
             .json::<String>()?;
         Ok(res.parse().unwrap())
+    }
+
+    pub async fn assert_eth_balance(&self, address: &Address, balance: u128) -> anyhow::Result<()> {
+        assert_eq!(balance, self.get_eth_balance(address).await?);
+        Ok(())
     }
 
     pub async fn total_supply(&self) -> anyhow::Result<U128> {
@@ -234,6 +253,11 @@ impl TestContract {
         Ok(res)
     }
 
+    pub async fn assert_total_supply(&self, balance: u128) -> anyhow::Result<()> {
+        assert_eq!(balance, self.total_supply().await?.0);
+        Ok(())
+    }
+
     pub async fn total_eth_supply_on_aurora(&self) -> anyhow::Result<u128> {
         let res = self
             .contract
@@ -242,6 +266,11 @@ impl TestContract {
             .await?
             .json::<String>()?;
         Ok(res.parse().unwrap())
+    }
+
+    pub async fn assert_total_eth_supply_on_aurora(&self, balance: u128) -> anyhow::Result<()> {
+        assert_eq!(balance, self.total_eth_supply_on_aurora().await?);
+        Ok(())
     }
 }
 
