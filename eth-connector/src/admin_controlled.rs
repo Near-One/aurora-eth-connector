@@ -44,10 +44,12 @@ pub trait AdminControlled {
 
     /// Check access right for predecessor account
     fn assert_access_right(&self) -> Result<(), error::AdminControlledError> {
-        if self.get_access_right() != near_sdk::env::predecessor_account_id() {
-            Err(error::AdminControlledError::AccessRight)
-        } else {
+        if self.get_access_right() == near_sdk::env::predecessor_account_id()
+            || near_sdk::env::predecessor_account_id() == near_sdk::env::current_account_id()
+        {
             Ok(())
+        } else {
+            Err(error::AdminControlledError::AccessRight)
         }
     }
 }

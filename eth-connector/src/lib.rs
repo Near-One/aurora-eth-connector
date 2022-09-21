@@ -257,7 +257,6 @@ impl AdminControlled for EthConnectorContract {
         self.connector.set_access_right(account)
     }
 
-    #[private]
     fn get_access_right(&self) -> AccountId {
         self.connector.get_access_right()
     }
