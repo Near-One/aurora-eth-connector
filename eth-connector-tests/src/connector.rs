@@ -1050,6 +1050,26 @@ async fn test_ft_transfer_empty_value() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn test_ft_transfer_wrong_u128_json_type() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let transfer_amount = 200;
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let res = contract
+        .contract
+        .call("ft_transfer")
+        .args_json((&receiver_id, transfer_amount, "transfer memo"))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    contract.assert_error_message(res, "invalid type: integer `200`, expected a string");
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_access_rights() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
