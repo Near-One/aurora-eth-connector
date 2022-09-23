@@ -3,7 +3,6 @@ use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
-use crate::errors::ERR_BORSH_DESERIALIZE;
 use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
@@ -103,7 +102,6 @@ impl EthConnectorContract {
 
     #[result_serializer(borsh)]
     pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
-        // self.assert_access_right().sdk_unwrap();
         self.ft.is_used_event(&proof.get_key())
     }
 
@@ -170,7 +168,6 @@ impl FungibleTokenResolver for EthConnectorContract {
         receiver_id: AccountId,
         amount: U128,
     ) -> U128 {
-        self.assert_access_right().sdk_unwrap();
         let (used_amount, burned_amount) = self.ft.internal_ft_resolve_transfer(
             &sender_id,
             &receiver_id,
@@ -330,7 +327,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
             let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
-                .map_err(|_| ERR_BORSH_DESERIALIZE)
+                .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                 .sdk_unwrap();
             let promise = self.ft.ft_transfer_call(
                 data.receiver_id,
