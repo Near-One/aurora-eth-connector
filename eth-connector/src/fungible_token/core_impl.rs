@@ -24,8 +24,7 @@ use near_sdk::{
     collections::LookupMap,
     env,
     json_types::U128,
-    log, require, AccountId, Balance, Gas, IntoStorageKey, PromiseOrValue, PromiseResult,
-    StorageUsage,
+    require, AccountId, Balance, Gas, IntoStorageKey, PromiseOrValue, PromiseResult, StorageUsage,
 };
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
@@ -84,7 +83,7 @@ impl FungibleToken {
 
     /// Record used proof as hash key
     pub fn record_proof(&mut self, key: &str) -> Result<(), error::ProofUsed> {
-        log!(format!("Record proof: {}", key));
+        crate::log!(format!("Record proof: {}", key));
 
         if self.is_used_event(key) {
             return Err(error::ProofUsed);
@@ -105,7 +104,7 @@ impl FungibleToken {
         owner_id: AccountId,
         amount: NEP141Wei,
     ) -> Result<(), error::DepositError> {
-        log!(format!("Mint {} nETH tokens for: {}", amount, owner_id));
+        crate::log!(format!("Mint {} nETH tokens for: {}", amount, owner_id));
 
         if self.get_account_eth_balance(&owner_id).is_none() {
             self.accounts_insert(&owner_id, ZERO_NEP141_WEI);
@@ -184,7 +183,7 @@ impl FungibleToken {
         sender_id: &AccountId,
         receiver_id: &AccountId,
         amount: NEP141Wei,
-        memo: Option<String>,
+        memo: &Option<String>,
     ) -> Result<(), error::TransferError> {
         if sender_id == receiver_id {
             return Err(error::TransferError::SelfTransfer);
@@ -203,13 +202,13 @@ impl FungibleToken {
         self.internal_withdraw_eth_from_near(sender_id, amount)?;
         self.internal_deposit_eth_to_near(receiver_id, amount)?;
 
-        log!(format!(
+        crate::log!(format!(
             "Transfer {} from {} to {}",
             amount, sender_id, receiver_id
         ));
         #[cfg(feature = "log")]
-        if let Some(memo) = memo.clone() {
-            log!(format!("Memo: {}", memo));
+        if let Some(memo) = memo {
+            crate::log!(format!("Memo: {}", memo));
         }
 
         FtTransfer {
@@ -269,7 +268,7 @@ impl FungibleToken {
         owner_id: Address,
         amount: Wei,
     ) -> Result<(), error::DepositError> {
-        log!(format!(
+        crate::log!(format!(
             "Mint {} ETH tokens for: {}",
             amount,
             owner_id.encode()
@@ -294,7 +293,7 @@ impl FungibleToken {
         amount: Balance,
         msg: String,
     ) -> Result<U128, error::FtTransferCallError> {
-        log!("Call ft_on_transfer");
+        crate::log!("Call ft_on_transfer");
         // Parse message with specific rules
         let message_data = FtTransferMessageData::parse_on_transfer_message(&msg)
             .map_err(error::FtTransferCallError::MessageParseFailed)?;
@@ -323,14 +322,9 @@ impl FungibleTokenCore for FungibleToken {
         assert_one_yocto();
         let sender_id = env::predecessor_account_id();
         let amount: Balance = amount.into();
-        self.internal_transfer_eth_on_near(
-            &sender_id,
-            &receiver_id,
-            NEP141Wei::new(amount),
-            memo.clone(),
-        )
-        .sdk_unwrap();
-        log!(format!(
+        self.internal_transfer_eth_on_near(&sender_id, &receiver_id, NEP141Wei::new(amount), &memo)
+            .sdk_unwrap();
+        crate::log!(format!(
             "Transfer amount {} to {} success with memo: {:?}",
             amount, receiver_id, memo
         ));
@@ -348,7 +342,7 @@ impl FungibleTokenCore for FungibleToken {
             ERR_MORE_GAS_REQUIRED
         );
         let sender_id = env::predecessor_account_id();
-        log!(format!(
+        crate::log!(format!(
             "Transfer call from {} to {} amount {}",
             sender_id, receiver_id, amount.0,
         ));
@@ -388,7 +382,7 @@ impl FungibleTokenCore for FungibleToken {
                 &sender_id,
                 &receiver_id,
                 NEP141Wei::new(amount.0),
-                memo,
+                &memo,
             )
             .sdk_unwrap();
         }
@@ -419,7 +413,7 @@ impl FungibleTokenCore for FungibleToken {
 
     fn ft_total_eth_supply_on_aurora(&self) -> String {
         let total_supply = self.total_eth_supply_on_aurora;
-        log!(format!("Total ETH supply on Aurora: {}", total_supply));
+        crate::log!(format!("Total ETH supply on Aurora: {}", total_supply));
         format!("{}", total_supply)
     }
 
@@ -432,7 +426,7 @@ impl FungibleTokenCore for FungibleToken {
 
     fn ft_balance_of_eth(&self, address: Address) -> String {
         let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
-        log!(format!(
+        crate::log!(format!(
             "Balance of ETH [{}]: {}",
             address.encode(),
             balance
@@ -479,7 +473,7 @@ impl FungibleToken {
                     .sdk_unwrap();
                 self.accounts_insert(receiver_id, new_receiver_balance);
 
-                log!(format!(
+                crate::log!(format!(
                     "Decrease receiver {} balance to: {}",
                     receiver_id,
                     receiver_balance - refund_amount
@@ -492,7 +486,7 @@ impl FungibleToken {
                         .sdk_unwrap();
                     self.accounts_insert(sender_id, new_sender_balance);
 
-                    log!(format!(
+                    crate::log!(format!(
                         "Increased sender {} balance to: {}",
                         sender_id,
                         refund_amount.as_u128()
@@ -517,7 +511,10 @@ impl FungibleToken {
                         .checked_sub(refund_amount)
                         .ok_or(ERR_TOTAL_SUPPLY_OVERFLOW)
                         .sdk_unwrap();
-                    log!("The account of the sender {}  was deleted", sender_id);
+                    crate::log!(format!(
+                        "The account of the sender {}  was deleted",
+                        sender_id
+                    ));
                     FtBurn {
                         owner_id: receiver_id,
                         amount: &U128(refund_amount.as_u128()),
