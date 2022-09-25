@@ -177,8 +177,10 @@ impl FungibleTokenResolver for EthConnectorContract {
             self.on_tokens_burned(sender_id.clone(), burned_amount);
         }
         log!(format!(
-            "Resolve transfer from {} to {} success",
-            sender_id, receiver_id
+            "Resolve transfer from {} to {}, used token amount {:?} success",
+            sender_id,
+            receiver_id,
+            used_amount.as_u128()
         ));
         used_amount.as_u128().into()
     }

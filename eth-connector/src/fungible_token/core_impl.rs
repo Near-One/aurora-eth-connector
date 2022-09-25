@@ -492,6 +492,12 @@ impl FungibleToken {
                         .sdk_unwrap();
                     self.accounts_insert(sender_id, new_sender_balance);
 
+                    log!(format!(
+                        "Increased sender {} balance to: {}",
+                        sender_id,
+                        refund_amount.as_u128()
+                    ));
+
                     FtTransfer {
                         old_owner_id: receiver_id,
                         new_owner_id: sender_id,
@@ -511,7 +517,7 @@ impl FungibleToken {
                         .checked_sub(refund_amount)
                         .ok_or(ERR_TOTAL_SUPPLY_OVERFLOW)
                         .sdk_unwrap();
-                    log!("The account of the sender was deleted");
+                    log!("The account of the sender {}  was deleted", sender_id);
                     FtBurn {
                         owner_id: receiver_id,
                         amount: &U128(refund_amount.as_u128()),
