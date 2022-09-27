@@ -445,7 +445,6 @@ impl FungibleToken {
         receiver_id: &AccountId,
         amount: NEP141Wei,
     ) -> (NEP141Wei, NEP141Wei) {
-        crate::log!("internal_ft_resolve_transfer");
         // Get the unused amount from the `ft_on_transfer` call result.
         let unused_amount = match env::promise_result(0) {
             PromiseResult::NotReady => env::abort(),
@@ -458,7 +457,6 @@ impl FungibleToken {
             }
             PromiseResult::Failed => amount,
         };
-        crate::log!(format!("{:?}", unused_amount));
 
         if unused_amount > ZERO_NEP141_WEI {
             let receiver_balance = self
