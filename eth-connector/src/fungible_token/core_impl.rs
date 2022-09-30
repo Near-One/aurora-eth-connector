@@ -5,13 +5,9 @@ use super::{
     resolver::{ext_ft_resolver, FungibleTokenResolver},
 };
 use crate::{
-    deposit_event::FtTransferMessageData, errors::ERR_ACCOUNTS_COUNTER_OVERFLOW, wei::Wei,
-    SdkUnwrap,
+    deposit_event::FtTransferMessageData, errors::ERR_ACCOUNTS_COUNTER_OVERFLOW, SdkUnwrap,
 };
-use aurora_engine_types::{
-    types::{Address, NEP141Wei, ZERO_NEP141_WEI},
-    U256,
-};
+use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
 
 use crate::errors::{
     ERR_BALANCE_OVERFLOW, ERR_MORE_GAS_REQUIRED, ERR_PREPAID_GAS_OVERFLOW,
@@ -44,16 +40,8 @@ pub struct FungibleToken {
     /// Accounts with balance of nETH (ETH on NEAR token)
     pub accounts_eth: LookupMap<AccountId, NEP141Wei>,
 
-    /// Accounts with balance of ETH (ETH on Aurora token)
-    pub accounts_aurora: LookupMap<Address, Wei>,
-
     /// Total ETH supply on Near (nETH as NEP-141 token)
     pub total_eth_supply_on_near: NEP141Wei,
-
-    /// Total ETH supply on Aurora (ETH in Aurora EVM)
-    /// NOTE: For compatibility reasons, we do not use  `Wei` (32 bytes)
-    /// buy `NEP141Wei` (16 bytes)
-    pub total_eth_supply_on_aurora: Wei,
 
     /// The storage size in bytes for one account.
     pub account_storage_usage: StorageUsage,
@@ -66,16 +54,14 @@ pub struct FungibleToken {
 }
 
 impl FungibleToken {
-    pub fn new<S>(prefix_eth: S, prefix_proof: S, prefix_aurora: S) -> Self
+    pub fn new<S>(prefix_eth: S, prefix_proof: S) -> Self
     where
         S: IntoStorageKey,
     {
         Self {
             accounts_eth: LookupMap::new(prefix_eth),
-            accounts_aurora: LookupMap::new(prefix_aurora),
             account_storage_usage: 0,
             total_eth_supply_on_near: NEP141Wei::default(),
-            total_eth_supply_on_aurora: Wei::default(),
             statistics_aurora_accounts_counter: 0,
             used_proofs: LookupMap::new(prefix_proof),
         }
@@ -225,96 +211,6 @@ impl FungibleToken {
     pub fn get_account_eth_balance(&self, account_id: &AccountId) -> Option<NEP141Wei> {
         self.accounts_eth.get(account_id)
     }
-
-    /// Balance of ETH (ETH on Aurora)
-    pub fn internal_unwrap_balance_of_eth_on_aurora(&self, address: &Address) -> Wei {
-        self.accounts_aurora.get(address).unwrap_or_default()
-    }
-
-    /// Internal ETH deposit to Aurora
-    pub fn internal_deposit_eth_to_aurora(
-        &mut self,
-        address: Address,
-        amount: Wei,
-    ) -> Result<(), error::DepositError> {
-        let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
-        let new_balance = balance
-            .checked_add(amount)
-            .ok_or(error::DepositError::BalanceOverflow)?;
-        self.accounts_aurora.insert(&address, &new_balance);
-
-        self.total_eth_supply_on_aurora = self
-            .total_eth_supply_on_aurora
-            .checked_add(amount)
-            .ok_or(error::DepositError::TotalSupplyOverflow)?;
-        Ok(())
-    }
-
-    /// Withdraw ETH tokens
-    pub fn internal_withdraw_eth_from_aurora(
-        &mut self,
-        amount: Wei,
-    ) -> Result<(), error::WithdrawError> {
-        self.total_eth_supply_on_aurora = self
-            .total_eth_supply_on_aurora
-            .checked_sub(amount)
-            .ok_or(error::WithdrawError::TotalSupplyUnderflow)?;
-        Ok(())
-    }
-
-    ///  Mint ETH tokens
-    pub fn mint_eth_on_aurora(
-        &mut self,
-        owner_id: Address,
-        amount: Wei,
-    ) -> Result<(), error::DepositError> {
-        crate::log!(format!(
-            "Mint {} ETH tokens for: {}",
-            amount,
-            owner_id.encode()
-        ));
-        self.internal_deposit_eth_to_aurora(owner_id, amount)
-    }
-
-    /// Burn ETH tokens
-    pub fn burn_eth_on_aurora(&mut self, amount: Wei) -> Result<(), error::WithdrawError> {
-        self.internal_withdraw_eth_from_aurora(amount)
-    }
-
-    /// Internal ETH withdraw ETH logic
-    pub fn internal_remove_eth(&mut self, amount: Wei) -> Result<(), error::WithdrawError> {
-        self.burn_eth_on_aurora(amount)
-    }
-
-    /// ft_on_transfer callback function
-    pub fn ft_on_transfer(
-        &mut self,
-        _sender_id: AccountId,
-        amount: Balance,
-        msg: String,
-    ) -> Result<U128, error::FtTransferCallError> {
-        crate::log!("Call ft_on_transfer");
-        // Parse message with specific rules
-        let message_data = FtTransferMessageData::parse_on_transfer_message(&msg)
-            .map_err(error::FtTransferCallError::MessageParseFailed)?;
-
-        // Special case when predecessor_account_id is current_account_id
-        let wei_fee = Wei::from(message_data.fee);
-        // Mint fee to relayer
-        // TODO: Get relayer evm address
-        let relayer = None;
-        match (wei_fee, relayer) {
-            (fee, Some(evm_relayer_address)) if fee > Wei::new_u64(0) => {
-                self.mint_eth_on_aurora(
-                    message_data.recipient,
-                    Wei::new(U256::from(amount)) - fee,
-                )?;
-                self.mint_eth_on_aurora(evm_relayer_address, fee)?;
-            }
-            _ => self.mint_eth_on_aurora(message_data.recipient, Wei::new(U256::from(amount)))?,
-        }
-        Ok(0.into())
-    }
 }
 
 impl FungibleTokenCore for FungibleToken {
@@ -355,25 +251,6 @@ impl FungibleTokenCore for FungibleToken {
             if message_data.fee.as_u128() >= amount.0 {
                 panic_err(error::FtTransferCallError::InsufficientAmountForFee);
             }
-            // Additional check overflow before process `ft_on_transfer`
-            // But don't check overflow for relayer
-            // Note: It can't overflow because the total supply doesn't change during transfer.
-            let amount_for_check =
-                self.internal_unwrap_balance_of_eth_on_aurora(&message_data.recipient);
-            if amount_for_check.checked_add(Wei::from(amount)).is_none() {
-                panic_err(error::FtTransferCallError::Transfer(
-                    error::TransferError::BalanceOverflow,
-                ));
-            }
-            if self
-                .total_eth_supply_on_aurora
-                .checked_add(Wei::from(amount))
-                .is_none()
-            {
-                panic_err(error::FtTransferCallError::Transfer(
-                    error::TransferError::TotalSupplyOverflow,
-                ));
-            }
         }
 
         // Special case for Aurora transfer itself - we shouldn't transfer
@@ -411,27 +288,11 @@ impl FungibleTokenCore for FungibleToken {
         self.total_eth_supply_on_near.as_u128().into()
     }
 
-    fn ft_total_eth_supply_on_aurora(&self) -> String {
-        let total_supply = self.total_eth_supply_on_aurora;
-        crate::log!(format!("Total ETH supply on Aurora: {}", total_supply));
-        format!("{}", total_supply)
-    }
-
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
         self.get_account_eth_balance(&account_id)
             .unwrap_or(ZERO_NEP141_WEI)
             .as_u128()
             .into()
-    }
-
-    fn ft_balance_of_eth(&self, address: Address) -> String {
-        let balance = self.internal_unwrap_balance_of_eth_on_aurora(&address);
-        crate::log!(format!(
-            "Balance of ETH [{}]: {}",
-            address.encode(),
-            balance
-        ));
-        format!("{}", balance)
     }
 }
 

@@ -236,6 +236,7 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
+    println!("{:#?}", res);
     assert!(res.is_failure());
     contract.assert_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT");
 
