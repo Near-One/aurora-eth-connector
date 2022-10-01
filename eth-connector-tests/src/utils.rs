@@ -112,7 +112,7 @@ impl TestContract {
             .await?
             .into_result()?;
         let contract = eth_connector
-            .deploy(&include_bytes!("../../bin/aurora-mainnet-test.wasm")[..])
+            .deploy(&include_bytes!("../../bin/aurora-eth-connector-test.wasm")[..])
             .await?
             .into_result()?;
         Ok((contract, root_account))
@@ -209,6 +209,7 @@ impl TestContract {
     pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
         let res = self.deposit_with_proof(&proof).await?;
+        println!("{:#?}", res);
         assert!(res.is_success());
         Ok(())
     }
@@ -271,21 +272,6 @@ impl TestContract {
 
     pub async fn assert_total_supply(&self, balance: u128) -> anyhow::Result<()> {
         assert_eq!(balance, self.total_supply().await?.0);
-        Ok(())
-    }
-
-    pub async fn total_eth_supply_on_aurora(&self) -> anyhow::Result<u128> {
-        let res = self
-            .contract
-            .call("ft_total_eth_supply_on_aurora")
-            .view()
-            .await?
-            .json::<String>()?;
-        Ok(res.parse().unwrap())
-    }
-
-    pub async fn assert_total_eth_supply_on_aurora(&self, balance: u128) -> anyhow::Result<()> {
-        assert_eq!(balance, self.total_eth_supply_on_aurora().await?);
         Ok(())
     }
 }
