@@ -155,26 +155,8 @@ impl TestContract {
         serde_json::from_str(proof).unwrap()
     }
 
-    pub async fn assert_proof_was_used(&self, proof: &str) -> anyhow::Result<()> {
-        let is_used_proof = self.call_is_used_proof(proof).await?;
-        assert!(
-            is_used_proof,
-            "Expected not to fail because the proof should have been already used",
-        );
-        Ok(())
-    }
-
-    pub fn assert_error_message(&self, res: ExecutionFinalResult, error_msg: &str) {
-        assert!(format!("{:?}", res).contains(error_msg));
-    }
-
-    pub async fn assert_proof_was_not_used(&self, proof: &str) -> anyhow::Result<()> {
-        let is_used_proof = self.call_is_used_proof(proof).await?;
-        assert!(
-            !is_used_proof,
-            "Expected not to fail because the proof should not have been already used",
-        );
-        Ok(())
+    pub fn check_error_message(&self, res: ExecutionFinalResult, error_msg: &str) -> bool {
+        format!("{:?}", res).contains(error_msg)
     }
 
     pub async fn call_is_used_proof(&self, proof: &str) -> anyhow::Result<bool> {
@@ -201,15 +183,9 @@ impl TestContract {
         Ok(res)
     }
 
-    pub async fn assert_total_eth_supply_on_near(&self, balance: u128) -> anyhow::Result<()> {
-        assert_eq!(balance, self.total_eth_supply_on_near().await?.0);
-        Ok(())
-    }
-
     pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
         let res = self.deposit_with_proof(&proof).await?;
-        println!("{:#?}", res);
         assert!(res.is_success());
         Ok(())
     }
@@ -233,46 +209,14 @@ impl TestContract {
         Ok(res)
     }
 
-    pub async fn assert_eth_on_near_balance(
-        &self,
-        account: &AccountId,
-        balance: u128,
-    ) -> anyhow::Result<()> {
-        assert_eq!(balance, self.get_eth_on_near_balance(account).await?.0);
-        Ok(())
-    }
-
-    pub async fn get_eth_balance(&self, address: &Address) -> anyhow::Result<u128> {
-        let res = self
-            .contract
-            .call("ft_balance_of_eth")
-            .args_json((address,))
-            .view()
-            .await?
-            .json::<String>()?;
-        Ok(res.parse().unwrap())
-    }
-
-    pub async fn assert_eth_balance(&self, address: &Address, balance: u128) -> anyhow::Result<()> {
-        assert_eq!(balance, self.get_eth_balance(address).await?);
-        Ok(())
-    }
-
     pub async fn total_supply(&self) -> anyhow::Result<U128> {
-        let res = self
+        Ok(self
             .contract
             .call("ft_total_supply")
             .view()
             .await?
             .json::<U128>()
-            .unwrap();
-
-        Ok(res)
-    }
-
-    pub async fn assert_total_supply(&self, balance: u128) -> anyhow::Result<()> {
-        assert_eq!(balance, self.total_supply().await?.0);
-        Ok(())
+            .unwrap())
     }
 }
 

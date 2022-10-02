@@ -154,7 +154,7 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
-#    "test_deposit_eth_to_aurora_balance_total_supply",
+#    "test_deposit_pausability",
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",
