@@ -7,7 +7,6 @@ use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
     metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider},
-    receiver::FungibleTokenReceiver,
     resolver::FungibleTokenResolver,
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
@@ -53,7 +52,6 @@ enum StorageKey {
     FungibleTokenEth = 0x1,
     Proof = 0x2,
     Metadata = 0x3,
-    FungibleTokenAurora = 0x4,
 }
 
 #[near_bindgen]
@@ -78,11 +76,7 @@ impl EthConnectorContract {
         };
         let owner_id = env::current_account_id();
         let mut this = Self {
-            ft: FungibleToken::new(
-                StorageKey::FungibleTokenEth,
-                StorageKey::Proof,
-                StorageKey::FungibleTokenAurora,
-            ),
+            ft: FungibleToken::new(StorageKey::FungibleTokenEth, StorageKey::Proof),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         };
@@ -148,14 +142,6 @@ impl FungibleTokenCore for EthConnectorContract {
             self.ft.ft_total_eth_supply_on_near().0
         ));
         self.ft.ft_total_eth_supply_on_near()
-    }
-
-    fn ft_total_eth_supply_on_aurora(&self) -> String {
-        self.ft.ft_total_eth_supply_on_aurora()
-    }
-
-    fn ft_balance_of_eth(&self, address: Address) -> String {
-        self.ft.ft_balance_of_eth(address)
     }
 }
 
@@ -359,22 +345,5 @@ impl ConnectorFundsFinish for EthConnectorContract {
             self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
             PromiseOrValue::Value(None)
         }
-    }
-}
-
-#[near_bindgen]
-impl FungibleTokenReceiver for EthConnectorContract {
-    fn ft_on_transfer(
-        &mut self,
-        sender_id: AccountId,
-        amount: U128,
-        msg: String,
-    ) -> PromiseOrValue<U128> {
-        self.assert_access_right().sdk_unwrap();
-        let value = self
-            .ft
-            .ft_on_transfer(sender_id, amount.into(), msg)
-            .sdk_unwrap();
-        PromiseOrValue::Value(value)
     }
 }

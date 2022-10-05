@@ -1,4 +1,3 @@
-use aurora_engine_types::types::Address;
 use near_sdk::{ext_contract, json_types::U128, AccountId, PromiseOrValue};
 
 #[ext_contract(ext_ft_core)]
@@ -53,8 +52,4 @@ pub trait FungibleTokenCore {
     fn ft_balance_of(&self, account_id: AccountId) -> U128;
 
     fn ft_total_eth_supply_on_near(&self) -> U128;
-
-    fn ft_total_eth_supply_on_aurora(&self) -> String;
-
-    fn ft_balance_of_eth(&self, address: Address) -> String;
 }
