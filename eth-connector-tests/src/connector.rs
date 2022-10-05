@@ -562,12 +562,14 @@ async fn test_admin_controlled_only_admin_can_pause() -> anyhow::Result<()> {
 async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow::Result<()> {
     use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, PAUSE_WITHDRAW};
 
+    // 1st deposit call when unpaused - should succeed
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
     let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let withdraw_amount: NEP141Wei = NEP141Wei::new(100);
 
+    // 1st withdraw call when unpaused  - should succeed
     let res = contract
         .contract
         .call("withdraw")
@@ -584,6 +586,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
 
+    // Pause deposit
     let res = contract
         .contract
         .call("set_paused_flags")
@@ -593,6 +596,12 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
         .await?;
     assert!(res.is_success());
 
+    // 2nd deposit call when paused, but the admin is calling it - should succeed
+    // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
+    // method which should be paused
+    contract.call_deposit_eth_to_aurora().await?;
+
+    // Pause withdraw
     let res = contract
         .contract
         .call("set_paused_flags")
@@ -601,11 +610,6 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
         .transact()
         .await?;
     assert!(res.is_success());
-
-    // 2nd deposit call when paused, but the admin is calling it - should succeed
-    // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
-    // method which should be paused
-    contract.call_deposit_eth_to_aurora().await?;
 
     // 2nd withdraw call when paused, but the admin is calling it - should succeed
     let res = contract
