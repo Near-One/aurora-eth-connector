@@ -3,7 +3,7 @@ use aurora_engine_types::types::{Address, NEP141Wei};
 use near_sdk::{
     borsh, ext_contract,
     json_types::{Base64VecU8, U128},
-    Promise, PromiseOrValue,
+    AccountId, Promise, PromiseOrValue,
 };
 
 #[ext_contract(ext_deposit)]
@@ -16,6 +16,7 @@ pub trait ConnectorWithdraw {
     #[result_serializer(borsh)]
     fn withdraw(
         &mut self,
+        #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: NEP141Wei,
     ) -> WithdrawResult;

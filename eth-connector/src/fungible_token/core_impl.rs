@@ -1,30 +1,21 @@
 use super::{
     core::FungibleTokenCore,
     events::{FtBurn, FtTransfer},
-    receiver::ext_ft_receiver,
-    resolver::{ext_ft_resolver, FungibleTokenResolver},
+    resolver::FungibleTokenResolver,
 };
-use crate::{
-    deposit_event::FtTransferMessageData, errors::ERR_ACCOUNTS_COUNTER_OVERFLOW, SdkUnwrap,
-};
+use crate::{errors::ERR_ACCOUNTS_COUNTER_OVERFLOW, SdkUnwrap};
 use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
 
-use crate::errors::{
-    ERR_BALANCE_OVERFLOW, ERR_MORE_GAS_REQUIRED, ERR_PREPAID_GAS_OVERFLOW,
-    ERR_RECEIVER_BALANCE_NOT_ENOUGH, ERR_TOTAL_SUPPLY_OVERFLOW, ERR_USED_AMOUNT_OVERFLOW,
-};
-use crate::types::panic_err;
+use crate::errors;
+use crate::fungible_token::engine::EngineFungibleToken;
+
 use near_sdk::{
-    assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LookupMap,
     env,
     json_types::U128,
-    require, AccountId, Balance, Gas, IntoStorageKey, PromiseOrValue, PromiseResult, StorageUsage,
+    AccountId, IntoStorageKey, PromiseOrValue, PromiseResult, StorageUsage,
 };
-
-const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
-const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.0);
 
 /// Implementation of a FungibleToken standard.
 /// Allows to include NEP-141 compatible token to any contract.
@@ -215,15 +206,7 @@ impl FungibleToken {
 
 impl FungibleTokenCore for FungibleToken {
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
-        assert_one_yocto();
-        let sender_id = env::predecessor_account_id();
-        let amount: Balance = amount.into();
-        self.internal_transfer_eth_on_near(&sender_id, &receiver_id, NEP141Wei::new(amount), &memo)
-            .sdk_unwrap();
-        crate::log!(format!(
-            "Transfer amount {} to {} success with memo: {:?}",
-            amount, receiver_id, memo
-        ));
+        self.engine_ft_transfer(env::predecessor_account_id(), receiver_id, amount, memo)
     }
 
     fn ft_transfer_call(
@@ -233,51 +216,13 @@ impl FungibleTokenCore for FungibleToken {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        require!(
-            env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
-            ERR_MORE_GAS_REQUIRED
-        );
-        let sender_id = env::predecessor_account_id();
-        crate::log!(format!(
-            "Transfer call from {} to {} amount {}",
-            sender_id, receiver_id, amount.0,
-        ));
-
-        // Verify message data before `ft_on_transfer` call to avoid verification panics
-        // It's allowed empty message if `receiver_id =! current_account_id`
-        if sender_id == receiver_id {
-            let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
-            // Check is transfer amount > fee
-            if message_data.fee.as_u128() >= amount.0 {
-                panic_err(error::FtTransferCallError::InsufficientAmountForFee);
-            }
-        }
-
-        // Special case for Aurora transfer itself - we shouldn't transfer
-        if sender_id != receiver_id {
-            self.internal_transfer_eth_on_near(
-                &sender_id,
-                &receiver_id,
-                NEP141Wei::new(amount.0),
-                &memo,
-            )
-            .sdk_unwrap();
-        }
-        let receiver_gas = env::prepaid_gas()
-            .0
-            .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
-            .ok_or(ERR_PREPAID_GAS_OVERFLOW)
-            .sdk_unwrap();
-        // Initiating receiver's call and the callback
-        ext_ft_receiver::ext(receiver_id.clone())
-            .with_static_gas(receiver_gas.into())
-            .ft_on_transfer(sender_id.clone(), amount, msg)
-            .then(
-                ext_ft_resolver::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_RESOLVE_TRANSFER)
-                    .ft_resolve_transfer(sender_id, receiver_id, amount),
-            )
-            .into()
+        self.engine_ft_transfer_call(
+            env::predecessor_account_id(),
+            receiver_id,
+            amount,
+            memo,
+            msg,
+        )
     }
 
     fn ft_total_supply(&self) -> U128 {
@@ -330,7 +275,7 @@ impl FungibleToken {
                 let refund_amount = std::cmp::min(receiver_balance, unused_amount);
                 let new_receiver_balance = receiver_balance
                     .checked_sub(refund_amount)
-                    .ok_or(ERR_RECEIVER_BALANCE_NOT_ENOUGH)
+                    .ok_or(errors::ERR_RECEIVER_BALANCE_NOT_ENOUGH)
                     .sdk_unwrap();
                 self.accounts_insert(receiver_id, new_receiver_balance);
 
@@ -343,7 +288,7 @@ impl FungibleToken {
                 if let Some(sender_balance) = self.get_account_eth_balance(sender_id) {
                     let new_sender_balance = sender_balance
                         .checked_add(refund_amount)
-                        .ok_or(ERR_BALANCE_OVERFLOW)
+                        .ok_or(errors::ERR_BALANCE_OVERFLOW)
                         .sdk_unwrap();
                     self.accounts_insert(sender_id, new_sender_balance);
 
@@ -362,7 +307,7 @@ impl FungibleToken {
                     .emit();
                     let used_amount = amount
                         .checked_sub(refund_amount)
-                        .ok_or(ERR_USED_AMOUNT_OVERFLOW)
+                        .ok_or(errors::ERR_USED_AMOUNT_OVERFLOW)
                         .sdk_unwrap();
                     return (used_amount, ZERO_NEP141_WEI);
                 } else {
@@ -370,7 +315,7 @@ impl FungibleToken {
                     self.total_eth_supply_on_near = self
                         .total_eth_supply_on_near
                         .checked_sub(refund_amount)
-                        .ok_or(ERR_TOTAL_SUPPLY_OVERFLOW)
+                        .ok_or(errors::ERR_TOTAL_SUPPLY_OVERFLOW)
                         .sdk_unwrap();
                     crate::log!(format!(
                         "The account of the sender {}  was deleted",
@@ -408,10 +353,9 @@ pub mod error {
     use crate::deposit_event::error::ParseOnTransferMessageError;
     use crate::errors::{
         ERR_BALANCE_OVERFLOW, ERR_NOT_ENOUGH_BALANCE, ERR_NOT_ENOUGH_BALANCE_FOR_FEE,
-        ERR_PROOF_EXIST, ERR_SENDER_EQUALS_RECEIVER, ERR_TOTAL_SUPPLY_UNDERFLOW,
-        ERR_WRONG_EVENT_ADDRESS, ERR_ZERO_AMOUNT,
+        ERR_PROOF_EXIST, ERR_SENDER_EQUALS_RECEIVER, ERR_TOTAL_SUPPLY_OVERFLOW,
+        ERR_TOTAL_SUPPLY_UNDERFLOW, ERR_WRONG_EVENT_ADDRESS, ERR_ZERO_AMOUNT,
     };
-    use crate::fungible_token::core_impl::ERR_TOTAL_SUPPLY_OVERFLOW;
     use aurora_engine_types::types::balance::error::BalanceOverflowError;
     use aurora_engine_types::types::ERR_FAILED_PARSE;
 

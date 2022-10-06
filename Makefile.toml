@@ -154,7 +154,7 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
-#    "test_deposit_pausability",
+    "test_withdraw_from_near_pausability",
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",

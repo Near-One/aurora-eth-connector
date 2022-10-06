@@ -650,11 +650,12 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
     // 1st withdraw - should succeed
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
+    println!("{:#?}", res);
     assert!(res.is_success());
 
     let data: WithdrawResult = res.borsh()?;
@@ -676,7 +677,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
     // 2nd withdraw - should fail
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -696,7 +697,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
 
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
