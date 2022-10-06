@@ -64,7 +64,7 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
     let res = contract
         .contract
         .call("withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -501,7 +501,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     let res = contract
         .contract
         .call("withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -543,7 +543,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     let res = contract
         .contract
         .call("withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -655,7 +655,6 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
-    println!("{:#?}", res);
     assert!(res.is_success());
 
     let data: WithdrawResult = res.borsh()?;
