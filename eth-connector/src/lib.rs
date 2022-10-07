@@ -3,6 +3,7 @@ use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
+use crate::fungible_token::engine::EngineFungibleToken;
 use crate::fungible_token::{
     core::FungibleTokenCore,
     core_impl::FungibleToken,
@@ -104,6 +105,37 @@ impl EthConnectorContract {
     pub fn verify_log_entry() -> bool {
         log!("Call from verify_log_entry");
         true
+    }
+}
+
+#[near_bindgen]
+impl EngineFungibleToken for EthConnectorContract {
+    #[payable]
+    fn engine_ft_transfer(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+    ) {
+        self.assert_access_right().sdk_unwrap();
+        self.ft
+            .engine_ft_transfer(sender_id, receiver_id, amount, memo)
+    }
+
+    #[payable]
+    fn engine_ft_transfer_call(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        self.assert_access_right().sdk_unwrap();
+        assert_one_yocto();
+        self.ft
+            .engine_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
 }
 
