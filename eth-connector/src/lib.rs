@@ -106,6 +106,10 @@ impl EthConnectorContract {
         log!("Call from verify_log_entry");
         true
     }
+
+    pub fn get_bridge_prover(&self) -> AccountId {
+        self.connector.prover_account.clone()
+    }
 }
 
 #[near_bindgen]

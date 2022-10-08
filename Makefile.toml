@@ -154,7 +154,7 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
-#    "test_get_accounts_counter_and_transfer",
+#    "ft_transfer_",
     "--features",
     "${CARGO_FEATURES_TEST}",
 #    "--",
