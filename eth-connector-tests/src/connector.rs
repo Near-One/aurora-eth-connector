@@ -33,23 +33,71 @@ async fn test_ft_transfer() -> anyhow::Result<()> {
         .await?;
     assert!(res.is_success());
 
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(
-        balance.0,
+        contract.get_eth_on_near_balance(&receiver_id).await?.0,
         DEPOSITED_AMOUNT - DEPOSITED_FEE + transfer_amount as u128
     );
+    assert_eq!(
+        contract
+            .get_eth_on_near_balance(&contract.contract.id())
+            .await?
+            .0,
+        DEPOSITED_FEE - transfer_amount as u128
+    );
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(
+        contract.total_eth_supply_on_near().await?.0,
+        DEPOSITED_AMOUNT
+    );
+    Ok(())
+}
 
-    let balance = contract
-        .get_eth_on_near_balance(&contract.contract.id())
+#[tokio::test]
+async fn test_ft_transfer_user() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let transfer_amount = 70;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
+
+    let res = contract
+        .contract
+        .call("set_access_right")
+        .args_json((user_acc.id(),))
+        .gas(DEFAULT_GAS)
+        .transact()
         .await?;
-    assert_eq!(balance.0, DEPOSITED_FEE - transfer_amount as u128);
+    assert!(res.is_success());
 
-    let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
+    let res = user_acc
+        .call(contract.contract.id(), "ft_transfer")
+        .args_json((
+            &contract.contract.id(),
+            transfer_amount.to_string(),
+            "transfer memo",
+        ))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
 
-    let balance = contract.total_eth_supply_on_near().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT);
-
+    assert_eq!(
+        contract.get_eth_on_near_balance(&user_acc.id()).await?.0,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount as u128
+    );
+    assert_eq!(
+        contract
+            .get_eth_on_near_balance(&contract.contract.id())
+            .await?
+            .0,
+        DEPOSITED_FEE + transfer_amount as u128
+    );
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(
+        contract.total_eth_supply_on_near().await?.0,
+        DEPOSITED_AMOUNT
+    );
     Ok(())
 }
 
