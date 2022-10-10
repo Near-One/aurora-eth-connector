@@ -239,6 +239,51 @@ async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn test_ft_transfer_call_user() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
+    let transfer_amount: U128 = 50.into();
+    let fee: u128 = 30;
+    let mut msg = U256::from(fee).as_byte_slice().to_vec();
+    msg.append(
+        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
+            .as_bytes()
+            .to_vec(),
+    );
+
+    let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
+    let memo: Option<String> = None;
+    let res = user_acc
+        .call(contract.contract.id(), "ft_transfer_call")
+        .args_json((contract.contract.id(), transfer_amount, memo, message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    assert_eq!(
+        contract.get_eth_on_near_balance(&user_acc.id()).await?.0,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0
+    );
+    assert_eq!(
+        contract
+            .get_eth_on_near_balance(&contract.contract.id())
+            .await?
+            .0,
+        DEPOSITED_FEE + transfer_amount.0
+    );
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(
+        contract.total_eth_supply_on_near().await?.0,
+        DEPOSITED_AMOUNT
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
