@@ -52,7 +52,11 @@ impl StorageManagement for FungibleToken {
         let amount: Balance = env::attached_deposit();
         let account_id = account_id.unwrap_or_else(env::predecessor_account_id);
         if self.accounts_eth.contains_key(&account_id) {
-            log!("The account is already registered, refunding the deposit");
+            log!(format!(
+                "The account {} is already registered, refunding the deposit {}",
+                account_id.to_string(),
+                amount
+            ));
             if amount > 0 {
                 Promise::new(env::predecessor_account_id()).transfer(amount);
             }
@@ -64,6 +68,12 @@ impl StorageManagement for FungibleToken {
 
             self.accounts_insert(&account_id, ZERO_NEP141_WEI);
             let refund = amount - min_balance;
+            log!(format!(
+                "Storage deposit {:?} for account {} with refund {:?}",
+                amount,
+                account_id.to_string(),
+                refund,
+            ));
             if refund > 0 {
                 Promise::new(env::predecessor_account_id()).transfer(refund);
             }

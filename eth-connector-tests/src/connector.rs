@@ -6,10 +6,12 @@ use aurora_engine_types::{
 use aurora_eth_connector::{
     connector_impl::WithdrawResult,
     deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT},
+    fungible_token::storage_management::StorageBalance,
     log_entry,
     proof::Proof,
 };
 use byte_slice_cast::AsByteSlice;
+use near_sdk::serde_json::json;
 use near_sdk::{
     json_types::{U128, U64},
     ONE_YOCTO,
@@ -1200,5 +1202,60 @@ async fn test_access_rights() -> anyhow::Result<()> {
         transfer_amount2.0,
         contract.get_eth_on_near_balance(&receiver_id).await?.0
     );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_storage_deposit() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
+
+    let res = contract
+        .contract
+        .call("storage_deposit")
+        .args_json(json!({
+            "account_id": &user_acc.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(10)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+    let balance = res.json::<StorageBalance>()?;
+    assert_eq!(balance.available.0, 0);
+    assert_eq!(balance.total.0, 0);
+
+    let res = contract
+        .contract
+        .call("storage_balance_of")
+        .args_json(json!({
+            "account_id": &contract.contract.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(10)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+    let balance = res.json::<StorageBalance>()?;
+    assert_eq!(balance.available.0, 0);
+    assert_eq!(balance.total.0, 0);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_storage_withdraw() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+
+    let amount: U128 = 10.into();
+    let res = contract
+        .contract
+        .call("storage_withdraw")
+        .args_json(json!({ "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_NO_AVAILABLE_BALANCE"));
     Ok(())
 }
