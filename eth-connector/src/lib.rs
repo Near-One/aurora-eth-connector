@@ -141,6 +141,40 @@ impl EngineFungibleToken for EthConnectorContract {
         self.ft
             .engine_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
+
+    #[payable]
+    fn engine_storage_deposit(
+        &mut self,
+        sender_id: AccountId,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
+        self.assert_access_right().sdk_unwrap();
+        self.ft
+            .engine_storage_deposit(sender_id, account_id, registration_only)
+    }
+
+    #[payable]
+    fn engine_storage_withdraw(
+        &mut self,
+        sender_id: AccountId,
+        amount: Option<U128>,
+    ) -> StorageBalance {
+        self.assert_access_right().sdk_unwrap();
+        self.ft.engine_storage_withdraw(sender_id, amount)
+    }
+
+    #[payable]
+    fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
+        self.assert_access_right().sdk_unwrap();
+        self.assert_access_right().sdk_unwrap();
+        if let Some((account_id, balance)) = self.ft.internal_storage_unregister(sender_id, force) {
+            self.on_account_closed(account_id, balance);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 #[near_bindgen]
@@ -229,7 +263,10 @@ impl StorageManagement for EthConnectorContract {
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
         self.assert_access_right().sdk_unwrap();
-        if let Some((account_id, balance)) = self.ft.internal_storage_unregister(force) {
+        if let Some((account_id, balance)) = self
+            .ft
+            .internal_storage_unregister(env::predecessor_account_id(), force)
+        {
             self.on_account_closed(account_id, balance);
             true
         } else {
