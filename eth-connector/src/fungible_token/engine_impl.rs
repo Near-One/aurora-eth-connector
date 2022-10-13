@@ -2,11 +2,12 @@ use crate::deposit_event::FtTransferMessageData;
 use crate::errors::{ERR_MORE_GAS_REQUIRED, ERR_PREPAID_GAS_OVERFLOW};
 use crate::fungible_token::{
     core_impl::error, engine::EngineFungibleToken, receiver::ext_ft_receiver,
-    resolver::ext_ft_resolver,
+    resolver::ext_ft_resolver, storage_management::StorageManagement,
 };
 use crate::{panic_err, FungibleToken, SdkUnwrap, StorageBalance};
-use aurora_engine_types::types::NEP141Wei;
+use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
 
+use crate::fungible_token::storage_impl::error as storage_error;
 use near_sdk::json_types::U128;
 use near_sdk::{assert_one_yocto, env, require, AccountId, Balance, Gas, Promise, PromiseOrValue};
 
@@ -85,6 +86,7 @@ impl EngineFungibleToken for FungibleToken {
             .into()
     }
 
+    #[allow(unused_variables)]
     fn engine_storage_deposit(
         &mut self,
         sender_id: AccountId,
@@ -92,7 +94,7 @@ impl EngineFungibleToken for FungibleToken {
         registration_only: Option<bool>,
     ) -> StorageBalance {
         let amount: Balance = env::attached_deposit();
-        let account_id = account_id.unwrap_or_else(sender_id);
+        let account_id = account_id.unwrap_or(sender_id);
         if self.accounts_eth.contains_key(&account_id) {
             crate::log!(format!(
                 "The account {} is already registered, refunding the deposit {}",
@@ -105,7 +107,7 @@ impl EngineFungibleToken for FungibleToken {
         } else {
             let min_balance = self.storage_balance_bounds().min.0;
             if amount < min_balance {
-                panic_err(error::StorageFundingError::InsufficientDeposit);
+                panic_err(storage_error::StorageFundingError::InsufficientDeposit);
             }
 
             self.accounts_insert(&account_id, ZERO_NEP141_WEI);
@@ -136,12 +138,12 @@ impl EngineFungibleToken for FungibleToken {
                     // The available balance is always zero because `StorageBalanceBounds::max` is
                     // equal to `StorageBalanceBounds::min`. Therefore it is impossible to withdraw
                     // a positive amount.
-                    panic_err(error::StorageFundingError::NoAvailableBalance);
+                    panic_err(storage_error::StorageFundingError::NoAvailableBalance);
                 }
                 _ => storage_balance,
             }
         } else {
-            panic_err(error::StorageFundingError::NotRegistered);
+            panic_err(storage_error::StorageFundingError::NotRegistered);
         }
     }
 

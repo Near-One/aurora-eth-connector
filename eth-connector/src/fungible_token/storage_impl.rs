@@ -1,7 +1,7 @@
 use super::core_impl::FungibleToken;
 use super::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
 use crate::{log, types::panic_err, EngineFungibleToken};
-use aurora_engine_types::types::{NEP141Wei, ZERO_NEP141_WEI};
+use aurora_engine_types::types::NEP141Wei;
 use near_sdk::{assert_one_yocto, env, json_types::U128, AccountId, Balance, Promise};
 
 impl FungibleToken {
@@ -65,7 +65,6 @@ impl StorageManagement for FungibleToken {
 
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
         self.engine_storage_unregister(env::predecessor_account_id(), force)
-            .is_some()
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
@@ -83,7 +82,7 @@ impl StorageManagement for FungibleToken {
     }
 }
 
-mod error {
+pub mod error {
     use crate::errors;
 
     #[derive(Debug)]
