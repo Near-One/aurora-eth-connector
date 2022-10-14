@@ -167,7 +167,6 @@ impl EngineFungibleToken for EthConnectorContract {
     #[payable]
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
         self.assert_access_right().sdk_unwrap();
-        self.assert_access_right().sdk_unwrap();
         if let Some((account_id, balance)) = self.ft.internal_storage_unregister(sender_id, force) {
             self.on_account_closed(account_id, balance);
             true
