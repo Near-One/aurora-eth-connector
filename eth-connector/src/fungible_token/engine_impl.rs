@@ -26,10 +26,12 @@ impl EngineFungibleToken for FungibleToken {
         let amount: Balance = amount.into();
         self.internal_transfer_eth_on_near(&sender_id, &receiver_id, NEP141Wei::new(amount), &memo)
             .sdk_unwrap();
-        crate::log!(format!(
+        crate::log!(
             "Transfer amount {} to {} success with memo: {:?}",
-            amount, receiver_id, memo
-        ));
+            amount,
+            receiver_id,
+            memo
+        );
     }
 
     fn engine_ft_transfer_call(
@@ -44,10 +46,12 @@ impl EngineFungibleToken for FungibleToken {
             env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
             ERR_MORE_GAS_REQUIRED
         );
-        crate::log!(format!(
+        crate::log!(
             "Transfer call from {} to {} amount {}",
-            sender_id, receiver_id, amount.0,
-        ));
+            sender_id,
+            receiver_id,
+            amount.0,
+        );
 
         // Verify message data before `ft_on_transfer` call to avoid verification panics
         // It's allowed empty message if `receiver_id =! current_account_id`
@@ -96,11 +100,11 @@ impl EngineFungibleToken for FungibleToken {
         let amount: Balance = env::attached_deposit();
         let account_id = account_id.unwrap_or(sender_id);
         if self.accounts_eth.contains_key(&account_id) {
-            crate::log!(format!(
+            crate::log!(
                 "The account {} is already registered, refunding the deposit {}",
                 account_id.to_string(),
                 amount
-            ));
+            );
             if amount > 0 {
                 Promise::new(env::predecessor_account_id()).transfer(amount);
             }
@@ -112,12 +116,12 @@ impl EngineFungibleToken for FungibleToken {
 
             self.accounts_insert(&account_id, ZERO_NEP141_WEI);
             let refund = amount - min_balance;
-            crate::log!(format!(
+            crate::log!(
                 "Storage deposit {:?} for account {} with refund {:?}",
                 amount,
                 account_id.to_string(),
                 refund,
-            ));
+            );
             if refund > 0 {
                 Promise::new(env::predecessor_account_id()).transfer(refund);
             }

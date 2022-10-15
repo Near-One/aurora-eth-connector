@@ -96,19 +96,19 @@ impl ConnectorDeposit for EthConnector {
         // Fetch event data from Proof
         let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
 
-        log!(format!(
+        log!(
             "Deposit started: from {} to recipient {:?} with amount: {:?} and fee {:?}",
             event.sender.encode(),
             event.token_message_data.get_recipient(),
             event.amount,
             event.fee
-        ));
+        );
 
-        log!(format!(
+        log!(
             "Event's address {}, custodian address {}",
             event.eth_custodian_address.encode(),
             self.eth_custodian_address.encode(),
-        ));
+        );
 
         if event.eth_custodian_address != self.eth_custodian_address {
             panic_err(FtDepositError::CustodianAddressMismatch);
@@ -119,10 +119,10 @@ impl ConnectorDeposit for EthConnector {
         }
 
         // Verify proof data with cross-contract call to prover account
-        log!(format!(
+        log!(
             "Deposit verify_log_entry for prover: {}",
             self.prover_account,
-        ));
+        );
 
         // Do not skip bridge call. This is only used for development and diagnostics.
         let skip_bridge_call = false.try_to_vec().unwrap();

@@ -60,7 +60,7 @@ impl FungibleToken {
 
     /// Record used proof as hash key
     pub fn record_proof(&mut self, key: &str) -> Result<(), error::ProofUsed> {
-        crate::log!(format!("Record proof: {}", key));
+        crate::log!("Record proof: {}", key);
 
         if self.is_used_event(key) {
             return Err(error::ProofUsed);
@@ -81,7 +81,7 @@ impl FungibleToken {
         owner_id: AccountId,
         amount: NEP141Wei,
     ) -> Result<(), error::DepositError> {
-        crate::log!(format!("Mint {} nETH tokens for: {}", amount, owner_id));
+        crate::log!("Mint {} nETH tokens for: {}", amount, owner_id);
 
         if self.get_account_eth_balance(&owner_id).is_none() {
             self.accounts_insert(&owner_id, ZERO_NEP141_WEI);
@@ -179,13 +179,10 @@ impl FungibleToken {
         self.internal_withdraw_eth_from_near(sender_id, amount)?;
         self.internal_deposit_eth_to_near(receiver_id, amount)?;
 
-        crate::log!(format!(
-            "Transfer {} from {} to {}",
-            amount, sender_id, receiver_id
-        ));
+        crate::log!("Transfer {} from {} to {}", amount, sender_id, receiver_id);
         #[cfg(feature = "log")]
         if let Some(memo) = memo {
-            crate::log!(format!("Memo: {}", memo));
+            crate::log!("Memo: {}", memo);
         }
 
         FtTransfer {
@@ -279,11 +276,11 @@ impl FungibleToken {
                     .sdk_unwrap();
                 self.accounts_insert(receiver_id, new_receiver_balance);
 
-                crate::log!(format!(
+                crate::log!(
                     "Decrease receiver {} balance to: {}",
                     receiver_id,
                     receiver_balance - refund_amount
-                ));
+                );
 
                 if let Some(sender_balance) = self.get_account_eth_balance(sender_id) {
                     let new_sender_balance = sender_balance
@@ -292,11 +289,11 @@ impl FungibleToken {
                         .sdk_unwrap();
                     self.accounts_insert(sender_id, new_sender_balance);
 
-                    crate::log!(format!(
+                    crate::log!(
                         "Increased sender {} balance to: {}",
                         sender_id,
                         refund_amount.as_u128()
-                    ));
+                    );
 
                     FtTransfer {
                         old_owner_id: receiver_id,
@@ -317,10 +314,7 @@ impl FungibleToken {
                         .checked_sub(refund_amount)
                         .ok_or(errors::ERR_TOTAL_SUPPLY_OVERFLOW)
                         .sdk_unwrap();
-                    crate::log!(format!(
-                        "The account of the sender {}  was deleted",
-                        sender_id
-                    ));
+                    crate::log!("The account of the sender {}  was deleted", sender_id);
                     FtBurn {
                         owner_id: receiver_id,
                         amount: &U128(refund_amount.as_u128()),

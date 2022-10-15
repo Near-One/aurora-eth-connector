@@ -87,12 +87,12 @@ impl EthConnectorContract {
 
     #[cfg_attr(not(feature = "log"), allow(unused_variables))]
     fn on_account_closed(&self, _account_id: AccountId, _balance: NEP141Wei) {
-        crate::log!(format!("Closed @{} with {}", _account_id, _balance));
+        crate::log!("Closed @{} with {}", _account_id, _balance);
     }
 
     #[cfg_attr(not(feature = "log"), allow(unused_variables))]
     fn on_tokens_burned(&self, account_id: AccountId, amount: NEP141Wei) {
-        crate::log!(format!("Account @{} burned {}", account_id, amount));
+        crate::log!("Account @{} burned {}", account_id, amount);
     }
 
     #[result_serializer(borsh)]
@@ -206,10 +206,10 @@ impl FungibleTokenCore for EthConnectorContract {
     }
 
     fn ft_total_eth_supply_on_near(&self) -> U128 {
-        log!(format!(
+        log!(
             "Total ETH supply on NEAR: {}",
             self.ft.ft_total_eth_supply_on_near().0
-        ));
+        );
         self.ft.ft_total_eth_supply_on_near()
     }
 }
@@ -231,12 +231,12 @@ impl FungibleTokenResolver for EthConnectorContract {
         if burned_amount > ZERO_NEP141_WEI {
             self.on_tokens_burned(sender_id.clone(), burned_amount);
         }
-        log!(format!(
+        log!(
             "Resolve transfer from {} to {}, used token amount {:?} success",
             sender_id,
             receiver_id,
             used_amount.as_u128()
-        ));
+        );
         used_amount.as_u128().into()
     }
 }
@@ -373,10 +373,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             panic_err(errors::ERR_VERIFY_PROOF);
         }
 
-        log!(format!(
-            "Finish deposit with the amount: {}",
-            deposit_call.amount
-        ));
+        log!("Finish deposit with the amount: {}", deposit_call.amount);
 
         // Mint tokens to recipient minus fee
         if let Some(msg) = deposit_call.msg {

@@ -1,6 +1,6 @@
 use super::core_impl::FungibleToken;
 use super::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
-use crate::{log, types::panic_err, EngineFungibleToken};
+use crate::{types::panic_err, EngineFungibleToken};
 use aurora_engine_types::types::NEP141Wei;
 use near_sdk::{assert_one_yocto, env, json_types::U128, AccountId, Balance, Promise};
 
@@ -25,7 +25,7 @@ impl FungibleToken {
                 panic_err(error::StorageFundingError::UnRegisterPositiveBalance);
             }
         } else {
-            log!(format!("The account {} is not registered", &account_id));
+            crate::log!("The account {} is not registered", &account_id);
             None
         }
     }
