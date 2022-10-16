@@ -12,6 +12,7 @@ use crate::fungible_token::{
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
+use crate::migration::Migration;
 use crate::proof::Proof;
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
@@ -31,6 +32,7 @@ pub mod deposit_event;
 pub mod errors;
 pub mod fungible_token;
 pub mod log_entry;
+pub mod migration;
 pub mod proof;
 pub mod types;
 pub mod wei;
@@ -416,4 +418,9 @@ impl ConnectorFundsFinish for EthConnectorContract {
             PromiseOrValue::Value(None)
         }
     }
+}
+
+#[near_bindgen]
+impl Migration for EthConnectorContract {
+    fn migrate(&mut self) {}
 }
