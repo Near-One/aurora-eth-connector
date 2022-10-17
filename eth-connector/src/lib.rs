@@ -422,5 +422,6 @@ impl ConnectorFundsFinish for EthConnectorContract {
 
 #[near_bindgen]
 impl Migration for EthConnectorContract {
+    #[private]
     fn migrate(&mut self) {}
 }
