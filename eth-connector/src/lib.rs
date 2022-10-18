@@ -423,5 +423,15 @@ impl ConnectorFundsFinish for EthConnectorContract {
 #[near_bindgen]
 impl Migration for EthConnectorContract {
     #[private]
-    fn migrate(&mut self) {}
+    fn migrate(&mut self) {
+        use std::str::FromStr;
+
+        let owner_id = AccountId::from_str("test").unwrap();
+        // Insert account
+        self.ft.accounts_eth.insert(&owner_id, &ZERO_NEP141_WEI);
+
+        let proof_key = "test".to_string();
+        // Insert Proof
+        self.ft.used_proofs.insert(&proof_key, &true);
+    }
 }
