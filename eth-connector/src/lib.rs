@@ -12,7 +12,6 @@ use crate::fungible_token::{
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
-use crate::migration::Migration;
 use crate::proof::Proof;
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
@@ -420,18 +419,22 @@ impl ConnectorFundsFinish for EthConnectorContract {
     }
 }
 
+use crate::migration::Migration;
 #[near_bindgen]
 impl Migration for EthConnectorContract {
+    /// Migrate contract data
     #[private]
-    fn migrate(&mut self) {
+    fn migrate(&mut self, used_proofs: Vec<String>) {
         use std::str::FromStr;
 
         let owner_id = AccountId::from_str("test").unwrap();
         // Insert account
         self.ft.accounts_eth.insert(&owner_id, &ZERO_NEP141_WEI);
 
-        let proof_key = "test".to_string();
         // Insert Proof
-        self.ft.used_proofs.insert(&proof_key, &true);
+        for proof_key in &used_proofs {
+            self.ft.used_proofs.insert(&proof_key, &true);
+        }
+        crate::log!("Inserted used_proofs: {:?}", used_proofs.len());
     }
 }

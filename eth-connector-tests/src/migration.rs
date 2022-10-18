@@ -14,3 +14,18 @@ async fn test_migration_access_right() -> anyhow::Result<()> {
     assert!(contract.check_error_message(res, "Method migrate is private"));
     Ok(())
 }
+
+#[tokio::test]
+async fn test_migration() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    let res = contract
+        .contract
+        .call("migrate")
+        //.args_json((user_acc.id(),))
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    println!("{:#?}", res);
+    assert!(res.is_success());
+    Ok(())
+}
