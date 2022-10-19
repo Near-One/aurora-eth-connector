@@ -419,22 +419,29 @@ impl ConnectorFundsFinish for EthConnectorContract {
     }
 }
 
-use crate::migration::Migration;
+use crate::migration::{Migration, MigrationInputData};
 #[near_bindgen]
 impl Migration for EthConnectorContract {
     /// Migrate contract data
     #[private]
-    fn migrate(&mut self, used_proofs: Vec<String>) {
-        use std::str::FromStr;
-
-        let owner_id = AccountId::from_str("test").unwrap();
+    fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData) {
         // Insert account
-        self.ft.accounts_eth.insert(&owner_id, &ZERO_NEP141_WEI);
+        for (account, amount) in &data.accounts_eth {
+            self.ft.accounts_eth.insert(&account, &amount);
+        }
+        crate::log!("Inserted accounts_eth: {:?}", data.accounts_eth.len());
+
+        // Insert total_eth_supply_on_near
+        self.ft.total_eth_supply_on_near = data.total_eth_supply_on_near;
+        crate::log!(
+            "Inserted total_eth_supply_on_near: {:?}",
+            data.total_eth_supply_on_near.as_u128()
+        );
 
         // Insert Proof
-        for proof_key in &used_proofs {
+        for proof_key in &data.used_proofs {
             self.ft.used_proofs.insert(&proof_key, &true);
         }
-        crate::log!("Inserted used_proofs: {:?}", used_proofs.len());
+        crate::log!("Inserted used_proofs: {:?}", data.used_proofs.len());
     }
 }

@@ -14,5 +14,5 @@ pub struct MigrationInputData {
 
 #[ext_contract(ext_deposit)]
 pub trait Migration {
-    fn migrate(&mut self, used_proofs: Vec<String>);
+    fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData);
 }
