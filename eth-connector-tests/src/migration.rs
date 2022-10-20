@@ -44,5 +44,9 @@ async fn test_migration() -> anyhow::Result<()> {
         .await?;
     println!("{:#?}", res);
     assert!(res.is_success());
+    println!(
+        "Gas burnt: {:.1} TGas",
+        res.total_gas_burnt as f64 / 1_000_000_000_000.
+    );
     Ok(())
 }
