@@ -1,14 +1,14 @@
 [package]
 name = "aurora-eth-connector-tests"
 version = "0.1.0"
-authors = ["Aurora Labs <hello@aurora.dev>"]
+authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
 edition = "2021"
 description = ""
 documentation = ""
 readme = true
 homepage = "https://github.com/aurora-is-near/aurora-engine"
 repository = "https://github.com/aurora-is-near/aurora-engine"
-license = "GPL-3.0"
+license = "CC0 1.0"
 publish = false
 autobenches = false
 

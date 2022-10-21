@@ -60,11 +60,13 @@ To build the binaries there are a few commands to do such following the format.
 The current available build `task`s are:
 - `default`, does not need to be specified, runs `build`. Requires a `--profile`
   argument.
-- `build`, builds all fungible-token smart contract and produces the
-  `aurora-<profile>-test.wasm` in the `bin` folder.
+- `build`, builds smart contract and produces the
+  `aurora-<profile>.wasm` in the `bin` folder.
   Requires a `--profile` argument.
 - `build-test`, builds all the below using test features. Requires a `--profile`
   argument.
+- `build-migration`, builds smart contract with migration functionality and produces the
+  `aurora-<profile>.wasm` in the `bin` folder.
 
 For example, the following will build the mainnet debug binary:
 ```sh
