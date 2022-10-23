@@ -193,6 +193,7 @@ impl TestContract {
     pub async fn call_deposit_eth_to_near(&self) -> anyhow::Result<()> {
         let proof: Proof = self.get_proof(PROOF_DATA_NEAR);
         let res = self.deposit_with_proof(&proof).await?;
+        println!("{:#?}", res);
         assert!(res.is_success());
         Ok(())
     }

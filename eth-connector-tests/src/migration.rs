@@ -28,12 +28,19 @@ async fn test_migration_access_right() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_migration() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
+
+    let proof_keys: Vec<String> =
+        ["148209196192531111581487824716711513123053186167982062461521682161284461208612290809";
+            1000]
+            .iter()
+            .map(|&s| s.into())
+            .collect();
     let data = MigrationInputData {
         accounts_eth: HashMap::new(),
         total_eth_supply_on_near: NEP141Wei::new(0),
         account_storage_usage: 0,
         statistics_aurora_accounts_counter: 0,
-        used_proofs: vec![],
+        used_proofs: proof_keys,
     };
     let res = contract
         .contract
