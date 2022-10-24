@@ -427,7 +427,7 @@ impl Migration for EthConnectorContract {
     fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData) {
         // Insert account
         for (account, amount) in &data.accounts_eth {
-            self.ft.accounts_eth.insert(&account, &amount);
+            self.ft.accounts_eth.insert(account, amount);
         }
         crate::log!("Inserted accounts_eth: {:?}", data.accounts_eth.len());
 
@@ -454,7 +454,7 @@ impl Migration for EthConnectorContract {
 
         // Insert Proof
         for proof_key in &data.used_proofs {
-            self.ft.used_proofs.insert(&proof_key, &true);
+            self.ft.used_proofs.insert(proof_key, &true);
         }
         crate::log!("Inserted used_proofs: {:?}", data.used_proofs.len());
     }

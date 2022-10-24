@@ -49,7 +49,7 @@ async fn test_migration() -> anyhow::Result<()> {
         .gas(DEFAULT_GAS)
         .transact()
         .await?;
-    println!("{:#?}", res);
+    //println!("{:#?}", res);
     assert!(res.is_success());
     println!(
         "Gas burnt: {:.1} TGas",

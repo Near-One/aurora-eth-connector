@@ -160,7 +160,7 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
-    "test_migration",
+#    "test_migration",
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",
