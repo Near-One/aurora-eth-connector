@@ -28,3 +28,4 @@ cache
 Makefile
 ft/
 test-contract-defi/
+*borsh
