@@ -1,4 +1,5 @@
 use crate::utils::*;
+use aurora_engine_migration_tool::{BorshDeserialize, StateData};
 use aurora_engine_types::types::NEP141Wei;
 use aurora_eth_connector::migration::MigrationInputData;
 use std::collections::HashMap;
@@ -28,6 +29,7 @@ async fn test_migration_access_right() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_migration() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
+    let data = std::fs::read("../contract_state.borsh").unwrap();
 
     let proof_keys: Vec<String> =
         ["148209196192531111581487824716711513123053186167982062461521682161284461208612290809";
