@@ -161,7 +161,7 @@ checksum = "065374052e7df7ee4047b1160cca5e1467a12351a40b3da123c870ba0b8eda2a"
 [[package]]
 name = "aurora-engine-migration-tool"
 version = "0.1.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine-migration-tool.git#c07491b616575552e35ef1b60dbd1fe17182e5f0"
+source = "git+https://github.com/aurora-is-near/aurora-engine-migration-tool.git#2fb960f255421ef6a202ea6553d5f76601904a48"
 dependencies = [
  "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=904010fa86199a848d3709272d36548daf24359e)",
  "base64 0.13.1",
@@ -215,7 +215,6 @@ dependencies = [
  "aurora-engine-migration-tool",
  "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
  "aurora-eth-connector",
- "base64 0.13.1",
  "byte-slice-cast",
  "ethabi",
  "hex 0.4.3",

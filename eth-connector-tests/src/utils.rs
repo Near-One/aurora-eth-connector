@@ -107,7 +107,7 @@ impl TestContract {
         let root_account = Account::from_secret_key(root, sk, &worker);
         let eth_connector = root_account
             .create_subaccount("eth_connector")
-            .initial_balance(near_units::parse_near!("15 N"))
+            .initial_balance(near_units::parse_near!("81 N"))
             .transact()
             .await?
             .into_result()?;
