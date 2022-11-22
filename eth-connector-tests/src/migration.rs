@@ -2,6 +2,7 @@ use crate::utils::*;
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
 use aurora_engine_types::types::NEP141Wei;
 use aurora_eth_connector::migration::MigrationInputData;
+use near_sdk::AccountId;
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -70,12 +71,17 @@ async fn test_migration_state() -> anyhow::Result<()> {
     let limit = 2000;
     let mut i = 0;
     let mut total_gas_burnt = 0;
+
+    // Proofs migration
+    let mut proofs_gas_burnt = 0;
+    let mut proofs_count = 0;
     loop {
         let proofs = if i + limit >= data.proofs.len() {
             &data.proofs[i..]
         } else {
             &data.proofs[i..i + limit]
         };
+        proofs_count += proofs.len();
         let args = MigrationInputData {
             accounts_eth: HashMap::new(),
             total_eth_supply_on_near: NEP141Wei::new(0),
@@ -90,27 +96,69 @@ async fn test_migration_state() -> anyhow::Result<()> {
             .gas(DEFAULT_GAS)
             .transact()
             .await?;
-        println!(
-            "[roofs: {:?} {:.1}]",
-            i,
-            total_gas_burnt as f64 / 1_000_000_000_000.
-        );
-        if !res.is_success() {
-            // println!("{:#?}", res);
-        }
         assert!(res.is_success());
-        total_gas_burnt += res.total_gas_burnt;
+        proofs_gas_burnt += res.total_gas_burnt;
+        println!(
+            "Proofs: {:?} [{:.1} TGas]",
+            proofs_count,
+            proofs_gas_burnt as f64 / 1_000_000_000_000.
+        );
         if i + limit >= data.proofs.len() {
             break;
         } else {
             i += limit;
         }
     }
-    let acc = contract.contract.view_account().await?;
+    assert_eq!(proofs_count, data.proofs.len());
+    total_gas_burnt += proofs_gas_burnt;
+    println!();
+
+    // Accounts migration
+    let mut accounts_gas_burnt = 0;
+    let mut accounts: HashMap<AccountId, NEP141Wei> = HashMap::new();
+    let mut accounts_count = 0;
+    for (i, (account, amount)) in data.accounts.iter().enumerate() {
+        let account = AccountId::try_from(account.to_string()).unwrap();
+        let amount = NEP141Wei::new(amount.as_u128());
+        accounts.insert(account.clone(), amount.clone());
+        if accounts.len() < limit && i < data.accounts.len() - 1 {
+            continue;
+        }
+        println!("i [{:?}] {:?}", i, accounts.len());
+        accounts_count += accounts.len();
+
+        let args = MigrationInputData {
+            accounts_eth: accounts.clone(),
+            total_eth_supply_on_near: NEP141Wei::new(0),
+            account_storage_usage: 0,
+            statistics_aurora_accounts_counter: 0,
+            used_proofs: vec![],
+        };
+        let res = contract
+            .contract
+            .call("migrate")
+            .args_borsh(args)
+            .gas(DEFAULT_GAS)
+            .transact()
+            .await?;
+        assert!(res.is_success());
+        accounts_gas_burnt += res.total_gas_burnt;
+
+        println!(
+            "Accounts: {:?} [{:.1} TGas]",
+            accounts_count,
+            accounts_gas_burnt as f64 / 1_000_000_000_000.
+        );
+        // Clear
+        accounts = HashMap::new();
+    }
+    assert_eq!(data.accounts.len(), accounts_count);
+    total_gas_burnt += accounts_gas_burnt;
+
     println!(
-        "Account balance: {:.1}\nGas burnt: {:.1} TGas",
-        acc.balance as f64 / 1_000_000_000_000_000_000_000_000.,
+        "Total Gas burnt: {:.1} TGas\n",
         total_gas_burnt as f64 / 1_000_000_000_000.
     );
+
     Ok(())
 }
