@@ -124,7 +124,6 @@ async fn test_migration_state() -> anyhow::Result<()> {
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
         }
-        println!("i [{:?}] {:?}", i, accounts.len());
         accounts_count += accounts.len();
 
         let args = MigrationInputData {
@@ -154,6 +153,26 @@ async fn test_migration_state() -> anyhow::Result<()> {
     }
     assert_eq!(data.accounts.len(), accounts_count);
     total_gas_burnt += accounts_gas_burnt;
+
+    // Migrate Contract data
+    let args = MigrationInputData {
+        accounts_eth: HashMap::new(),
+        total_eth_supply_on_near: NEP141Wei::new(
+            data.contract_data.total_eth_supply_on_near.as_u128(),
+        ),
+        account_storage_usage: data.contract_data.account_storage_usage,
+        statistics_aurora_accounts_counter: data.accounts_counter,
+        used_proofs: vec![],
+    };
+    let res = contract
+        .contract
+        .call("migrate")
+        .args_borsh(args)
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+    total_gas_burnt += res.total_gas_burnt;
 
     println!(
         "Total Gas burnt: {:.1} TGas\n",

@@ -99,7 +99,7 @@ impl TestContract {
             .batch(&root)
             .create_account()
             .add_key(sk.public_key(), AccessKey::full_access())
-            .transfer(near_units::parse_near!("100 N"))
+            .transfer(near_units::parse_near!("200 N"))
             .transact()
             .await?
             .into_result()?;
@@ -107,7 +107,7 @@ impl TestContract {
         let root_account = Account::from_secret_key(root, sk, &worker);
         let eth_connector = root_account
             .create_subaccount("eth_connector")
-            .initial_balance(near_units::parse_near!("81 N"))
+            .initial_balance(near_units::parse_near!("85 N"))
             .transact()
             .await?
             .into_result()?;
