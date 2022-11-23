@@ -122,7 +122,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     for (i, (account, amount)) in data.accounts.iter().enumerate() {
         let account = AccountId::try_from(account.to_string()).unwrap();
         let amount = NEP141Wei::new(amount.as_u128());
-        accounts.insert(account.clone(), amount.clone());
+        accounts.insert(account.clone(), amount);
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
         }
@@ -248,7 +248,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     for (i, (account, amount)) in data.accounts.iter().enumerate() {
         let account = AccountId::try_from(account.to_string()).unwrap();
         let amount = NEP141Wei::new(amount.as_u128());
-        accounts.insert(account.clone(), amount.clone());
+        accounts.insert(account, amount);
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
         }

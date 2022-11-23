@@ -65,6 +65,19 @@ args = [
     "warnings",
 ]
 
+[tasks.clippy-tests]
+category = "Check"
+command = "${CARGO}"
+args = [
+    "clippy",
+    "--all-features",
+    "--tests",
+    "--",
+    "-D",
+    "warnings",
+]
+
+
 [tasks.check-fmt]
 category = "Check"
 command = "${CARGO}"
@@ -79,6 +92,7 @@ category = "Check"
 dependencies = [
     "check-fmt",
     "clippy",
+    "clippy-tests",
 ]
 
 [tasks.post-contract-build-env]
@@ -160,7 +174,7 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
-        "test_migration",
+ #   "test_migration",
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",
