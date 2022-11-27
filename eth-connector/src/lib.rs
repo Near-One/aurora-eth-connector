@@ -273,13 +273,13 @@ impl Migration for EthConnectorContract {
     #[private]
     fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData) {
         // Insert account
-        for (account, amount) in &data.accounts_eth {
+        for (account, amount) in &data.accounts {
             self.ft.accounts.insert(account, amount);
         }
-        crate::log!("Inserted accounts_eth: {:?}", data.accounts_eth.len());
+        crate::log!("Inserted accounts_eth: {:?}", data.accounts.len());
 
         // Insert total_eth_supply_on_near
-        if let Some(total_eth_supply_on_near) = data.total_eth_supply_on_near {
+        if let Some(total_eth_supply_on_near) = data.total_supply {
             self.ft.total_supply = total_eth_supply_on_near;
             crate::log!(
                 "Inserted total_eth_supply_on_near: {:?}",
@@ -319,7 +319,7 @@ impl Migration for EthConnectorContract {
         #[serializer(borsh)] data: MigrationInputData,
     ) -> MigrationCheckResult {
         // Check accounts
-        for (account, amount) in &data.accounts_eth {
+        for (account, amount) in &data.accounts {
             match self.ft.accounts.get(account) {
                 Some(ref value) => {
                     if value != amount {
@@ -343,8 +343,8 @@ impl Migration for EthConnectorContract {
                 return MigrationCheckResult::StorageUsage(self.ft.account_storage_usage);
             }
         }
-        if let Some(total_eth_supply_on_near) = data.total_eth_supply_on_near {
-            if self.ft.total_supply != total_eth_supply_on_near {
+        if let Some(total_supply) = data.total_supply {
+            if self.ft.total_supply != total_supply {
                 return MigrationCheckResult::TotalSupply(self.ft.total_supply);
             }
         }

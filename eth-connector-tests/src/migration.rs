@@ -2,15 +2,15 @@ use crate::utils::*;
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
 use aurora_engine_types::types::NEP141Wei;
 use aurora_eth_connector::migration::{MigrationCheckResult, MigrationInputData};
-use near_sdk::AccountId;
+use near_sdk::{AccountId, Balance};
 use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_migration_access_right() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     let data = MigrationInputData {
-        accounts_eth: HashMap::new(),
-        total_eth_supply_on_near: None,
+        accounts: HashMap::new(),
+        total_supply: None,
         account_storage_usage: None,
         statistics_aurora_accounts_counter: None,
         used_proofs: vec![],
@@ -38,8 +38,8 @@ async fn test_migration() -> anyhow::Result<()> {
             .map(|&s| s.into())
             .collect();
     let data = MigrationInputData {
-        accounts_eth: HashMap::new(),
-        total_eth_supply_on_near: None,
+        accounts: HashMap::new(),
+        total_supply: None,
         account_storage_usage: None,
         statistics_aurora_accounts_counter: None,
         used_proofs: proof_keys,
@@ -63,10 +63,7 @@ async fn test_migration() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_migration_state() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    let data = match std::fs::read("../contract_state.borsh") {
-        Ok(data) => data,
-        _ => return Ok(()),
-    };
+    let data = std::fs::read("../contract_state.borsh").expect("Test state data not found");
     let data: StateData = StateData::try_from_slice(&data[..]).unwrap();
 
     let limit = 2000;
@@ -117,20 +114,19 @@ async fn test_migration_state() -> anyhow::Result<()> {
 
     // Accounts migration
     let mut accounts_gas_burnt = 0;
-    let mut accounts: HashMap<AccountId, NEP141Wei> = HashMap::new();
+    let mut accounts: HashMap<AccountId, Balance> = HashMap::new();
     let mut accounts_count = 0;
     for (i, (account, amount)) in data.accounts.iter().enumerate() {
         let account = AccountId::try_from(account.to_string()).unwrap();
-        let amount = NEP141Wei::new(amount.as_u128());
-        accounts.insert(account.clone(), amount);
+        accounts.insert(account.clone(), amount.as_u128());
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
         }
         accounts_count += &accounts.len();
 
         let args = MigrationInputData {
-            accounts_eth: accounts,
-            total_eth_supply_on_near: None,
+            accounts: accounts,
+            total_supply: None,
             account_storage_usage: None,
             statistics_aurora_accounts_counter: None,
             used_proofs: vec![],
@@ -159,10 +155,8 @@ async fn test_migration_state() -> anyhow::Result<()> {
 
     // Migrate Contract data
     let args = MigrationInputData {
-        accounts_eth: HashMap::new(),
-        total_eth_supply_on_near: Some(NEP141Wei::new(
-            data.contract_data.total_eth_supply_on_near.as_u128(),
-        )),
+        accounts: HashMap::new(),
+        total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
         statistics_aurora_accounts_counter: Some(data.accounts_counter),
         used_proofs: vec![],
@@ -189,10 +183,8 @@ async fn test_migration_state() -> anyhow::Result<()> {
 
     // Check basic (NEP-141) contract data
     let args = MigrationInputData {
-        accounts_eth: HashMap::new(),
-        total_eth_supply_on_near: Some(NEP141Wei::new(
-            data.contract_data.total_eth_supply_on_near.as_u128(),
-        )),
+        accounts: HashMap::new(),
+        total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
         statistics_aurora_accounts_counter: Some(data.accounts_counter),
         used_proofs: vec![],
@@ -218,8 +210,8 @@ async fn test_migration_state() -> anyhow::Result<()> {
         };
         proofs_count += proofs.len();
         let args = MigrationInputData {
-            accounts_eth: HashMap::new(),
-            total_eth_supply_on_near: None,
+            accounts: HashMap::new(),
+            total_supply: None,
             account_storage_usage: None,
             statistics_aurora_accounts_counter: None,
             used_proofs: proofs.to_vec(),
@@ -247,15 +239,14 @@ async fn test_migration_state() -> anyhow::Result<()> {
     accounts_count = 0;
     for (i, (account, amount)) in data.accounts.iter().enumerate() {
         let account = AccountId::try_from(account.to_string()).unwrap();
-        let amount = NEP141Wei::new(amount.as_u128());
-        accounts.insert(account, amount);
+        accounts.insert(account, amount.as_u128());
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
         }
         accounts_count += accounts.len();
         let args = MigrationInputData {
-            accounts_eth: accounts,
-            total_eth_supply_on_near: None,
+            accounts,
+            total_supply: None,
             account_storage_usage: None,
             statistics_aurora_accounts_counter: None,
             used_proofs: vec![],

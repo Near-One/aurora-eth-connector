@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct MigrationInputData {
-    pub accounts_eth: HashMap<AccountId, Balance>,
-    pub total_eth_supply_on_near: Option<Balance>,
+    pub accounts: HashMap<AccountId, Balance>,
+    pub total_supply: Option<Balance>,
     pub account_storage_usage: Option<StorageUsage>,
     pub statistics_aurora_accounts_counter: Option<u64>,
     pub used_proofs: Vec<String>,
