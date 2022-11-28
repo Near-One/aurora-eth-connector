@@ -7,7 +7,7 @@ use crate::{
     types::SdkUnwrap,
     AdminControlled, PausedMask,
 };
-use aurora_engine_types::types::{Address, Fee, NEP141Wei};
+use aurora_engine_types::types::{Address, Fee};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     env, AccountId, Balance, Gas, Promise,
@@ -42,7 +42,7 @@ pub struct FinishDepositCallArgs {
 /// withdraw result for eth-connector
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct WithdrawResult {
-    pub amount: NEP141Wei,
+    pub amount: Balance,
     pub recipient_id: Address,
     pub eth_custodian_address: Address,
 }

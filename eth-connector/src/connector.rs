@@ -1,9 +1,9 @@
 use crate::{connector_impl::FinishDepositCallArgs, Proof, WithdrawResult};
-use aurora_engine_types::types::{Address, NEP141Wei};
+use aurora_engine_types::types::Address;
 use near_sdk::{
     borsh, ext_contract,
     json_types::{Base64VecU8, U128},
-    AccountId, Promise, PromiseOrValue,
+    AccountId, Balance, Promise, PromiseOrValue,
 };
 
 #[ext_contract(ext_deposit)]
@@ -18,7 +18,7 @@ pub trait ConnectorWithdraw {
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
-        #[serializer(borsh)] amount: NEP141Wei,
+        #[serializer(borsh)] amount: Balance,
     ) -> WithdrawResult;
 }
 
