@@ -1,6 +1,8 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
-use crate::connector::{ConnectorDeposit, ConnectorWithdraw};
-use crate::connector_impl::{EthConnector, WithdrawResult};
+use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw};
+use crate::connector_impl::{
+    EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
+};
 /*
 use crate::fungible_token::engine::EngineFungibleToken;
 use crate::fungible_token::{
@@ -25,7 +27,8 @@ use near_sdk::{
     collections::LazyOption,
     env,
     json_types::U128,
-    near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
+    near_bindgen, require, AccountId, Balance, BorshStorageKey, PanicOnDefault, Promise,
+    PromiseOrValue,
 };
 
 pub mod admin_controlled;
@@ -58,6 +61,18 @@ enum StorageKey {
     // FungibleTokenEth = 0x1,
     // Proof = 0x2,
     Metadata = 0x3,
+}
+
+impl EthConnectorContract {
+    ///  Mint nETH tokens
+    pub fn mint_eth_on_near(&mut self, owner_id: AccountId, amount: Balance) {
+        crate::log!("Mint {} nETH tokens for: {}", amount, owner_id);
+        // Create account to avoid panic with deposit
+        if self.ft.accounts.get(&owner_id).is_none() {
+            self.ft.accounts.insert(&owner_id, &0);
+        }
+        self.ft.internal_deposit(&owner_id, amount)
+    }
 }
 
 #[near_bindgen]
@@ -100,7 +115,7 @@ impl EthConnectorContract {
     #[cfg(feature = "integration-test")]
     #[result_serializer(borsh)]
     pub fn verify_log_entry() -> bool {
-        log!("Call from verify_log_entry");
+        crate::log!("Call from verify_log_entry");
         true
     }
 
@@ -190,7 +205,7 @@ impl ConnectorDeposit for EthConnectorContract {
         self.connector.deposit(raw_proof)
     }
 }
-/*
+
 #[near_bindgen]
 impl ConnectorFundsFinish for EthConnectorContract {
     #[private]
@@ -205,51 +220,38 @@ impl ConnectorFundsFinish for EthConnectorContract {
             panic_err(errors::ERR_VERIFY_PROOF);
         }
 
-        log!("Finish deposit with the amount: {}", deposit_call.amount);
+        crate::log!("Finish deposit with the amount: {}", deposit_call.amount);
 
         // Mint tokens to recipient minus fee
         if let Some(msg) = deposit_call.msg {
             // Mint - calculate new balances
-            self.ft
-                .mint_eth_on_near(deposit_call.new_owner_id, deposit_call.amount)
-                .sdk_unwrap();
+            self.mint_eth_on_near(deposit_call.new_owner_id, deposit_call.amount);
             // Store proof only after `mint` calculations
-            self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
+            //self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
             let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
                 .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                 .sdk_unwrap();
-            let promise = self.ft.ft_transfer_call(
-                data.receiver_id,
-                data.amount.as_u128().into(),
-                data.memo,
-                data.msg,
-            );
+            let promise =
+                self.ft
+                    .ft_transfer_call(data.receiver_id, data.amount.into(), data.memo, data.msg);
             match promise {
                 PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
                 PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
             }
         } else {
             // Mint - calculate new balances
-            self.ft
-                .mint_eth_on_near(
-                    deposit_call.new_owner_id.clone(),
-                    deposit_call.amount - NEP141Wei::new(deposit_call.fee.as_u128()),
-                )
-                .sdk_unwrap();
-            self.ft
-                .mint_eth_on_near(
-                    deposit_call.relayer_id,
-                    NEP141Wei::new(deposit_call.fee.as_u128()),
-                )
-                .sdk_unwrap();
+            self.mint_eth_on_near(
+                deposit_call.new_owner_id.clone(),
+                deposit_call.amount - deposit_call.fee.as_u128(),
+            );
+            self.mint_eth_on_near(deposit_call.relayer_id, deposit_call.fee.as_u128());
             // Store proof only after `mint` calculations
-            self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
+            //self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
             PromiseOrValue::Value(None)
         }
     }
 }
-*/
 
 #[cfg(feature = "migration")]
 use crate::migration::{Migration, MigrationCheckResult, MigrationInputData};

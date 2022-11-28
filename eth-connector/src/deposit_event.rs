@@ -7,7 +7,7 @@ use byte_slice_cast::AsByteSlice;
 use ethabi::{Event, EventParam, Hash, Log, ParamType, RawLog};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    AccountId,
+    AccountId, Balance,
 };
 
 pub const DEPOSITED_EVENT: &str = "Deposited";
@@ -222,7 +222,7 @@ pub struct DepositedEvent {
     pub eth_custodian_address: Address,
     pub sender: Address,
     pub token_message_data: TokenMessageData,
-    pub amount: NEP141Wei,
+    pub amount: Balance,
     pub fee: Fee,
 }
 
@@ -274,7 +274,6 @@ impl DepositedEvent {
             .into_uint()
             .ok_or(error::ParseError::InvalidAmount)?
             .try_into()
-            .map(NEP141Wei::new)
             .map_err(|_| error::ParseError::OverflowNumber)?;
         let fee = event.log.params[3]
             .value

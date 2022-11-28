@@ -10,7 +10,7 @@ use crate::{
 use aurora_engine_types::types::{Address, Fee, NEP141Wei};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, AccountId, Gas, Promise,
+    env, AccountId, Balance, Gas, Promise,
 };
 
 /// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
@@ -23,7 +23,7 @@ const GAS_FOR_VERIFY_LOG_ENTRY: Gas = Gas(40_000_000_000_000);
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
 pub struct TransferCallCallArgs {
     pub receiver_id: AccountId,
-    pub amount: NEP141Wei,
+    pub amount: Balance,
     pub memo: Option<String>,
     pub msg: String,
 }
@@ -32,7 +32,7 @@ pub struct TransferCallCallArgs {
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
 pub struct FinishDepositCallArgs {
     pub new_owner_id: AccountId,
-    pub amount: NEP141Wei,
+    pub amount: Balance,
     pub proof_key: String,
     pub relayer_id: AccountId,
     pub fee: Fee,
@@ -113,7 +113,7 @@ impl ConnectorDeposit for EthConnector {
             panic_err(error::FtDepositError::CustodianAddressMismatch);
         }
 
-        if NEP141Wei::new(event.fee.as_u128()) >= event.amount {
+        if event.fee.as_u128() >= event.amount {
             panic_err(error::FtDepositError::InsufficientAmountForFee);
         }
 
