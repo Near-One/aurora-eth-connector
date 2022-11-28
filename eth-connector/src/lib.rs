@@ -1,8 +1,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
-use crate::connector::{ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw};
-use crate::connector_impl::{
-    EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
-};
+use crate::connector::{ConnectorDeposit, ConnectorWithdraw};
+use crate::connector_impl::{EthConnector, WithdrawResult};
+/*
 use crate::fungible_token::engine::EngineFungibleToken;
 use crate::fungible_token::{
     core::FungibleTokenCore,
@@ -12,15 +11,20 @@ use crate::fungible_token::{
     statistic::FungibleTokeStatistic,
     storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement},
 };
+*/
 use crate::proof::Proof;
 use crate::types::{panic_err, SdkUnwrap};
-use aurora_engine_types::types::{Address, NEP141Wei, ZERO_NEP141_WEI};
+use aurora_engine_types::types::{Address, NEP141Wei};
+use near_contract_standards::fungible_token::metadata::{
+    FungibleTokenMetadata, FungibleTokenMetadataProvider,
+};
+use near_contract_standards::fungible_token::FungibleToken;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
-    json_types::{U128, U64},
+    json_types::U128,
     near_bindgen, require, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
 };
 
@@ -29,7 +33,7 @@ pub mod connector;
 pub mod connector_impl;
 pub mod deposit_event;
 pub mod errors;
-pub mod fungible_token;
+// pub mod fungible_token;
 pub mod log_entry;
 pub mod migration;
 pub mod proof;
@@ -51,8 +55,8 @@ pub struct EthConnectorContract {
 
 #[derive(BorshSerialize, BorshStorageKey)]
 enum StorageKey {
-    FungibleTokenEth = 0x1,
-    Proof = 0x2,
+    // FungibleTokenEth = 0x1,
+    // Proof = 0x2,
     Metadata = 0x3,
 }
 
@@ -78,27 +82,19 @@ impl EthConnectorContract {
         };
         let owner_id = env::current_account_id();
         let mut this = Self {
-            ft: FungibleToken::new(StorageKey::FungibleTokenEth, StorageKey::Proof),
+            ft: FungibleToken::new(b"t".to_vec()),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
         };
-        this.ft.accounts_insert(&owner_id, ZERO_NEP141_WEI);
+        // TODO
+        this.ft.accounts.insert(&owner_id, &0);
         this
     }
 
-    #[cfg_attr(not(feature = "log"), allow(unused_variables))]
-    fn on_account_closed(&self, _account_id: AccountId, _balance: NEP141Wei) {
-        crate::log!("Closed @{} with {}", _account_id, _balance);
-    }
-
-    #[cfg_attr(not(feature = "log"), allow(unused_variables))]
-    fn on_tokens_burned(&self, account_id: AccountId, amount: NEP141Wei) {
-        crate::log!("Account @{} burned {}", account_id, amount);
-    }
-
     #[result_serializer(borsh)]
-    pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
-        self.ft.is_used_event(&proof.get_key())
+    pub fn is_used_proof(&self, #[serializer(borsh)] _proof: Proof) -> bool {
+        // self.ft.is_used_event(&proof.get_key())
+        true
     }
 
     #[cfg(feature = "integration-test")]
@@ -113,190 +109,25 @@ impl EthConnectorContract {
     }
 }
 
-#[near_bindgen]
-impl EngineFungibleToken for EthConnectorContract {
-    #[payable]
-    fn engine_ft_transfer(
-        &mut self,
-        sender_id: AccountId,
-        receiver_id: AccountId,
-        amount: U128,
-        memo: Option<String>,
-    ) {
-        self.assert_access_right().sdk_unwrap();
-        self.ft
-            .engine_ft_transfer(sender_id, receiver_id, amount, memo)
-    }
-
-    #[payable]
-    fn engine_ft_transfer_call(
-        &mut self,
-        sender_id: AccountId,
-        receiver_id: AccountId,
-        amount: U128,
-        memo: Option<String>,
-        msg: String,
-    ) -> PromiseOrValue<U128> {
-        self.assert_access_right().sdk_unwrap();
-        assert_one_yocto();
-        self.ft
-            .engine_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
-    }
-
-    #[payable]
-    fn engine_storage_deposit(
-        &mut self,
-        sender_id: AccountId,
-        account_id: Option<AccountId>,
-        registration_only: Option<bool>,
-    ) -> StorageBalance {
-        self.assert_access_right().sdk_unwrap();
-        self.ft
-            .engine_storage_deposit(sender_id, account_id, registration_only)
-    }
-
-    #[payable]
-    fn engine_storage_withdraw(
-        &mut self,
-        sender_id: AccountId,
-        amount: Option<U128>,
-    ) -> StorageBalance {
-        self.assert_access_right().sdk_unwrap();
-        self.ft.engine_storage_withdraw(sender_id, amount)
-    }
-
-    #[payable]
-    fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
-        self.assert_access_right().sdk_unwrap();
-        if let Some((account_id, balance)) = self.ft.internal_storage_unregister(sender_id, force) {
-            self.on_account_closed(account_id, balance);
-            true
-        } else {
-            false
-        }
-    }
-}
-
-#[near_bindgen]
-impl FungibleTokenCore for EthConnectorContract {
-    #[payable]
-    fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
-        self.assert_access_right().sdk_unwrap();
-        self.ft.ft_transfer(receiver_id, amount, memo)
-    }
-
-    #[payable]
-    fn ft_transfer_call(
-        &mut self,
-        receiver_id: AccountId,
-        amount: U128,
-        memo: Option<String>,
-        msg: String,
-    ) -> PromiseOrValue<U128> {
-        self.assert_access_right().sdk_unwrap();
-        assert_one_yocto();
-        self.ft.ft_transfer_call(receiver_id, amount, memo, msg)
-    }
-
-    fn ft_total_supply(&self) -> U128 {
-        self.ft.ft_total_supply()
-    }
-
-    fn ft_balance_of(&self, account_id: AccountId) -> U128 {
-        self.ft.ft_balance_of(account_id)
-    }
-
-    fn ft_total_eth_supply_on_near(&self) -> U128 {
-        log!(
-            "Total ETH supply on NEAR: {}",
-            self.ft.ft_total_eth_supply_on_near().0
-        );
-        self.ft.ft_total_eth_supply_on_near()
-    }
-}
-
-#[near_bindgen]
-impl FungibleTokenResolver for EthConnectorContract {
-    #[private]
-    fn ft_resolve_transfer(
-        &mut self,
-        sender_id: AccountId,
-        receiver_id: AccountId,
-        amount: U128,
-    ) -> U128 {
-        let (used_amount, burned_amount) = self.ft.internal_ft_resolve_transfer(
-            &sender_id,
-            &receiver_id,
-            NEP141Wei::new(amount.0),
-        );
-        if burned_amount > ZERO_NEP141_WEI {
-            self.on_tokens_burned(sender_id.clone(), burned_amount);
-        }
-        log!(
-            "Resolve transfer from {} to {}, used token amount {:?} success",
-            sender_id,
-            receiver_id,
-            used_amount.as_u128()
-        );
-        used_amount.as_u128().into()
-    }
-}
-
-#[near_bindgen]
-impl StorageManagement for EthConnectorContract {
-    #[payable]
-    fn storage_deposit(
-        &mut self,
-        account_id: Option<AccountId>,
-        registration_only: Option<bool>,
-    ) -> StorageBalance {
-        self.assert_access_right().sdk_unwrap();
-        self.ft.storage_deposit(account_id, registration_only)
-    }
-
-    #[payable]
-    fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
-        self.assert_access_right().sdk_unwrap();
-        self.ft.storage_withdraw(amount)
-    }
-
-    #[payable]
-    fn storage_unregister(&mut self, force: Option<bool>) -> bool {
-        self.assert_access_right().sdk_unwrap();
-        if let Some((account_id, balance)) = self
-            .ft
-            .internal_storage_unregister(env::predecessor_account_id(), force)
-        {
-            self.on_account_closed(account_id, balance);
-            true
-        } else {
-            false
-        }
-    }
-
-    fn storage_balance_bounds(&self) -> StorageBalanceBounds {
-        self.ft.storage_balance_bounds()
-    }
-
-    fn storage_balance_of(&self, account_id: AccountId) -> StorageBalance {
-        self.ft.storage_balance_of(account_id)
-    }
-}
+near_contract_standards::impl_fungible_token_core!(EthConnectorContract, ft);
+near_contract_standards::impl_fungible_token_storage!(EthConnectorContract, ft);
 
 #[near_bindgen]
 impl FungibleTokenMetadataProvider for EthConnectorContract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
-        self.metadata.get().unwrap_or_default()
+        // TODO
+        self.metadata.get().sdk_unwrap()
     }
 }
 
+/*
 #[near_bindgen]
 impl FungibleTokeStatistic for EthConnectorContract {
     #[result_serializer(borsh)]
     fn get_accounts_counter(&self) -> U64 {
         self.ft.get_accounts_counter()
     }
-}
+}*/
 
 #[near_bindgen]
 impl AdminControlled for EthConnectorContract {
@@ -326,7 +157,7 @@ impl ConnectorWithdraw for EthConnectorContract {
     #[result_serializer(borsh)]
     fn withdraw(
         &mut self,
-        #[serializer(borsh)] sender_id: AccountId,
+        #[serializer(borsh)] _sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: NEP141Wei,
     ) -> WithdrawResult {
@@ -341,9 +172,9 @@ impl ConnectorWithdraw for EthConnectorContract {
             .map_err(|_| "WithdrawErrorPaused")
             .sdk_unwrap();
         // Burn tokens to recipient
-        self.ft
-            .internal_withdraw_eth_from_near(&sender_id, amount)
-            .sdk_unwrap();
+        // self.ft
+        //     .internal_withdraw_eth_from_near(&sender_id, amount)
+        //     .sdk_unwrap();
         WithdrawResult {
             recipient_id: recipient_address,
             amount,
@@ -359,7 +190,7 @@ impl ConnectorDeposit for EthConnectorContract {
         self.connector.deposit(raw_proof)
     }
 }
-
+/*
 #[near_bindgen]
 impl ConnectorFundsFinish for EthConnectorContract {
     #[private]
@@ -418,6 +249,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
         }
     }
 }
+*/
 
 #[cfg(feature = "migration")]
 use crate::migration::{Migration, MigrationCheckResult, MigrationInputData};
@@ -430,16 +262,16 @@ impl Migration for EthConnectorContract {
     fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData) {
         // Insert account
         for (account, amount) in &data.accounts_eth {
-            self.ft.accounts_eth.insert(account, amount);
+            self.ft.accounts.insert(account, amount);
         }
         crate::log!("Inserted accounts_eth: {:?}", data.accounts_eth.len());
 
         // Insert total_eth_supply_on_near
         if let Some(total_eth_supply_on_near) = data.total_eth_supply_on_near {
-            self.ft.total_eth_supply_on_near = total_eth_supply_on_near;
+            self.ft.total_supply = total_eth_supply_on_near;
             crate::log!(
                 "Inserted total_eth_supply_on_near: {:?}",
-                total_eth_supply_on_near.as_u128()
+                total_eth_supply_on_near
             );
         }
 
@@ -454,7 +286,8 @@ impl Migration for EthConnectorContract {
 
         // Insert statistics_aurora_accounts_counter
         if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
-            self.ft.statistics_aurora_accounts_counter = statistics_aurora_accounts_counter;
+            // TODO:
+            //self.ft.statistics_aurora_accounts_counter = statistics_aurora_accounts_counter;
             crate::log!(
                 "Inserted statistics_aurora_accounts_counter: {:?}",
                 statistics_aurora_accounts_counter
@@ -462,8 +295,9 @@ impl Migration for EthConnectorContract {
         }
 
         // Insert Proof
-        for proof_key in &data.used_proofs {
-            self.ft.used_proofs.insert(proof_key, &true);
+        for _proof_key in &data.used_proofs {
+            // TODO
+            //self.ft.used_proofs.insert(proof_key, &true);
         }
         crate::log!("Inserted used_proofs: {:?}", data.used_proofs.len());
     }
@@ -475,7 +309,7 @@ impl Migration for EthConnectorContract {
     ) -> MigrationCheckResult {
         // Check accounts
         for (account, amount) in &data.accounts_eth {
-            match self.ft.accounts_eth.get(account) {
+            match self.ft.accounts.get(account) {
                 Some(ref value) => {
                     if value != amount {
                         return MigrationCheckResult::AccountAmount((account.clone(), *value));
@@ -486,11 +320,12 @@ impl Migration for EthConnectorContract {
         }
 
         // Check proofs
-        for proof in &data.used_proofs {
-            match self.ft.used_proofs.get(proof) {
-                Some(_) => (),
-                _ => return MigrationCheckResult::Proof(proof.clone()),
-            }
+        for _proof in &data.used_proofs {
+            // TODO
+            // match self.ft.used_proofs.get(proof) {
+            //     Some(_) => (),
+            //     _ => return MigrationCheckResult::Proof(proof.clone()),
+            // }
         }
 
         if let Some(account_storage_usage) = data.account_storage_usage {
@@ -499,17 +334,18 @@ impl Migration for EthConnectorContract {
             }
         }
         if let Some(total_eth_supply_on_near) = data.total_eth_supply_on_near {
-            if self.ft.total_eth_supply_on_near != total_eth_supply_on_near {
-                return MigrationCheckResult::TotalSupply(self.ft.total_eth_supply_on_near);
+            if self.ft.total_supply != total_eth_supply_on_near {
+                return MigrationCheckResult::TotalSupply(self.ft.total_supply);
             }
         }
-        if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
-            if self.ft.statistics_aurora_accounts_counter != statistics_aurora_accounts_counter {
-                return MigrationCheckResult::StatisticsCounter(
-                    self.ft.statistics_aurora_accounts_counter,
-                );
-            }
-        }
+        // TODO
+        // if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
+        //     if self.ft.statistics_aurora_accounts_counter != statistics_aurora_accounts_counter {
+        //         return MigrationCheckResult::StatisticsCounter(
+        //             self.ft.statistics_aurora_accounts_counter,
+        //         );
+        //     }
+        // }
         MigrationCheckResult::Success
     }
 }

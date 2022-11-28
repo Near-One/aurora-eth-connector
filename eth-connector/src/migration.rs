@@ -1,12 +1,11 @@
-use aurora_engine_types::types::NEP141Wei;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract, AccountId, StorageUsage};
+use near_sdk::{ext_contract, AccountId, Balance, StorageUsage};
 use std::collections::HashMap;
 
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct MigrationInputData {
-    pub accounts_eth: HashMap<AccountId, NEP141Wei>,
-    pub total_eth_supply_on_near: Option<NEP141Wei>,
+    pub accounts_eth: HashMap<AccountId, Balance>,
+    pub total_eth_supply_on_near: Option<Balance>,
     pub account_storage_usage: Option<StorageUsage>,
     pub statistics_aurora_accounts_counter: Option<u64>,
     pub used_proofs: Vec<String>,
@@ -16,8 +15,8 @@ pub struct MigrationInputData {
 pub enum MigrationCheckResult {
     Success,
     AccountNotExist(AccountId),
-    AccountAmount((AccountId, NEP141Wei)),
-    TotalSupply(NEP141Wei),
+    AccountAmount((AccountId, Balance)),
+    TotalSupply(Balance),
     StorageUsage(StorageUsage),
     StatisticsCounter(u64),
     Proof(String),
