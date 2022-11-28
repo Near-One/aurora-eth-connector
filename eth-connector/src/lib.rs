@@ -21,6 +21,7 @@ use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider,
 };
 use near_contract_standards::fungible_token::FungibleToken;
+use near_sdk::store::LookupMap;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -54,13 +55,13 @@ pub struct EthConnectorContract {
     connector: EthConnector,
     ft: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
+    used_proofs: LookupMap<String, bool>,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
 enum StorageKey {
-    // FungibleTokenEth = 0x1,
-    // Proof = 0x2,
-    Metadata = 0x3,
+    Proof = 0x1,
+    Metadata = 0x2,
 }
 
 impl EthConnectorContract {
@@ -72,6 +73,23 @@ impl EthConnectorContract {
             self.ft.accounts.insert(&owner_id, &0);
         }
         self.ft.internal_deposit(&owner_id, amount)
+    }
+
+    /// Record used proof as hash key
+    pub fn record_proof(&mut self, key: &str) -> Result<(), errors::ProofUsed> {
+        crate::log!("Record proof: {}", key);
+
+        if self.is_used_event(key) {
+            return Err(errors::ProofUsed);
+        }
+
+        self.used_proofs.insert(key.to_string(), true);
+        Ok(())
+    }
+
+    /// Check is event of proof already used
+    pub fn is_used_event(&self, key: &str) -> bool {
+        self.used_proofs.contains_key(&key.to_string())
     }
 }
 
@@ -100,16 +118,15 @@ impl EthConnectorContract {
             ft: FungibleToken::new(b"t".to_vec()),
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
+            used_proofs: LookupMap::new(StorageKey::Proof),
         };
-        // TODO
         this.ft.accounts.insert(&owner_id, &0);
         this
     }
 
     #[result_serializer(borsh)]
-    pub fn is_used_proof(&self, #[serializer(borsh)] _proof: Proof) -> bool {
-        // self.ft.is_used_event(&proof.get_key())
-        true
+    pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
+        self.is_used_event(&proof.get_key())
     }
 
     #[cfg(feature = "integration-test")]
@@ -227,7 +244,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             // Mint - calculate new balances
             self.mint_eth_on_near(deposit_call.new_owner_id, deposit_call.amount);
             // Store proof only after `mint` calculations
-            //self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
+            self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
             let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
                 .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
@@ -247,7 +264,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             );
             self.mint_eth_on_near(deposit_call.relayer_id, deposit_call.fee.as_u128());
             // Store proof only after `mint` calculations
-            //self.ft.record_proof(&deposit_call.proof_key).sdk_unwrap();
+            self.record_proof(&deposit_call.proof_key).sdk_unwrap();
             PromiseOrValue::Value(None)
         }
     }
@@ -297,9 +314,8 @@ impl Migration for EthConnectorContract {
         }
 
         // Insert Proof
-        for _proof_key in &data.used_proofs {
-            // TODO
-            //self.ft.used_proofs.insert(proof_key, &true);
+        for proof_key in &data.used_proofs {
+            self.used_proofs.insert(proof_key.clone(), true);
         }
         crate::log!("Inserted used_proofs: {:?}", data.used_proofs.len());
     }
@@ -322,12 +338,11 @@ impl Migration for EthConnectorContract {
         }
 
         // Check proofs
-        for _proof in &data.used_proofs {
-            // TODO
-            // match self.ft.used_proofs.get(proof) {
-            //     Some(_) => (),
-            //     _ => return MigrationCheckResult::Proof(proof.clone()),
-            // }
+        for proof in &data.used_proofs {
+            match self.used_proofs.get(proof) {
+                Some(_) => (),
+                _ => return MigrationCheckResult::Proof(proof.clone()),
+            }
         }
 
         if let Some(account_storage_usage) = data.account_storage_usage {

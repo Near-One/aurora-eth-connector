@@ -95,3 +95,11 @@ pub const ERR_MORE_GAS_REQUIRED: &str = "ERR_MORE_GAS_REQUIRED";
 pub const ERR_PREPAID_GAS_OVERFLOW: &str = "ERR_PREPAID_GAS_OVERFLOW";
 pub const ERR_RECEIVER_BALANCE_NOT_ENOUGH: &str = "ERR__RECEIVER_BALANCE_NOT_ENOUGH";
 pub const ERR_USED_AMOUNT_OVERFLOW: &str = "ERR_USED_AMOUNT_OVERFLOW";
+
+pub struct ProofUsed;
+
+impl AsRef<[u8]> for ProofUsed {
+    fn as_ref(&self) -> &[u8] {
+        ERR_PROOF_EXIST
+    }
+}
