@@ -1,5 +1,6 @@
 use aurora_engine_types::types::Address;
-use aurora_eth_connector::{fungible_token::metadata::FungibleTokenMetadata, proof::Proof};
+use aurora_eth_connector::proof::Proof;
+use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata;
 use near_sdk::serde_json::json;
 use near_sdk::{json_types::U128, serde_json};
 use workspaces::{result::ExecutionFinalResult, Account, AccountId, Contract};
@@ -28,7 +29,7 @@ impl TestContract {
 
         let prover_account: AccountId = contract.id().clone();
         let eth_custodian_address = CUSTODIAN_ADDRESS;
-        let metadata = FungibleTokenMetadata::default();
+        let metadata = Self::metadata_default();
         let account_with_access_right: AccountId = AccountId::from_str(CONTRACT_ACC).unwrap();
         // Init eth-connector
         let res = contract
@@ -55,7 +56,7 @@ impl TestContract {
         let (contract, root_account) = Self::deploy_aurora_contract().await?;
 
         let prover_account: AccountId = contract.id().clone();
-        let metadata = FungibleTokenMetadata::default();
+        let metadata = Self::metadata_default();
         let account_with_access_right: AccountId = AccountId::from_str(CONTRACT_ACC).unwrap();
         // Init eth-connector
         let res = contract
@@ -217,6 +218,18 @@ impl TestContract {
             .await?
             .json::<U128>()
             .unwrap())
+    }
+
+    fn metadata_default() -> FungibleTokenMetadata {
+        FungibleTokenMetadata {
+            symbol: String::default(),
+            name: String::default(),
+            spec: String::default(),
+            icon: None,
+            reference: None,
+            reference_hash: None,
+            decimals: 0,
+        }
     }
 }
 

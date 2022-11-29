@@ -1,6 +1,5 @@
 use crate::utils::*;
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
-use aurora_engine_types::types::NEP141Wei;
 use aurora_eth_connector::migration::{MigrationCheckResult, MigrationInputData};
 use near_sdk::{AccountId, Balance};
 use std::collections::HashMap;
@@ -81,8 +80,8 @@ async fn test_migration_state() -> anyhow::Result<()> {
         };
         proofs_count += proofs.len();
         let args = MigrationInputData {
-            accounts_eth: HashMap::new(),
-            total_eth_supply_on_near: None,
+            accounts: HashMap::new(),
+            total_supply: None,
             account_storage_usage: None,
             statistics_aurora_accounts_counter: None,
             used_proofs: proofs.to_vec(),
@@ -125,7 +124,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
         accounts_count += &accounts.len();
 
         let args = MigrationInputData {
-            accounts: accounts,
+            accounts,
             total_supply: None,
             account_storage_usage: None,
             statistics_aurora_accounts_counter: None,

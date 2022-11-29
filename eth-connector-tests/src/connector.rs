@@ -6,11 +6,11 @@ use aurora_engine_types::{
 use aurora_eth_connector::{
     connector_impl::WithdrawResult,
     deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT},
-    fungible_token::storage_management::StorageBalance,
     log_entry,
     proof::Proof,
 };
 use byte_slice_cast::AsByteSlice;
+use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::serde_json::json;
 use near_sdk::{
     json_types::{U128, U64},
@@ -108,7 +108,7 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
-    let withdraw_amount = NEP141Wei::new(100);
+    let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let res = contract
@@ -130,13 +130,13 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
-    assert_eq!(balance.0, DEPOSITED_FEE - withdraw_amount.as_u128());
+    assert_eq!(balance.0, DEPOSITED_FEE - withdraw_amount);
 
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE as u128);
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
 
     let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - withdraw_amount.as_u128());
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - withdraw_amount);
 
     Ok(())
 }
@@ -146,7 +146,7 @@ async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
-    let withdraw_amount = NEP141Wei::new(100);
+    let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
@@ -183,11 +183,11 @@ async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
     );
     assert_eq!(
         contract.get_eth_on_near_balance(user_acc.id()).await?.0,
-        DEPOSITED_AMOUNT - DEPOSITED_FEE - withdraw_amount.as_u128()
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - withdraw_amount
     );
     assert_eq!(
         contract.total_supply().await?.0,
-        DEPOSITED_AMOUNT - withdraw_amount.as_u128()
+        DEPOSITED_AMOUNT - withdraw_amount
     );
     Ok(())
 }
