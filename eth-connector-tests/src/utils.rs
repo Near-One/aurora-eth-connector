@@ -1,6 +1,6 @@
 use aurora_engine_types::types::Address;
 use aurora_eth_connector::proof::Proof;
-use near_contract_standards::fungible_token::metadata::FungibleTokenMetadata;
+use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
 use near_sdk::serde_json::json;
 use near_sdk::{json_types::U128, serde_json};
 use workspaces::{result::ExecutionFinalResult, Account, AccountId, Contract};
@@ -222,14 +222,37 @@ impl TestContract {
 
     fn metadata_default() -> FungibleTokenMetadata {
         FungibleTokenMetadata {
+            spec: FT_METADATA_SPEC.to_string(),
             symbol: String::default(),
             name: String::default(),
-            spec: String::default(),
             icon: None,
             reference: None,
             reference_hash: None,
             decimals: 0,
         }
+    }
+
+    pub async fn register_user(&self, user: &str) -> anyhow::Result<AccountId> {
+        use near_contract_standards::storage_management::StorageBalanceBounds;
+
+        let bounds = self
+            .contract
+            .call("storage_balance_bounds")
+            .view()
+            .await?
+            .json::<StorageBalanceBounds>()?;
+
+        let res = self
+            .contract
+            .call("storage_deposit")
+            .args_json(json!({ "account_id": &user }))
+            .gas(DEFAULT_GAS)
+            .deposit(bounds.min.into())
+            .transact()
+            .await?;
+        assert!(res.is_success());
+
+        Ok(AccountId::try_from(user.to_string())?)
     }
 }
 

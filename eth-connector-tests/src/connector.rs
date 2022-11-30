@@ -379,7 +379,7 @@ async fn test_deposit_with_0x_prefix() -> anyhow::Result<()> {
         eth_custodian_address,
         sender: Address::zero(),
         token_message_data,
-        amount: NEP141Wei::new(deposit_amount),
+        amount: deposit_amount,
         fee,
     };
 
@@ -397,7 +397,7 @@ async fn test_deposit_with_0x_prefix() -> anyhow::Result<()> {
         ],
         data: ethabi::encode(&[
             ethabi::Token::String(message),
-            ethabi::Token::Uint(U256::from(deposit_event.amount.as_u128())),
+            ethabi::Token::Uint(U256::from(deposit_event.amount)),
             ethabi::Token::Uint(U256::from(deposit_event.fee.as_u128())),
         ]),
     };
@@ -596,7 +596,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     contract.call_deposit_eth_to_near().await?;
 
     let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
-    let withdraw_amount: NEP141Wei = NEP141Wei::new(100);
+    let withdraw_amount = 100;
 
     // 1st withdraw call when unpaused  - should succeed
     let res = contract
@@ -747,7 +747,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
     assert!(res.is_success());
 
     let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
-    let withdraw_amount: NEP141Wei = NEP141Wei::new(100);
+    let withdraw_amount = 100;
     // 1st withdraw - should succeed
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
@@ -1110,8 +1110,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
     contract.call_deposit_eth_to_near().await?;
 
     let transfer_amount1: U128 = 50.into();
-    let transfer_amount2: U128 = 3000.into();
-    let receiver_id = AccountId::try_from("test.root".to_string()).unwrap();
+    let receiver_id = contract.register_user("test.root").await?;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     let res = contract
@@ -1137,9 +1136,11 @@ async fn test_access_rights() -> anyhow::Result<()> {
     );
     assert_eq!(0, contract.get_eth_on_near_balance(&receiver_id).await?.0);
 
+    let withdraw_amount = 100;
+    let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let res = user_acc
-        .call(contract.contract.id(), "ft_transfer")
-        .args_json((&receiver_id, transfer_amount2, "transfer memo"))
+        .call(contract.contract.id(), "withdraw")
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -1178,30 +1179,22 @@ async fn test_access_rights() -> anyhow::Result<()> {
         .json::<AccountId>()?;
     assert_eq!(&res, user_acc.id());
 
-    let res = user_acc
-        .call(contract.contract.id(), "ft_transfer")
-        .args_json((&receiver_id, transfer_amount2, "transfer memo"))
+    let res = contract
+        .contract
+        .call("withdraw")
+        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
     assert!(res.is_success());
 
-    assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_FEE + transfer_amount1.0 - transfer_amount2.0,
-        contract.get_eth_on_near_balance(user_acc.id()).await?.0
-    );
-    assert_eq!(
-        DEPOSITED_FEE - transfer_amount1.0,
-        contract
-            .get_eth_on_near_balance(contract.contract.id())
-            .await?
-            .0
-    );
-    assert_eq!(
-        transfer_amount2.0,
-        contract.get_eth_on_near_balance(&receiver_id).await?.0
-    );
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+
     Ok(())
 }
 

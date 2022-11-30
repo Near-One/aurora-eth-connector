@@ -174,7 +174,7 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
- #   "test_migration",
+    "test_access_rights",
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",
