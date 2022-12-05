@@ -109,6 +109,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     assert_eq!(proofs_count, data.proofs.len());
     // INCREASED!
     //assert!(proofs_gas_burnt as f64 / 1_000_000_000_000. < 5416.1);
+    assert!(proofs_gas_burnt as f64 / 1_000_000_000_000. < 10325.0);
     total_gas_burnt += proofs_gas_burnt;
     println!();
 
@@ -152,6 +153,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     assert_eq!(data.accounts.len(), accounts_count);
     // INCREASED!
     //assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1457.);
+    assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1518.1);
     total_gas_burnt += accounts_gas_burnt;
 
     // Migrate Contract data
@@ -173,6 +175,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     total_gas_burnt += res.total_gas_burnt;
     // INCREASED!
     //assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 6878.6);
+    assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 11849.);
 
     println!(
         "Total Gas burnt: {:.1} TGas\n",
