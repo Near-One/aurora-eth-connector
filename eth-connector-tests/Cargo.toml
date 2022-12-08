@@ -1,6 +1,6 @@
 [package]
 name = "aurora-eth-connector-tests"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
 edition = "2021"
 description = ""

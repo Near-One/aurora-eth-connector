@@ -194,7 +194,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-eth-connector"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
  "byte-slice-cast",
@@ -210,7 +210,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-eth-connector-tests"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "aurora-engine-migration-tool",

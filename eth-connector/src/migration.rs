@@ -14,12 +14,12 @@ pub struct MigrationInputData {
 #[derive(Debug, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
 pub enum MigrationCheckResult {
     Success,
-    AccountNotExist(AccountId),
-    AccountAmount((AccountId, Balance)),
+    AccountNotExist(Vec<AccountId>),
+    AccountAmount(HashMap<AccountId, Balance>),
     TotalSupply(Balance),
     StorageUsage(StorageUsage),
     StatisticsCounter(u64),
-    Proof(String),
+    Proof(Vec<String>),
 }
 
 #[ext_contract(ext_deposit)]

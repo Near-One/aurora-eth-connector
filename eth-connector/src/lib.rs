@@ -411,24 +411,38 @@ impl Migration for EthConnectorContract {
         &self,
         #[serializer(borsh)] data: MigrationInputData,
     ) -> MigrationCheckResult {
+        use std::collections::HashMap;
+
         // Check accounts
+        let mut accounts_not_found: Vec<AccountId> = vec![];
+        let mut accounts_with_amount_not_found: HashMap<AccountId, Balance> = HashMap::new();
         for (account, amount) in &data.accounts {
             match self.ft.accounts.get(account) {
                 Some(ref value) => {
                     if value != amount {
-                        return MigrationCheckResult::AccountAmount((account.clone(), *value));
+                        accounts_with_amount_not_found.insert(account.clone(), *value);
                     }
                 }
-                _ => return MigrationCheckResult::AccountNotExist(account.clone()),
+                _ => accounts_not_found.push(account.clone()),
             }
+        }
+        if !accounts_not_found.is_empty() {
+            return MigrationCheckResult::AccountNotExist(accounts_not_found);
+        }
+        if !accounts_with_amount_not_found.is_empty() {
+            return MigrationCheckResult::AccountAmount(accounts_with_amount_not_found);
         }
 
         // Check proofs
+        let mut proofs_not_found: Vec<String> = vec![];
         for proof in &data.used_proofs {
             match self.used_proofs.get(proof) {
                 Some(_) => (),
-                _ => return MigrationCheckResult::Proof(proof.clone()),
+                _ => proofs_not_found.push(proof.clone()),
             }
+        }
+        if !proofs_not_found.is_empty() {
+            return MigrationCheckResult::Proof(proofs_not_found);
         }
 
         if let Some(account_storage_usage) = data.account_storage_usage {
