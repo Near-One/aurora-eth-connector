@@ -21,7 +21,7 @@ jobs:
       - name: Build mainnet test WASM
         run: cargo make --profile mainnet build-test
       - name: Test mainnet
-        run: RUST_BACKTRACE=1 cargo make --profile mainnet test-workspace
+        run: RUST_BACKTRACE=full cargo make --profile mainnet test-workspace
       - name: Build testnet test WASM
         run: cargo make --profile testnet build-test
       - name: Test testnet
