@@ -21,15 +21,12 @@ jobs:
       - name: Build mainnet test WASM
         run: cargo make --profile mainnet build-test
       - name: Test mainnet
-        run: cargo make --profile mainnet test-workspace
+        run: RUST_BACKTRACE=1 cargo make --profile mainnet test-workspace
       - name: Build testnet test WASM
         run: cargo make --profile testnet build-test
       - name: Test testnet
         run: cargo make --profile testnet test-workspace
-      - name: Save cache
-        run: |
-          cache-util save cargo_git cargo_registry sccache yarn_cache
-          cache-util msave aurora-contract-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
