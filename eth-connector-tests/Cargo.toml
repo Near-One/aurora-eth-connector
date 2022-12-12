@@ -17,7 +17,6 @@ aurora-eth-connector = { path = "../eth-connector" }
 aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false, features = ["impl-serde"] }
 anyhow = "1.0"
 near-sdk = "4.0"
-near-primitives = "0.5"
 near-units = "0.2"
 near-contract-standards = "4.1"
 tokio = { version = "1.14", features = ["full"] }
