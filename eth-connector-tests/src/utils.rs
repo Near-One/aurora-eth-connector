@@ -84,8 +84,15 @@ impl TestContract {
             AccessKey,
         };
 
-        let worker = workspaces::sandbox().await?;
-        let testnet = workspaces::testnet().await?;
+        let worker = workspaces::sandbox()
+            .await
+            .map_err(|err| format!("Failed init sandbox: {:?}", err))
+            .unwrap();
+
+        let testnet = workspaces::testnet()
+            .await
+            .map_err(|err| format!("Failed init testnet: {:?}", err))
+            .unwrap();
         let registrar: AccountId = "registrar".parse()?;
         let registrar = worker
             .import_contract(&registrar, &testnet)
@@ -112,8 +119,18 @@ impl TestContract {
             .transact()
             .await?
             .into_result()?;
+        // .map_err(|err| format!("Failed init sandbox: {:?}", err))
+        //     .unwrap();
+
+        // Explicitly read contract fi;e
+        let contract_data =
+            std::fs::read("../bin/aurora-eth-connector-test.wasm").expect(&format!(
+                "Failed read contract in path: {:?} file: bin/aurora-eth-connector-test.wasm",
+                std::env::current_dir().unwrap()
+            ));
+
         let contract = eth_connector
-            .deploy(&include_bytes!("../../bin/aurora-eth-connector-test.wasm")[..])
+            .deploy(&contract_data[..])
             .await?
             .into_result()?;
         Ok((contract, root_account))
