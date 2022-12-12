@@ -221,7 +221,6 @@ dependencies = [
  "hex 0.4.3",
  "near-contract-standards",
  "near-primitives 0.5.0",
- "near-sandbox-utils",
  "near-sdk",
  "near-units",
  "rlp",
