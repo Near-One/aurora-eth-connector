@@ -28,7 +28,9 @@ ethabi = "17.1"
 rlp = { version = "0.5.0", default-features = false }
 aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git" }
 
+[patch.crates-io]
+near-sandbox-utils = { git = "https://github.com/near/sandbox/", branch = "fix/extra-error-context" }
+
 [features]
 mainnet-test = []
 testnet-test = []
-
