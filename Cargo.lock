@@ -1894,8 +1894,7 @@ dependencies = [
 [[package]]
 name = "near-sandbox-utils"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4b2da180a368a12da1949e9940af2457cbce83acb85743b8834b6c9b4111e9f"
+source = "git+https://github.com/near/sandbox/?branch=fix/extra-error-context#2e367946af878b9bf228137a94584507cb57a8f2"
 dependencies = [
  "anyhow",
  "async-process",
@@ -3570,8 +3569,7 @@ dependencies = [
 [[package]]
 name = "workspaces"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73b13d249618f197811e3673decc81459730cf5cc09ee7246dc4bede1e9333bc"
+source = "git+https://github.com/near/workspaces-rs?branch=debug/sandbox-init#f7b80b21b88c197225fc30d83348eabaf0540cba"
 dependencies = [
  "async-process",
  "async-trait",
