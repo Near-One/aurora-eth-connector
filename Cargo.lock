@@ -221,6 +221,7 @@ dependencies = [
  "hex 0.4.3",
  "near-contract-standards",
  "near-primitives 0.5.0",
+ "near-sandbox-utils",
  "near-sdk",
  "near-units",
  "rlp",
@@ -3569,9 +3570,9 @@ dependencies = [
 
 [[package]]
 name = "workspaces"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f54d9286e6dc20dd6d7676de27ace7b0d4f755164fe14c1f07bcbdd08d54052"
+checksum = "73b13d249618f197811e3673decc81459730cf5cc09ee7246dc4bede1e9333bc"
 dependencies = [
  "async-process",
  "async-trait",

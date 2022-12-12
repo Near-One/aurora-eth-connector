@@ -25,6 +25,8 @@ pub struct TestContract {
 impl TestContract {
     pub async fn new() -> anyhow::Result<TestContract> {
         use std::str::FromStr;
+        near_sandbox_utils::ensure_sandbox_bin()?;
+
         let (contract, root_account) = Self::deploy_aurora_contract().await?;
 
         let prover_account: AccountId = contract.id().clone();
