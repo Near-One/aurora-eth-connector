@@ -100,6 +100,8 @@ impl TestContract {
             .transact()
             .await?;
 
+        tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
+
         for i in 0..20 {
             let account_view = worker.view_account(registrar.id()).await;
 
