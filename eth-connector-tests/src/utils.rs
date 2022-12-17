@@ -100,7 +100,23 @@ impl TestContract {
             .transact()
             .await?;
 
+        for i in 0..20 {
+            let account_view = worker.view_account(registrar.id()).await;
+
+            println!("Waiting on registrar to exist but got {account_view:?}. Retrying for the {i}th in 500ms...");
+            if account_view.is_err() {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            } else {
+                break;
+            }
+        }
+
         let sk = SecretKey::from_seed(KeyType::ED25519, "registrar");
+        // println!("root PK: {:?}", sk.public_key());
+        // println!(
+        //     "regi PK: {:?}",
+        //     registrar.as_account().secret_key().public_key()
+        // );
 
         let root: AccountId = "root".parse()?;
         registrar
