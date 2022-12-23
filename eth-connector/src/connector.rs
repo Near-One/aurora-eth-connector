@@ -70,14 +70,18 @@ pub trait EngineFungibleToken {
 /// Engin compatible methods for NEP-141
 #[ext_contract(ext_enine_storage)]
 pub trait EngineStorageManagement {
-    fn storage_deposit(
+    fn engine_storage_deposit(
         &mut self,
         sender_id: AccountId,
         account_id: Option<AccountId>,
         registration_only: Option<bool>,
     ) -> StorageBalance;
 
-    fn storage_withdraw(&mut self, sender_id: AccountId, amount: Option<U128>) -> StorageBalance;
+    fn engine_storage_withdraw(
+        &mut self,
+        sender_id: AccountId,
+        amount: Option<U128>,
+    ) -> StorageBalance;
 
-    fn storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool;
+    fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool;
 }
