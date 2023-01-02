@@ -14,10 +14,6 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
-      - name: Restore cache
-        run: |
-          cache-util restore cargo_git cargo_registry sccache yarn_cache
-          cache-util restore aurora-contract-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
       - name: Build mainnet test WASM
         run: cargo make --profile mainnet build-test
       - name: Test mainnet
@@ -30,3 +26,4 @@ jobs:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: full
