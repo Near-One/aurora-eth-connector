@@ -154,8 +154,8 @@ impl TestContract {
         worker: &Worker<T>,
         account_id: &AccountId,
     ) {
-        // Try get account within 10 secs
-        for _ in 0..20 {
+        // Try get account within 20 secs
+        for _ in 0..40 {
             if worker.view_account(account_id).await.is_err() {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             } else {
@@ -164,7 +164,7 @@ impl TestContract {
             }
         }
         // Immediately panic, because account not created
-        panic!("Account {} was not creates", account_id.to_string());
+        panic!("Account {} was not created", account_id.to_string());
     }
 
     pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionFinalResult> {
