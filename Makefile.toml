@@ -177,6 +177,7 @@ args = [
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",
+    "--test-threads=4",
     "--nocapture"
 ]
 
