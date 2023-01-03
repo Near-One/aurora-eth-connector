@@ -89,6 +89,7 @@ impl TestContract {
             .await
             .map_err(|err| format!("Failed init sandbox: {:?}", err))
             .unwrap();
+        println!("Started test with home_dir={:?}", worker.home_dir());
 
         let testnet = workspaces::testnet()
             .await

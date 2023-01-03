@@ -3402,7 +3402,7 @@ dependencies = [
 [[package]]
 name = "workspaces"
 version = "0.7.0"
-source = "git+https://github.com/near/workspaces-rs?branch=debug/sandbox-init#f7b80b21b88c197225fc30d83348eabaf0540cba"
+source = "git+https://github.com/near/workspaces-rs?branch=debug/sandbox-init#5d510f0e1bdf59f36e4ab70db1af3234effc2059"
 dependencies = [
  "async-process",
  "async-trait",
@@ -3411,6 +3411,7 @@ dependencies = [
  "bs58",
  "chrono",
  "dirs 3.0.2",
+ "fs2",
  "hex 0.4.3",
  "libc",
  "near-account-id 0.15.0",
@@ -3424,6 +3425,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
  "tokio",
  "tokio-retry",
