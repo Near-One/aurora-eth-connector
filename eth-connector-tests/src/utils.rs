@@ -27,7 +27,7 @@ impl TestContract {
     pub async fn new() -> anyhow::Result<TestContract> {
         use std::str::FromStr;
 
-        let (contract, root_account) = Self::import_aurora_contract().await?;
+        let (contract, root_account) = Self::deploy_aurora_contract().await?;
 
         let prover_account: AccountId = contract.id().clone();
         let eth_custodian_address = CUSTODIAN_ADDRESS;
@@ -55,7 +55,7 @@ impl TestContract {
 
     pub async fn new_with_custodian(eth_custodian_address: &str) -> anyhow::Result<TestContract> {
         use std::str::FromStr;
-        let (contract, root_account) = Self::import_aurora_contract().await?;
+        let (contract, root_account) = Self::deploy_aurora_contract().await?;
 
         let prover_account: AccountId = contract.id().clone();
         let metadata = Self::metadata_default();
@@ -80,7 +80,7 @@ impl TestContract {
         })
     }
 
-    pub async fn import_aurora_contract() -> anyhow::Result<(Contract, Account)> {
+    pub async fn deploy_aurora_contract() -> anyhow::Result<(Contract, Account)> {
         use workspaces::{
             types::{KeyType, SecretKey},
             AccessKey,
@@ -89,7 +89,7 @@ impl TestContract {
         let worker = workspaces::sandbox()
             .await
             .map_err(|err| anyhow::anyhow!("Failed init sandbox: {:?}", err))?;
-        let testnet = workspaces::testnet_archival()
+        let testnet = workspaces::testnet()
             .await
             .map_err(|err| anyhow::anyhow!("Failed init testnet: {:?}", err))?;
         let registrar: AccountId = "registrar".parse()?;
