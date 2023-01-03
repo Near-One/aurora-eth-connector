@@ -21,7 +21,7 @@ near-primitives = "0.5"
 near-units = "0.2"
 near-contract-standards = "4.1"
 tokio = { version = "1.14", features = ["full"] }
-workspaces = "0.7.0"
+workspaces = { git = "https://github.com/aleksuss/workspaces-rs" }
 byte-slice-cast = "1.2"
 hex = "0.4.3"
 ethabi = "17.1"
