@@ -122,15 +122,15 @@ impl TestContract {
             .transact()
             .await?
             .into_result()?;
-        // .map_err(|err| format!("Failed init sandbox: {:?}", err))
-        //     .unwrap();
 
-        // Explicitly read contract fi;e
+        // Explicitly read contract file
         let contract_data =
-            std::fs::read("../bin/aurora-eth-connector-test.wasm").expect(&format!(
-                "Failed read contract in path: {:?} file: bin/aurora-eth-connector-test.wasm",
-                std::env::current_dir().unwrap()
-            ));
+            std::fs::read("../bin/aurora-eth-connector-test.wasm").unwrap_or_else(|_| {
+                panic!(
+                    "Failed read contract in path: {:?} file: bin/aurora-eth-connector-test.wasm",
+                    std::env::current_dir().unwrap()
+                )
+            });
 
         let contract = eth_connector
             .deploy(&contract_data[..])
@@ -154,6 +154,7 @@ impl TestContract {
         worker: &Worker<T>,
         account_id: &AccountId,
     ) {
+        let timer = std::time::Instant::now();
         // Try get account within 20 secs
         for _ in 0..40 {
             if worker.view_account(account_id).await.is_err() {
@@ -164,7 +165,11 @@ impl TestContract {
             }
         }
         // Immediately panic, because account not created
-        panic!("Account {} was not created", account_id.to_string());
+        panic!(
+            "Account `{}` was not created in {:?} sec",
+            account_id,
+            timer.elapsed()
+        );
     }
 
     pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionFinalResult> {
