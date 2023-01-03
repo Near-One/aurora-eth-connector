@@ -102,7 +102,7 @@ impl TestContract {
 
         tokio::time::sleep(std::time::Duration::from_millis(6000)).await;
 
-        for i in 0..20 {
+        for i in 0..40 {
             let account_view = worker.view_account(registrar.id()).await;
 
             println!("Waiting on registrar to exist but got {account_view:?}. Retrying for the {i}th in 500ms...");
