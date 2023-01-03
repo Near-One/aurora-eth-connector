@@ -22,6 +22,8 @@ jobs:
         run: cargo make --profile testnet build-test
       - name: Test testnet
         run: cargo make --profile testnet test-workspace
+      - name: Clean artifacts
+        run: rm -rf /tmp/sandbox-*
 
 env:
   CARGO_TERM_COLOR: always
