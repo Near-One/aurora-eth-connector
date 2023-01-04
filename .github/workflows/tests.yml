@@ -21,11 +21,11 @@ jobs:
       - name: Build mainnet test WASM
         run: cargo make --profile mainnet build-test
       - name: Test mainnet
-        run: cargo make --profile mainnet test-workspace
+        run: NEAR_ENABLE_SANDBOX_LOG=1 cargo make --profile mainnet test-workspace
       - name: Build testnet test WASM
         run: cargo make --profile testnet build-test
       - name: Test testnet
-        run: cargo make --profile testnet test-workspace
+        run: NEAR_ENABLE_SANDBOX_LOG=1 cargo make --profile testnet test-workspace
 
 env:
   CARGO_TERM_COLOR: always
