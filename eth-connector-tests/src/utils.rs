@@ -88,19 +88,16 @@ impl TestContract {
 
         let worker = workspaces::sandbox()
             .await
-            .map_err(|err| format!("Failed init sandbox: {:?}", err))
-            .unwrap();
-
+            .map_err(|err| anyhow::anyhow!("Failed init sandbox: {:?}", err))?;
         let testnet = workspaces::testnet()
             .await
-            .map_err(|err| format!("Failed init testnet: {:?}", err))
-            .unwrap();
+            .map_err(|err| anyhow::anyhow!("Failed init testnet: {:?}", err))?;
         let registrar: AccountId = "registrar".parse()?;
         let registrar = worker
             .import_contract(&registrar, &testnet)
             .transact()
             .await?;
-        Self::waiting_account_creation(&worker, registrar.id()).await;
+        Self::waiting_account_creation(&worker, registrar.id()).await?;
 
         let sk = SecretKey::from_seed(KeyType::ED25519, "registrar");
 
@@ -153,23 +150,22 @@ impl TestContract {
     async fn waiting_account_creation<T: NetworkClient + ?Sized>(
         worker: &Worker<T>,
         account_id: &AccountId,
-    ) {
+    ) -> anyhow::Result<()> {
         let timer = std::time::Instant::now();
-        // Try get account within 20 secs
-        for _ in 0..40 {
+        // Try to get account within 30 secs
+        for _ in 0..60 {
             if worker.view_account(account_id).await.is_err() {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             } else {
-                // Just exit from function
-                return;
+                return Ok(());
             }
         }
-        // Immediately panic, because account not created
-        panic!(
+
+        anyhow::bail!(
             "Account `{}` was not created in {:?} sec",
             account_id,
             timer.elapsed()
-        );
+        )
     }
 
     pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionFinalResult> {

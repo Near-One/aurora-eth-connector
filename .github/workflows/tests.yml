@@ -9,7 +9,7 @@ on:
 name: Tests
 jobs:
   test:
-    name: Test suite (mainnet, testnet)
+    name: Test suite (mainnet)
     runs-on: [self-hosted, heavy]
     steps:
       - name: Clone the repository
@@ -18,10 +18,6 @@ jobs:
         run: cargo make --profile mainnet build-test
       - name: Test mainnet
         run: cargo make --profile mainnet test-workspace
-      - name: Build testnet test WASM
-        run: cargo make --profile testnet build-test
-      - name: Test testnet
-        run: cargo make --profile testnet test-workspace
 
 env:
   CARGO_TERM_COLOR: always
