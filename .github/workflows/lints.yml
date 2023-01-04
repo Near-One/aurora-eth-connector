@@ -22,8 +22,5 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
-      - name: Run Contract cargo clippy
-        run: cargo make clippy
-      - name: Run cargo clippy
-        run: cargo clippy
-
+      - name: Run Contract cargo lint checker
+        run: cargo make check
