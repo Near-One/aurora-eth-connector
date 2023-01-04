@@ -101,7 +101,6 @@ impl TestContract {
             .import_contract(&registrar, &testnet)
             .transact()
             .await?;
-        Self::waiting_account_creation(&worker, registrar.id()).await;
 
         tokio::time::sleep(std::time::Duration::from_millis(10000)).await;
 
@@ -166,29 +165,6 @@ impl TestContract {
             .transact()
             .await?
             .into_result()?)
-    }
-
-    /// Waiting for the account creation
-    async fn waiting_account_creation<T: NetworkClient + ?Sized>(
-        worker: &Worker<T>,
-        account_id: &AccountId,
-    ) {
-        let timer = std::time::Instant::now();
-        // Try get account within 20 secs
-        for _ in 0..40 {
-            if worker.view_account(account_id).await.is_err() {
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            } else {
-                // Just exit from function
-                return;
-            }
-        }
-        // Immediately panic, because account not created
-        panic!(
-            "Account `{}` was not created in {:?} sec",
-            account_id,
-            timer.elapsed()
-        );
     }
 
     pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionFinalResult> {
