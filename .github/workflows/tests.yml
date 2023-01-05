@@ -6,14 +6,27 @@ on:
       - develop
   pull_request:
 
+env:
+  NEAR_ENABLE_SANDBOX_LOG: 1
+  NEAR_SANDBOX_LOG: 'near=error,stats=error,network=error'
+  NEAR_SANDBOX_BIN_PATH: '${GITHUB_WORKSPACE}/neard'
+
 name: Tests
 jobs:
   test:
     name: Test suite (mainnet)
     runs-on: [self-hosted, heavy]
     steps:
-      - name: os
-        run: uname -a
+      - name: Clone the repository
+        uses: actions/checkout@v2
+      - name: Build mainnet test WASM
+        run: cargo make --profile mainnet build-test
+      - name: Test mainnet
+        run: cargo make --profile mainnet test-workspace
+      - name: Build testnet test WASM
+        run: cargo make --profile testnet build-test
+      - name: Test testnet
+        run: cargo make --profile testnet test-workspace
 
 env:
   CARGO_TERM_COLOR: always
