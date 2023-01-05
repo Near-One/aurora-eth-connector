@@ -9,28 +9,16 @@ on:
 name: Tests
 jobs:
   test:
-    name: Test suite (mainnet, testnet)
+    name: Test suite (mainnet)
     runs-on: [self-hosted, heavy]
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
-      - name: Restore cache
-        run: |
-          cache-util restore cargo_git cargo_registry sccache yarn_cache
-          cache-util restore aurora-contract-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
       - name: Build mainnet test WASM
         run: cargo make --profile mainnet build-test
       - name: Test mainnet
         run: cargo make --profile mainnet test-workspace
-      - name: Build testnet test WASM
-        run: cargo make --profile testnet build-test
-      - name: Test testnet
-        run: cargo make --profile testnet test-workspace
-      - name: Save cache
-        run: |
-          cache-util save cargo_git cargo_registry sccache yarn_cache
-          cache-util msave aurora-contract-target@generic@${{ hashFiles('**/Cargo.lock') }}:target
+
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RUSTC_WRAPPER: sccache

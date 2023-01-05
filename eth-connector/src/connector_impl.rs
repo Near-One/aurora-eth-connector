@@ -1,4 +1,3 @@
-use crate::fungible_token::core_impl::error::FtDepositError;
 use crate::{
     admin_controlled::PAUSE_DEPOSIT,
     connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit},
@@ -8,10 +7,10 @@ use crate::{
     types::SdkUnwrap,
     AdminControlled, PausedMask,
 };
-use aurora_engine_types::types::{Address, Fee, NEP141Wei};
+use aurora_engine_types::types::{Address, Fee};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, AccountId, Gas, Promise,
+    env, AccountId, Balance, Gas, Promise,
 };
 
 /// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
@@ -24,7 +23,7 @@ const GAS_FOR_VERIFY_LOG_ENTRY: Gas = Gas(40_000_000_000_000);
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
 pub struct TransferCallCallArgs {
     pub receiver_id: AccountId,
-    pub amount: NEP141Wei,
+    pub amount: Balance,
     pub memo: Option<String>,
     pub msg: String,
 }
@@ -33,7 +32,7 @@ pub struct TransferCallCallArgs {
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
 pub struct FinishDepositCallArgs {
     pub new_owner_id: AccountId,
-    pub amount: NEP141Wei,
+    pub amount: Balance,
     pub proof_key: String,
     pub relayer_id: AccountId,
     pub fee: Fee,
@@ -43,7 +42,7 @@ pub struct FinishDepositCallArgs {
 /// withdraw result for eth-connector
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct WithdrawResult {
-    pub amount: NEP141Wei,
+    pub amount: Balance,
     pub recipient_id: Address,
     pub eth_custodian_address: Address,
 }
@@ -111,11 +110,11 @@ impl ConnectorDeposit for EthConnector {
         );
 
         if event.eth_custodian_address != self.eth_custodian_address {
-            panic_err(FtDepositError::CustodianAddressMismatch);
+            panic_err(error::FtDepositError::CustodianAddressMismatch);
         }
 
-        if NEP141Wei::new(event.fee.as_u128()) >= event.amount {
-            panic_err(FtDepositError::InsufficientAmountForFee);
+        if event.fee.as_u128() >= event.amount {
+            panic_err(error::FtDepositError::InsufficientAmountForFee);
         }
 
         // Verify proof data with cross-contract call to prover account
@@ -178,5 +177,158 @@ impl ConnectorDeposit for EthConnector {
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
                     .finish_deposit(finish_deposit_data),
             )
+    }
+}
+
+pub mod error {
+    use crate::deposit_event::error::ParseOnTransferMessageError;
+    use crate::errors::{
+        ERR_BALANCE_OVERFLOW, ERR_NOT_ENOUGH_BALANCE, ERR_NOT_ENOUGH_BALANCE_FOR_FEE,
+        ERR_PROOF_EXIST, ERR_SENDER_EQUALS_RECEIVER, ERR_TOTAL_SUPPLY_OVERFLOW,
+        ERR_TOTAL_SUPPLY_UNDERFLOW, ERR_WRONG_EVENT_ADDRESS, ERR_ZERO_AMOUNT,
+    };
+    use aurora_engine_types::types::balance::error::BalanceOverflowError;
+    use aurora_engine_types::types::ERR_FAILED_PARSE;
+
+    pub struct ProofUsed;
+
+    impl AsRef<[u8]> for ProofUsed {
+        fn as_ref(&self) -> &[u8] {
+            ERR_PROOF_EXIST
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum DepositError {
+        TotalSupplyOverflow,
+        BalanceOverflow,
+    }
+
+    impl AsRef<[u8]> for DepositError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::TotalSupplyOverflow => ERR_TOTAL_SUPPLY_OVERFLOW.as_bytes(),
+                Self::BalanceOverflow => ERR_BALANCE_OVERFLOW,
+            }
+        }
+    }
+
+    impl From<DepositError> for TransferError {
+        fn from(err: DepositError) -> Self {
+            match err {
+                DepositError::BalanceOverflow => Self::BalanceOverflow,
+                DepositError::TotalSupplyOverflow => Self::TotalSupplyOverflow,
+            }
+        }
+    }
+
+    pub enum FtDepositError {
+        ProofParseFailed,
+        CustodianAddressMismatch,
+        InsufficientAmountForFee,
+    }
+
+    impl AsRef<[u8]> for FtDepositError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::ProofParseFailed => ERR_FAILED_PARSE.as_bytes(),
+                Self::CustodianAddressMismatch => ERR_WRONG_EVENT_ADDRESS,
+                Self::InsufficientAmountForFee => ERR_NOT_ENOUGH_BALANCE_FOR_FEE.as_bytes(),
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum WithdrawError {
+        TotalSupplyUnderflow,
+        InsufficientFunds,
+        BalanceOverflow(BalanceOverflowError),
+    }
+
+    impl AsRef<[u8]> for WithdrawError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::TotalSupplyUnderflow => ERR_TOTAL_SUPPLY_UNDERFLOW,
+                Self::InsufficientFunds => ERR_NOT_ENOUGH_BALANCE,
+                Self::BalanceOverflow(e) => e.as_ref(),
+            }
+        }
+    }
+
+    impl From<WithdrawError> for TransferError {
+        fn from(err: WithdrawError) -> Self {
+            match err {
+                WithdrawError::InsufficientFunds => Self::InsufficientFunds,
+                WithdrawError::TotalSupplyUnderflow => Self::TotalSupplyUnderflow,
+                WithdrawError::BalanceOverflow(_) => Self::BalanceOverflow,
+            }
+        }
+    }
+
+    pub enum FinishDepositError {
+        TransferCall(FtTransferCallError),
+        ProofUsed,
+    }
+
+    impl From<DepositError> for FtTransferCallError {
+        fn from(e: DepositError) -> Self {
+            Self::Transfer(e.into())
+        }
+    }
+
+    impl From<ParseOnTransferMessageError> for FtTransferCallError {
+        fn from(e: ParseOnTransferMessageError) -> Self {
+            Self::MessageParseFailed(e)
+        }
+    }
+
+    impl AsRef<[u8]> for FinishDepositError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::ProofUsed => ERR_PROOF_EXIST,
+                Self::TransferCall(e) => e.as_ref(),
+            }
+        }
+    }
+
+    pub enum FtTransferCallError {
+        BalanceOverflow(BalanceOverflowError),
+        MessageParseFailed(ParseOnTransferMessageError),
+        InsufficientAmountForFee,
+        Transfer(TransferError),
+    }
+
+    impl AsRef<[u8]> for FtTransferCallError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::MessageParseFailed(e) => e.as_ref(),
+                Self::InsufficientAmountForFee => ERR_NOT_ENOUGH_BALANCE_FOR_FEE.as_bytes(),
+                Self::Transfer(e) => e.as_ref(),
+                Self::BalanceOverflow(e) => e.as_ref(),
+            }
+        }
+    }
+
+    #[derive(Debug)]
+    pub enum TransferError {
+        TotalSupplyUnderflow,
+        TotalSupplyOverflow,
+        InsufficientFunds,
+        BalanceOverflow,
+        ZeroAmount,
+        SelfTransfer,
+    }
+
+    impl AsRef<[u8]> for TransferError {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::TotalSupplyUnderflow => ERR_TOTAL_SUPPLY_UNDERFLOW,
+                Self::TotalSupplyOverflow => ERR_TOTAL_SUPPLY_OVERFLOW.as_bytes(),
+                Self::InsufficientFunds => ERR_NOT_ENOUGH_BALANCE,
+                Self::BalanceOverflow => ERR_BALANCE_OVERFLOW,
+                Self::ZeroAmount => ERR_ZERO_AMOUNT,
+                Self::SelfTransfer => ERR_SENDER_EQUALS_RECEIVER,
+            }
+        }
     }
 }

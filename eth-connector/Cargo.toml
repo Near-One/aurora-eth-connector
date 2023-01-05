@@ -1,6 +1,6 @@
 [package]
 name = "aurora-eth-connector"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
 edition = "2021"
 description = ""
@@ -16,7 +16,8 @@ autobenches = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-near-sdk = "4.0.0"
+near-sdk = "4.1"
+near-contract-standards = "4.1"
 aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false, features = ["impl-serde"] }
 serde = "1"
 serde_json = "1"
@@ -26,11 +27,12 @@ byte-slice-cast = "1.0"
 ethabi = { version = "17.1", default-features = false }
 
 [dev-dependencies]
-rand = "0.7.3"
+rand = "0.8.5"
 
 [features]
 log = []
 integration-test = ["log"]
+# Currently feature `mainnet` used only for 
+# Makefile.toml profiles to indicate basic features
 mainnet = ["log"]
-testnet = ["log"]
 migration = ["log"]

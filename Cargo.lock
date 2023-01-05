@@ -194,14 +194,15 @@ dependencies = [
 
 [[package]]
 name = "aurora-eth-connector"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
  "byte-slice-cast",
  "ethabi",
  "hex 0.4.3",
+ "near-contract-standards",
  "near-sdk",
- "rand 0.7.3",
+ "rand 0.8.5",
  "rlp",
  "serde",
  "serde_json",
@@ -209,7 +210,7 @@ dependencies = [
 
 [[package]]
 name = "aurora-eth-connector-tests"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "aurora-engine-migration-tool",
@@ -218,6 +219,7 @@ dependencies = [
  "byte-slice-cast",
  "ethabi",
  "hex 0.4.3",
+ "near-contract-standards",
  "near-primitives 0.5.0",
  "near-sdk",
  "near-units",
@@ -1548,6 +1550,18 @@ dependencies = [
  "sha2 0.10.6",
  "smart-default",
  "tracing",
+]
+
+[[package]]
+name = "near-contract-standards"
+version = "4.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bacc932e79b26472797adfb21689294b6f90960d1570daaf1e0b682b59fcb35"
+dependencies = [
+ "near-sdk",
+ "schemars",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -3555,9 +3569,9 @@ dependencies = [
 
 [[package]]
 name = "workspaces"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f54d9286e6dc20dd6d7676de27ace7b0d4f755164fe14c1f07bcbdd08d54052"
+checksum = "73b13d249618f197811e3673decc81459730cf5cc09ee7246dc4bede1e9333bc"
 dependencies = [
  "async-process",
  "async-trait",

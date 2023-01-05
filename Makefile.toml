@@ -174,10 +174,10 @@ category = "Test"
 command = "${CARGO}"
 args = [
     "test",
- #   "test_migration",
     "--features",
     "${CARGO_FEATURES_TEST}",
     "--",
+    "--test-threads=4",
     "--nocapture"
 ]
 
