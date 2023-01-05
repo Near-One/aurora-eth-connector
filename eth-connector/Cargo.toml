@@ -32,6 +32,7 @@ rand = "0.8.5"
 [features]
 log = []
 integration-test = ["log"]
+# Currently feature `mainnet` used only for 
+# Makefile.toml profiles to indicate basic features
 mainnet = ["log"]
-testnet = ["log"]
 migration = ["log"]

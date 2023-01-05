@@ -9,7 +9,7 @@ on:
 name: Tests
 jobs:
   test:
-    name: Test suite (mainnet, testnet)
+    name: Test suite (mainnet)
     runs-on: [self-hosted, heavy]
     steps:
       - name: os

@@ -93,8 +93,7 @@ impl TestContract {
 
         let testnet = workspaces::testnet()
             .await
-            .map_err(|err| format!("Failed init testnet: {:?}", err))
-            .unwrap();
+            .map_err(|err| anyhow::anyhow!("Failed init testnet: {:?}", err))?;
         let registrar: AccountId = "registrar".parse()?;
         let registrar = worker
             .import_contract(&registrar, &testnet)
