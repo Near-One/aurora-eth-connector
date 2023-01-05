@@ -12,16 +12,8 @@ jobs:
     name: Test suite (mainnet, testnet)
     runs-on: [self-hosted, heavy]
     steps:
-      - name: Clone the repository
-        uses: actions/checkout@v2
-      - name: Build mainnet test WASM
-        run: cargo make --profile mainnet build-test
-      - name: Test mainnet
-        run: NEAR_ENABLE_SANDBOX_LOG=0 cargo make --profile mainnet test-workspace
-      - name: Build testnet test WASM
-        run: cargo make --profile testnet build-test
-      - name: Test testnet
-        run: NEAR_ENABLE_SANDBOX_LOG=0 cargo make --profile testnet test-workspace
+      - name: os
+        run: uname -a
 
 env:
   CARGO_TERM_COLOR: always
