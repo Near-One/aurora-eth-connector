@@ -1,6 +1,6 @@
 [package]
 name = "aurora-eth-connector-tests"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
 edition = "2021"
 description = ""
@@ -24,7 +24,7 @@ tokio = { version = "1.23", features = ["full"] }
 workspaces = "0.7.0"
 byte-slice-cast = "1.2"
 hex = "0.4.3"
-ethabi = "17.1"
+ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }
 aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git" }
 
