@@ -1201,3 +1201,82 @@ async fn test_storage_withdraw() -> anyhow::Result<()> {
     ));
     Ok(())
 }
+
+#[tokio::test]
+async fn test_engine_ft_transfer() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
+    let transfer_amount: U128 = 50.into();
+    let receiver_id = contract.register_user("test.root").await?;
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_ft_transfer")
+        .args_json((&user_acc.id(), receiver_id.clone(), transfer_amount, "memo"))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    assert_eq!(
+        DEPOSITED_AMOUNT - DEPOSITED_FEE,
+        contract.get_eth_on_near_balance(user_acc.id()).await?.0
+    );
+    assert_eq!(
+        DEPOSITED_FEE,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await?
+            .0
+    );
+    assert_eq!(0, contract.get_eth_on_near_balance(&receiver_id).await?.0);
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+
+    // Set access right
+    let res = contract
+        .contract
+        .call("set_access_right")
+        .args_json((user_acc.id(),))
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let res = contract
+        .contract
+        .call("get_access_right")
+        .view()
+        .await?
+        .json::<AccountId>()?;
+    assert_eq!(&res, user_acc.id());
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_ft_transfer")
+        .args_json((&user_acc.id(), receiver_id.clone(), transfer_amount, "memo"))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    assert_eq!(
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
+        contract.get_eth_on_near_balance(user_acc.id()).await?.0
+    );
+    assert_eq!(
+        DEPOSITED_FEE,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await?
+            .0
+    );
+    assert_eq!(
+        transfer_amount.0,
+        contract.get_eth_on_near_balance(&receiver_id).await?.0
+    );
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    Ok(())
+}
