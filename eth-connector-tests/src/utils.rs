@@ -282,6 +282,30 @@ impl TestContract {
 
         Ok(AccountId::try_from(user.to_string())?)
     }
+
+    pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
+        let res = self
+            .contract
+            .call("set_access_right")
+            .args_json((acc,))
+            .gas(DEFAULT_GAS)
+            .transact()
+            .await?;
+        if res.is_failure() {
+            anyhow::bail!("set_access_right failed");
+        }
+
+        let res = self
+            .contract
+            .call("get_access_right")
+            .view()
+            .await?
+            .json::<AccountId>()?;
+        if &res != acc {
+            anyhow::bail!("check access_right fail: {:?} != {:?}", &res, acc);
+        }
+        Ok(())
+    }
 }
 
 pub fn print_logs(res: ExecutionFinalResult) {

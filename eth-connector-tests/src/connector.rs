@@ -57,15 +57,7 @@ async fn test_ft_transfer_user() -> anyhow::Result<()> {
 
     let transfer_amount = 70;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
-
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = user_acc
         .call(contract.contract.id(), "ft_transfer")
@@ -141,15 +133,7 @@ async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let user_acc = contract.create_sub_account("eth_recipient").await?;
-
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
@@ -624,15 +608,7 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     // 1st deposit call - should succeed
     let res = contract
@@ -689,16 +665,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     contract.call_deposit_eth_to_near().await?;
-
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let withdraw_amount = 100;
@@ -1100,23 +1067,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
     );
     assert_eq!(0, contract.get_eth_on_near_balance(&receiver_id).await?.0);
 
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
-
-    let res = contract
-        .contract
-        .call("get_access_right")
-        .view()
-        .await?
-        .json::<AccountId>()?;
-    assert_eq!(&res, user_acc.id());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = contract
         .contract
@@ -1235,23 +1186,7 @@ async fn test_engine_ft_transfer() -> anyhow::Result<()> {
     assert_eq!(0, contract.get_eth_on_near_balance(&receiver_id).await?.0);
     assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
 
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
-
-    let res = contract
-        .contract
-        .call("get_access_right")
-        .view()
-        .await?
-        .json::<AccountId>()?;
-    assert_eq!(&res, user_acc.id());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = user_acc
         .call(contract.contract.id(), "engine_ft_transfer")
@@ -1328,23 +1263,8 @@ async fn test_engine_ft_transfer_call() -> anyhow::Result<()> {
     );
     assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
 
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
-
-    let res = contract
-        .contract
-        .call("get_access_right")
-        .view()
-        .await?
-        .json::<AccountId>()?;
-    assert_eq!(&res, user_acc.id());
+    let res = contract.set_and_check_access_right(user_acc.id()).await;
+    assert!(res.is_ok(), "{:?}", res);
 
     let res = user_acc
         .call(contract.contract.id(), "engine_ft_transfer_call")
