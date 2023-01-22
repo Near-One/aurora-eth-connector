@@ -1,5 +1,6 @@
 use crate::{connector_impl::FinishDepositCallArgs, Proof, WithdrawResult};
 use aurora_engine_types::types::Address;
+use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::json_types::U64;
 use near_sdk::{
     borsh, ext_contract,
@@ -43,4 +44,44 @@ pub trait ProofVerifier {
 #[ext_contract(ext_ft_statistic)]
 pub trait FungibleTokeStatistic {
     fn get_accounts_counter(&self) -> U64;
+}
+
+/// Engin compatible methods for NEP-141
+#[ext_contract(ext_enine_ft)]
+pub trait EngineFungibleToken {
+    fn engine_ft_transfer(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+    );
+
+    fn engine_ft_transfer_call(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<U128>;
+}
+
+/// Engin compatible methods for NEP-141
+#[ext_contract(ext_enine_storage)]
+pub trait EngineStorageManagement {
+    fn engine_storage_deposit(
+        &mut self,
+        sender_id: AccountId,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance;
+
+    fn engine_storage_withdraw(
+        &mut self,
+        sender_id: AccountId,
+        amount: Option<U128>,
+    ) -> StorageBalance;
+
+    fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool;
 }

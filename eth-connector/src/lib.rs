@@ -1,6 +1,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
-    ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, FungibleTokeStatistic,
+    ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, EngineFungibleToken,
+    EngineStorageManagement, FungibleTokeStatistic,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -24,7 +25,7 @@ use near_sdk::{
     collections::LazyOption,
     env,
     json_types::U128,
-    near_bindgen, require, AccountId, Balance, BorshStorageKey, PanicOnDefault, Promise,
+    near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
 
@@ -37,6 +38,9 @@ pub mod log_entry;
 pub mod migration;
 pub mod proof;
 pub mod types;
+
+const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
+const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.0);
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -159,9 +163,6 @@ impl FungibleTokenCore for EthConnectorContract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         self.register_if_not_exists(&receiver_id);
-        use near_sdk::Gas;
-        const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
-        const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.0);
 
         let sender_id = env::predecessor_account_id();
         let amount: Balance = amount.into();
@@ -210,6 +211,188 @@ impl FungibleTokenCore for EthConnectorContract {
 
     fn ft_balance_of(&self, account_id: AccountId) -> U128 {
         self.ft.ft_balance_of(account_id)
+    }
+}
+
+/// Fungible Token Trait implementation for compatibility with Engine NEP-141 methods.
+/// It's because should have a known correct `sender_id`. In reference
+/// implementation it's `predecessor_account_id`. To resolve it
+/// we just set `sender_id` explicitly as function parameter.
+/// Also we check access right to manage access rights.
+#[near_bindgen]
+impl EngineFungibleToken for EthConnectorContract {
+    #[payable]
+    fn engine_ft_transfer(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+    ) {
+        self.assert_access_right().sdk_unwrap();
+        self.register_if_not_exists(&receiver_id);
+        assert_one_yocto();
+        let amount: Balance = amount.into();
+        self.ft
+            .internal_transfer(&sender_id, &receiver_id, amount, memo);
+    }
+
+    #[payable]
+    fn engine_ft_transfer_call(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        self.assert_access_right().sdk_unwrap();
+        self.register_if_not_exists(&receiver_id);
+
+        let amount: Balance = amount.into();
+        crate::log!(
+            "Transfer call from {} to {} amount {}",
+            sender_id,
+            receiver_id,
+            amount,
+        );
+
+        // Verify message data before `ft_on_transfer` call to avoid verification panics
+        // It's allowed empty message if `receiver_id =! current_account_id`
+        if sender_id == receiver_id {
+            let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
+            // Check is transfer amount > fee
+            if message_data.fee.as_u128() >= amount {
+                panic_err("insufficient balance for fee");
+            }
+        }
+
+        // Special case for Aurora transfer itself - we shouldn't transfer
+        if sender_id != receiver_id {
+            self.ft
+                .internal_transfer(&sender_id, &receiver_id, amount, memo);
+        }
+
+        let receiver_gas = env::prepaid_gas()
+            .0
+            .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
+            .unwrap_or_else(|| env::panic_str("Prepaid gas overflow"));
+        // Initiating receiver's call and the callback
+        ext_ft_receiver::ext(receiver_id.clone())
+            .with_static_gas(receiver_gas.into())
+            .ft_on_transfer(sender_id.clone(), amount.into(), msg)
+            .then(
+                ext_ft_resolver::ext(env::current_account_id())
+                    .with_static_gas(GAS_FOR_RESOLVE_TRANSFER)
+                    .ft_resolve_transfer(sender_id, receiver_id, amount.into()),
+            )
+            .into()
+    }
+}
+
+/// Implementations used only for EngineStorageManagement
+impl EthConnectorContract {
+    fn internal_storage_balance_of(&self, account_id: &AccountId) -> Option<StorageBalance> {
+        if self.ft.accounts.contains_key(account_id) {
+            Some(StorageBalance {
+                total: self.storage_balance_bounds().min,
+                available: 0.into(),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn internal_storage_unregister(
+        &mut self,
+        sender_id: AccountId,
+        force: Option<bool>,
+    ) -> Option<(AccountId, Balance)> {
+        assert_one_yocto();
+        let account_id = sender_id;
+        let force = force.unwrap_or(false);
+        if let Some(balance) = self.ft.accounts.get(&account_id) {
+            if balance == 0 || force {
+                self.ft.accounts.remove(&account_id);
+                self.ft.total_supply -= balance;
+                Promise::new(account_id.clone()).transfer(self.storage_balance_bounds().min.0 + 1);
+                Some((account_id, balance))
+            } else {
+                env::panic_str(
+                    "Can't unregister the account with the positive balance without force",
+                )
+            }
+        } else {
+            crate::log!("The account {} is not registered", &account_id);
+            None
+        }
+    }
+}
+
+/// Storage Management Trait implementation for compatibility with Engine NEP-141 methods.
+/// It's because we should ve known correct `sender_id`. In reference
+/// implementation it's `predecessor_account_id`. To resolve it
+/// we just set `sender_id` explicitly as function parameter.
+#[near_bindgen]
+impl EngineStorageManagement for EthConnectorContract {
+    #[allow(unused_variables)]
+    #[payable]
+    fn engine_storage_deposit(
+        &mut self,
+        sender_id: AccountId,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
+        self.assert_access_right().sdk_unwrap();
+        let amount: Balance = env::attached_deposit();
+        let account_id = account_id.unwrap_or_else(|| sender_id.clone());
+        if self.ft.accounts.contains_key(&account_id) {
+            crate::log!("The account is already registered, refunding the deposit");
+            if amount > 0 {
+                Promise::new(sender_id).transfer(amount);
+            }
+        } else {
+            let min_balance = self.storage_balance_bounds().min.0;
+            if amount < min_balance {
+                env::panic_str("The attached deposit is less than the minimum storage balance");
+            }
+
+            self.ft.internal_register_account(&account_id);
+            let refund = amount - min_balance;
+            if refund > 0 {
+                Promise::new(env::predecessor_account_id()).transfer(refund);
+            }
+        }
+        self.internal_storage_balance_of(&account_id).unwrap()
+    }
+
+    #[payable]
+    fn engine_storage_withdraw(
+        &mut self,
+        sender_id: AccountId,
+        amount: Option<U128>,
+    ) -> StorageBalance {
+        self.assert_access_right().sdk_unwrap();
+        assert_one_yocto();
+        let predecessor_account_id = sender_id;
+        if let Some(storage_balance) = self.internal_storage_balance_of(&predecessor_account_id) {
+            match amount {
+                Some(amount) if amount.0 > 0 => {
+                    env::panic_str("The amount is greater than the available storage balance");
+                }
+                _ => storage_balance,
+            }
+        } else {
+            env::panic_str(
+                format!("The account {} is not registered", &predecessor_account_id).as_str(),
+            );
+        }
+    }
+
+    #[payable]
+    fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
+        self.assert_access_right().sdk_unwrap();
+        self.internal_storage_unregister(sender_id, force).is_some()
     }
 }
 
@@ -462,5 +645,22 @@ impl Migration for EthConnectorContract {
             }
         }
         MigrationCheckResult::Success
+    }
+}
+
+#[cfg(feature = "integration-test")]
+use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
+
+#[cfg(feature = "integration-test")]
+#[near_bindgen]
+impl FungibleTokenReceiver for EthConnectorContract {
+    #[allow(unused_variables)]
+    fn ft_on_transfer(
+        &mut self,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        PromiseOrValue::Value(U128(0))
     }
 }

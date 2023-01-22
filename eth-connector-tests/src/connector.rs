@@ -57,15 +57,7 @@ async fn test_ft_transfer_user() -> anyhow::Result<()> {
 
     let transfer_amount = 70;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
-
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = user_acc
         .call(contract.contract.id(), "ft_transfer")
@@ -141,15 +133,7 @@ async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let user_acc = contract.create_sub_account("eth_recipient").await?;
-
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
@@ -624,15 +608,7 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     // 1st deposit call - should succeed
     let res = contract
@@ -689,16 +665,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     contract.call_deposit_eth_to_near().await?;
-
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let withdraw_amount = 100;
@@ -1100,23 +1067,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
     );
     assert_eq!(0, contract.get_eth_on_near_balance(&receiver_id).await?.0);
 
-    // Set access right
-    let res = contract
-        .contract
-        .call("set_access_right")
-        .args_json((user_acc.id(),))
-        .gas(DEFAULT_GAS)
-        .transact()
-        .await?;
-    assert!(res.is_success());
-
-    let res = contract
-        .contract
-        .call("get_access_right")
-        .view()
-        .await?
-        .json::<AccountId>()?;
-    assert_eq!(&res, user_acc.id());
+    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = contract
         .contract
@@ -1200,4 +1151,393 @@ async fn test_storage_withdraw() -> anyhow::Result<()> {
         "The amount is greater than the available storage balance"
     ));
     Ok(())
+}
+
+#[tokio::test]
+async fn test_engine_ft_transfer() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+    let transfer_amount: U128 = 50.into();
+    let receiver_id = contract.register_user("test.root").await.unwrap();
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_ft_transfer")
+        .args_json((&user_acc.id(), receiver_id.clone(), transfer_amount, "memo"))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    assert_eq!(
+        DEPOSITED_AMOUNT - DEPOSITED_FEE,
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(
+        DEPOSITED_FEE,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(
+        0,
+        contract
+            .get_eth_on_near_balance(&receiver_id)
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
+
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_ft_transfer")
+        .args_json((&user_acc.id(), receiver_id.clone(), transfer_amount, "memo"))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    assert_eq!(
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(
+        DEPOSITED_FEE,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(
+        transfer_amount.0,
+        contract
+            .get_eth_on_near_balance(&receiver_id)
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
+}
+
+#[tokio::test]
+async fn test_engine_ft_transfer_call() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+    let receiver_id = contract.contract.id();
+    let transfer_amount: U128 = 50.into();
+    let fee: u128 = 30;
+    let mut msg = U256::from(fee).as_byte_slice().to_vec();
+    msg.append(
+        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
+            .as_bytes()
+            .to_vec(),
+    );
+    let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
+    let memo: Option<String> = None;
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_ft_transfer_call")
+        .args_json((
+            &user_acc.id(),
+            &receiver_id,
+            transfer_amount,
+            &memo,
+            &message,
+        ))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    assert_eq!(
+        DEPOSITED_AMOUNT - DEPOSITED_FEE,
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(
+        DEPOSITED_FEE,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
+
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_ft_transfer_call")
+        .args_json((
+            &user_acc.id(),
+            &receiver_id,
+            transfer_amount,
+            &memo,
+            &message,
+        ))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    assert_eq!(
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(
+        DEPOSITED_FEE + transfer_amount.0,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await
+            .unwrap()
+            .0
+    );
+    assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
+}
+
+#[tokio::test]
+async fn test_engine_storage_deposit() {
+    let contract = TestContract::new().await.unwrap();
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+
+    let bounds = contract
+        .contract
+        .call("storage_balance_bounds")
+        .view()
+        .await
+        .unwrap()
+        .json::<StorageBalanceBounds>()
+        .unwrap();
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_deposit")
+        .args_json(json!({
+            "sender_id": &user_acc.id(),
+            "account_id": &user_acc.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(bounds.min.0)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
+
+    let res = contract
+        .contract
+        .call("engine_storage_deposit")
+        .args_json(json!({
+            "sender_id": &user_acc.id(),
+            "account_id": &user_acc.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(bounds.min.0)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+    let balance = res.json::<StorageBalance>().unwrap();
+    assert_eq!(balance.available.0, 0);
+    assert!(balance.total.0 >= bounds.min.0);
+
+    let res = contract
+        .contract
+        .call("storage_balance_of")
+        .args_json(json!({
+            "account_id": &contract.contract.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(10)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+    let balance = res.json::<StorageBalance>().unwrap();
+    assert_eq!(balance.available.0, 0);
+    assert!(balance.total.0 >= bounds.min.0);
+}
+
+#[tokio::test]
+async fn test_engine_storage_withdraw() {
+    let contract = TestContract::new().await.unwrap();
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+
+    let bounds = contract
+        .contract
+        .call("storage_balance_bounds")
+        .view()
+        .await
+        .unwrap()
+        .json::<StorageBalanceBounds>()
+        .unwrap();
+
+    let amount: U128 = 10.into();
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
+
+    let res = contract
+        .contract
+        .call("engine_storage_deposit")
+        .args_json(json!({
+            "sender_id": &user_acc.id(),
+            "account_id": &user_acc.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(bounds.min.0)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let amount: U128 = 1.into();
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(
+        res,
+        "The amount is greater than the available storage balance"
+    ));
+}
+
+#[tokio::test]
+async fn test_engine_storage_unregister() {
+    let contract = TestContract::new().await.unwrap();
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+
+    let bounds = contract
+        .contract
+        .call("storage_balance_bounds")
+        .view()
+        .await
+        .unwrap()
+        .json::<StorageBalanceBounds>()
+        .unwrap();
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_unregister")
+        .args_json(json!({ "sender_id": user_acc.id() }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
+
+    let res = contract
+        .contract
+        .call("engine_storage_deposit")
+        .args_json(json!({
+            "sender_id": &user_acc.id(),
+            "account_id": &user_acc.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(bounds.min.0)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let amount: U128 = 1.into();
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(contract.check_error_message(
+        res,
+        "The amount is greater than the available storage balance"
+    ));
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_unregister")
+        .args_json(json!({ "sender_id": user_acc.id() }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "The account eth_recipient.root is not registered"));
 }

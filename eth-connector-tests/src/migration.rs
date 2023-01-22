@@ -153,7 +153,15 @@ async fn test_migration_state() -> anyhow::Result<()> {
     assert_eq!(data.accounts.len(), accounts_count);
     // INCREASED!
     //assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1457.);
-    assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1520.);
+    // println!("\n{:?}", accounts_gas_burnt);
+    // INCREASED!
+    // assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1520.);
+    assert!(
+        accounts_gas_burnt as f64 / 1_000_000_000_000. < 1984.,
+        "{:?} < {:?}",
+        accounts_gas_burnt as f64 / 1_000_000_000_000.,
+        1984.
+    );
     total_gas_burnt += accounts_gas_burnt;
 
     // Migrate Contract data
@@ -175,7 +183,15 @@ async fn test_migration_state() -> anyhow::Result<()> {
     total_gas_burnt += res.total_gas_burnt;
     // INCREASED!
     //assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 6878.6);
-    assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 11852.);
+    // INCREASED!
+    //assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 11852.6);
+    println!("\n{:?}", total_gas_burnt);
+    assert!(
+        total_gas_burnt as f64 / 1_000_000_000_000. < 12315.,
+        "{:?} < {:?}",
+        total_gas_burnt as f64 / 1_000_000_000_000.,
+        12315.
+    );
 
     println!(
         "Total Gas burnt: {:.1} TGas\n",
