@@ -195,7 +195,7 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
 async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract
-        .set_engine_account(&contract.contract.id())
+        .set_engine_account(contract.contract.id())
         .await
         .unwrap();
 
@@ -369,7 +369,7 @@ async fn test_ft_transfer_call_user_message() {
         .await
         .unwrap();
 
-    contract.set_engine_account(&receiver_id).await.unwrap();
+    contract.set_engine_account(receiver_id).await.unwrap();
 
     let res = contract
         .contract
@@ -705,7 +705,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
     // method which should be paused
     contract
-        .set_engine_account(&contract.contract.id())
+        .set_engine_account(contract.contract.id())
         .await
         .unwrap();
     contract.call_deposit_eth_to_aurora().await?;
