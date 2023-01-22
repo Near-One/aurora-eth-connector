@@ -1,7 +1,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, EngineFungibleToken,
-    EngineStorageManagement, FungibleTokeStatistic, KnownEnginAccountsManagement,
+    EngineStorageManagement, FungibleTokeStatistic, KnownEngineAccountsManagement,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -105,7 +105,6 @@ impl EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        assert_one_yocto();
         self.register_if_not_exists(&receiver_id);
 
         let amount: Balance = amount.into();
@@ -215,6 +214,7 @@ impl FungibleTokenCore for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        assert_one_yocto();
         let sender_id = env::predecessor_account_id();
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
@@ -260,6 +260,7 @@ impl EngineFungibleToken for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        assert_one_yocto();
         self.assert_access_right().sdk_unwrap();
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
@@ -267,8 +268,9 @@ impl EngineFungibleToken for EthConnectorContract {
 
 /// Management for a known Engine accounts
 #[near_bindgen]
-impl KnownEnginAccountsManagement for EthConnectorContract {
+impl KnownEngineAccountsManagement for EthConnectorContract {
     fn set_engine_account(&mut self, engine_account: AccountId) {
+        self.assert_access_right().sdk_unwrap();
         self.known_engine_accounts.push(engine_account);
     }
 
@@ -507,8 +509,13 @@ impl ConnectorFundsFinish for EthConnectorContract {
             let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
                 .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                 .sdk_unwrap();
-            let promise =
-                self.ft_transfer_call(data.receiver_id, data.amount.into(), data.memo, data.msg);
+            let promise = self.internal_ft_transfer_call(
+                env::predecessor_account_id(),
+                data.receiver_id,
+                data.amount.into(),
+                data.memo,
+                data.msg,
+            );
             match promise {
                 PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
                 PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),

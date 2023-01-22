@@ -194,6 +194,11 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
+    contract
+        .set_engine_account(&contract.contract.id())
+        .await
+        .unwrap();
+
     contract.call_deposit_eth_to_aurora().await?;
     assert!(
         contract.call_is_used_proof(PROOF_DATA_ETH).await?,
@@ -266,7 +271,11 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     let transfer_amount: U128 = 50.into();
     let memo: Option<String> = None;
     let message = "";
-    // Send to Aurora contract with wrong message should failed
+    contract
+        .set_engine_account(contract.contract.id())
+        .await
+        .unwrap();
+    // Send to Engine contract with wrong message should failed
     let res = contract
         .contract
         .call("ft_transfer_call")
@@ -333,7 +342,7 @@ async fn test_ft_transfer_call_user_message() {
     let transfer_amount: U128 = 50.into();
     let memo: Option<String> = None;
     let message = "";
-    // Send to Aurora contract with wrong message should failed
+    // Send to non-engine contract with wrong message should failed
     let res = user_acc
         .call(contract.contract.id(), "ft_transfer_call")
         .args_json((&receiver_id, transfer_amount, &memo, message))
@@ -342,7 +351,6 @@ async fn test_ft_transfer_call_user_message() {
         .transact()
         .await
         .unwrap();
-    //println!("{:#?}", res);
     assert!(res.is_success());
 
     let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
@@ -356,15 +364,12 @@ async fn test_ft_transfer_call_user_message() {
         DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0
     );
 
-    let res = contract
-        .contract
-        .call("set_engine_account")
-        .args_json((&receiver_id,))
-        .gas(DEFAULT_GAS)
-        .transact()
+    contract
+        .set_and_check_access_right(contract.contract.id())
         .await
         .unwrap();
-    assert!(res.is_success());
+
+    contract.set_engine_account(&receiver_id).await.unwrap();
 
     let res = contract
         .contract
@@ -376,6 +381,7 @@ async fn test_ft_transfer_call_user_message() {
         .unwrap();
     assert!(res.contains(receiver_id));
 
+    // Send to engine contract with wrong message should failed
     let res = user_acc
         .call(contract.contract.id(), "ft_transfer_call")
         .args_json((&receiver_id, transfer_amount, &memo, message))
@@ -396,6 +402,47 @@ async fn test_ft_transfer_call_user_message() {
         balance.0,
         DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0
     );
+}
+
+#[tokio::test]
+async fn test_set_and_get_engine_account() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+    let res = user_acc
+        .call(contract.contract.id(), "set_engine_account")
+        .args_json((&contract.contract.id(),))
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
+
+    let res = user_acc
+        .call(contract.contract.id(), "set_engine_account")
+        .args_json((&contract.contract.id(),))
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = contract
+        .contract
+        .call("get_engine_accounts")
+        .view()
+        .await
+        .unwrap()
+        .json::<Vec<AccountId>>()
+        .unwrap();
+    assert!(res.contains(contract.contract.id()));
 }
 
 #[tokio::test]
@@ -564,6 +611,9 @@ async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
     let relayer_id = "relayer.root";
     let message = [relayer_id, hex::encode(msg).as_str()].join(":");
     let memo: Option<String> = None;
+
+    // For `ft_transfer_call` we don't check correcness for `fee amount`.
+    // So transactions should be success, and balances shouldn't changes
     let res = contract
         .contract
         .call("ft_transfer_call")
@@ -572,12 +622,10 @@ async fn test_ft_transfer_call_fee_greater_than_amount() -> anyhow::Result<()> {
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
-    assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "insufficient balance for fee"));
+    assert!(res.is_success());
 
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
     assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
 
     let balance = contract
@@ -656,6 +704,10 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     // 2nd deposit call when paused, but the admin is calling it - should succeed
     // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
     // method which should be paused
+    contract
+        .set_engine_account(&contract.contract.id())
+        .await
+        .unwrap();
     contract.call_deposit_eth_to_aurora().await?;
 
     // Pause withdraw
