@@ -1296,3 +1296,70 @@ async fn test_engine_ft_transfer_call() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn test_engine_storage_deposit() {
+    let contract = TestContract::new().await.unwrap();
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+
+    let bounds = contract
+        .contract
+        .call("storage_balance_bounds")
+        .view()
+        .await
+        .unwrap()
+        .json::<StorageBalanceBounds>()
+        .unwrap();
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_deposit")
+        .args_json(json!({
+            "sender_id": &user_acc.id(),
+            "account_id": &user_acc.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(bounds.min.0)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
+
+    let res = contract
+        .contract
+        .call("engine_storage_deposit")
+        .args_json(json!({
+            "sender_id": &user_acc.id(),
+            "account_id": &user_acc.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(bounds.min.0)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+    let balance = res.json::<StorageBalance>().unwrap();
+    assert_eq!(balance.available.0, 0);
+    assert!(balance.total.0 >= bounds.min.0);
+
+    let res = contract
+        .contract
+        .call("storage_balance_of")
+        .args_json(json!({
+            "account_id": &contract.contract.id()
+        }))
+        .gas(DEFAULT_GAS)
+        .deposit(10)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+    let balance = res.json::<StorageBalance>().unwrap();
+    assert_eq!(balance.available.0, 0);
+    assert!(balance.total.0 >= bounds.min.0);
+}
