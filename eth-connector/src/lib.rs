@@ -1,7 +1,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, EngineFungibleToken,
-    EngineStorageManagement, FungibleTokeStatistic,
+    EngineStorageManagement, FungibleTokeStatistic, KnownEngineAccountsManagement,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -55,6 +55,7 @@ pub struct EthConnectorContract {
     metadata: LazyOption<FungibleTokenMetadata>,
     used_proofs: LookupMap<String, bool>,
     accounts_counter: u64,
+    known_engine_accounts: Vec<AccountId>,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -95,6 +96,56 @@ impl EthConnectorContract {
             self.ft.internal_register_account(account);
         }
     }
+
+    fn internal_ft_transfer_call(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        self.register_if_not_exists(&receiver_id);
+
+        let amount: Balance = amount.into();
+        crate::log!(
+            "Transfer call from {} to {} amount {}",
+            sender_id,
+            receiver_id,
+            amount,
+        );
+
+        // Verify message data before `ft_on_transfer` call for Engine accounts
+        // to avoid verification panics inside `ft_on_transfer`.
+        // Allowed empty message if `receiver_id != known_engin_accounts`.
+        if self.known_engine_accounts.contains(&receiver_id) {
+            let _ = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
+        }
+
+        // Special case, we do not fail if `sender_id = receiver_id`
+        // if `predecessor_account_id` call `ft_transfer_call` as receiver itself
+        // to call `ft_on_transfer`.
+        if sender_id != receiver_id {
+            // It's panic if: `sender_id == receiver_id`
+            self.ft
+                .internal_transfer(&sender_id, &receiver_id, amount, memo);
+        }
+
+        let receiver_gas = env::prepaid_gas()
+            .0
+            .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
+            .unwrap_or_else(|| env::panic_str("Prepaid gas overflow"));
+        // Initiating receiver's call and the callback
+        ext_ft_receiver::ext(receiver_id.clone())
+            .with_static_gas(receiver_gas.into())
+            .ft_on_transfer(sender_id.clone(), amount.into(), msg)
+            .then(
+                ext_ft_resolver::ext(env::current_account_id())
+                    .with_static_gas(GAS_FOR_RESOLVE_TRANSFER)
+                    .ft_resolve_transfer(sender_id, receiver_id, amount.into()),
+            )
+            .into()
+    }
 }
 
 #[near_bindgen]
@@ -124,6 +175,7 @@ impl EthConnectorContract {
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
             used_proofs: LookupMap::new(StorageKey::Proof),
             accounts_counter: 0,
+            known_engine_accounts: vec![],
         };
         this.register_if_not_exists(&owner_id);
         this
@@ -162,47 +214,9 @@ impl FungibleTokenCore for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        self.register_if_not_exists(&receiver_id);
-
+        assert_one_yocto();
         let sender_id = env::predecessor_account_id();
-        let amount: Balance = amount.into();
-        crate::log!(
-            "Transfer call from {} to {} amount {}",
-            sender_id,
-            receiver_id,
-            amount,
-        );
-
-        // Verify message data before `ft_on_transfer` call to avoid verification panics
-        // It's allowed empty message if `receiver_id =! current_account_id`
-        if sender_id == receiver_id {
-            let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
-            // Check is transfer amount > fee
-            if message_data.fee.as_u128() >= amount {
-                panic_err("insufficient balance for fee");
-            }
-        }
-
-        // Special case for Aurora transfer itself - we shouldn't transfer
-        if sender_id != receiver_id {
-            self.ft
-                .internal_transfer(&sender_id, &receiver_id, amount, memo);
-        }
-
-        let receiver_gas = env::prepaid_gas()
-            .0
-            .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
-            .unwrap_or_else(|| env::panic_str("Prepaid gas overflow"));
-        // Initiating receiver's call and the callback
-        ext_ft_receiver::ext(receiver_id.clone())
-            .with_static_gas(receiver_gas.into())
-            .ft_on_transfer(sender_id.clone(), amount.into(), msg)
-            .then(
-                ext_ft_resolver::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_RESOLVE_TRANSFER)
-                    .ft_resolve_transfer(sender_id, receiver_id, amount.into()),
-            )
-            .into()
+        self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
 
     fn ft_total_supply(&self) -> U128 {
@@ -246,47 +260,28 @@ impl EngineFungibleToken for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        assert_one_yocto();
         self.assert_access_right().sdk_unwrap();
-        self.register_if_not_exists(&receiver_id);
+        self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
+    }
+}
 
-        let amount: Balance = amount.into();
-        crate::log!(
-            "Transfer call from {} to {} amount {}",
-            sender_id,
-            receiver_id,
-            amount,
-        );
+/// Management for a known Engine accounts
+#[near_bindgen]
+impl KnownEngineAccountsManagement for EthConnectorContract {
+    fn set_engine_account(&mut self, engine_account: AccountId) {
+        self.assert_access_right().sdk_unwrap();
+        self.known_engine_accounts.push(engine_account);
+    }
 
-        // Verify message data before `ft_on_transfer` call to avoid verification panics
-        // It's allowed empty message if `receiver_id =! current_account_id`
-        if sender_id == receiver_id {
-            let message_data = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
-            // Check is transfer amount > fee
-            if message_data.fee.as_u128() >= amount {
-                panic_err("insufficient balance for fee");
-            }
-        }
+    fn remove_engine_account(&mut self, engine_account: AccountId) {
+        self.assert_access_right().sdk_unwrap();
+        self.known_engine_accounts
+            .retain(|acc| *acc != engine_account);
+    }
 
-        // Special case for Aurora transfer itself - we shouldn't transfer
-        if sender_id != receiver_id {
-            self.ft
-                .internal_transfer(&sender_id, &receiver_id, amount, memo);
-        }
-
-        let receiver_gas = env::prepaid_gas()
-            .0
-            .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
-            .unwrap_or_else(|| env::panic_str("Prepaid gas overflow"));
-        // Initiating receiver's call and the callback
-        ext_ft_receiver::ext(receiver_id.clone())
-            .with_static_gas(receiver_gas.into())
-            .ft_on_transfer(sender_id.clone(), amount.into(), msg)
-            .then(
-                ext_ft_resolver::ext(env::current_account_id())
-                    .with_static_gas(GAS_FOR_RESOLVE_TRANSFER)
-                    .ft_resolve_transfer(sender_id, receiver_id, amount.into()),
-            )
-            .into()
+    fn get_engine_accounts(&self) -> Vec<AccountId> {
+        self.known_engine_accounts.clone()
     }
 }
 
@@ -520,8 +515,13 @@ impl ConnectorFundsFinish for EthConnectorContract {
             let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
                 .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                 .sdk_unwrap();
-            let promise =
-                self.ft_transfer_call(data.receiver_id, data.amount.into(), data.memo, data.msg);
+            let promise = self.internal_ft_transfer_call(
+                env::predecessor_account_id(),
+                data.receiver_id,
+                data.amount.into(),
+                data.memo,
+                data.msg,
+            );
             match promise {
                 PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
                 PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),

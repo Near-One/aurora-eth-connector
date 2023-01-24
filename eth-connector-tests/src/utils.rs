@@ -306,6 +306,19 @@ impl TestContract {
         }
         Ok(())
     }
+
+    pub async fn set_engine_account(&self, acc: &AccountId) -> anyhow::Result<()> {
+        let res = self
+            .contract
+            .call("set_engine_account")
+            .args_json((&acc,))
+            .gas(DEFAULT_GAS)
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+        Ok(())
+    }
 }
 
 pub fn print_logs(res: ExecutionFinalResult) {
