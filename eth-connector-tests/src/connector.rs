@@ -1446,7 +1446,7 @@ async fn test_engine_storage_withdraw() {
         .unwrap();
     assert!(res.is_success());
 
-    let amount: U128 = 10.into();
+    let amount: U128 = 1.into();
     let res = user_acc
         .call(contract.contract.id(), "engine_storage_withdraw")
         .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
@@ -1506,6 +1506,20 @@ async fn test_engine_storage_unregister() {
         .unwrap();
     assert!(res.is_success());
 
+    let amount: U128 = 1.into();
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(contract.check_error_message(
+        res,
+        "The amount is greater than the available storage balance"
+    ));
+
     let res = user_acc
         .call(contract.contract.id(), "engine_storage_unregister")
         .args_json(json!({ "sender_id": user_acc.id() }))
@@ -1515,4 +1529,15 @@ async fn test_engine_storage_unregister() {
         .await
         .unwrap();
     assert!(res.is_success());
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "The account eth_recipient.root is not registered"));
 }
