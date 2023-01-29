@@ -1295,7 +1295,7 @@ async fn test_engine_ft_transfer_call() {
     contract.call_deposit_eth_to_near().await.unwrap();
 
     let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = contract.contract.id();
     let transfer_amount: U128 = 50.into();
     let fee: u128 = 30;
     let mut msg = U256::from(fee).as_byte_slice().to_vec();
@@ -1364,7 +1364,7 @@ async fn test_engine_ft_transfer_call() {
     assert!(res.is_success());
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_FEE,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
         contract
             .get_eth_on_near_balance(user_acc.id())
             .await
@@ -1372,7 +1372,7 @@ async fn test_engine_ft_transfer_call() {
             .0
     );
     assert_eq!(
-        DEPOSITED_FEE,
+        DEPOSITED_FEE + transfer_amount.0,
         contract
             .get_eth_on_near_balance(contract.contract.id())
             .await
@@ -1494,7 +1494,7 @@ async fn test_engine_storage_withdraw() {
         .unwrap();
     assert!(res.is_success());
 
-    let amount: U128 = 10.into();
+    let amount: U128 = 1.into();
     let res = user_acc
         .call(contract.contract.id(), "engine_storage_withdraw")
         .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
@@ -1554,6 +1554,20 @@ async fn test_engine_storage_unregister() {
         .unwrap();
     assert!(res.is_success());
 
+    let amount: U128 = 1.into();
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(contract.check_error_message(
+        res,
+        "The amount is greater than the available storage balance"
+    ));
+
     let res = user_acc
         .call(contract.contract.id(), "engine_storage_unregister")
         .args_json(json!({ "sender_id": user_acc.id() }))
@@ -1563,4 +1577,15 @@ async fn test_engine_storage_unregister() {
         .await
         .unwrap();
     assert!(res.is_success());
+
+    let res = user_acc
+        .call(contract.contract.id(), "engine_storage_withdraw")
+        .args_json(json!({ "sender_id": user_acc.id(), "amount": amount }))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "The account eth_recipient.root is not registered"));
 }
