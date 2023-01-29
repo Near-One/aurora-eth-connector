@@ -1247,7 +1247,7 @@ async fn test_engine_ft_transfer_call() {
     contract.call_deposit_eth_to_near().await.unwrap();
 
     let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = contract.contract.id();
     let transfer_amount: U128 = 50.into();
     let fee: u128 = 30;
     let mut msg = U256::from(fee).as_byte_slice().to_vec();
@@ -1316,7 +1316,7 @@ async fn test_engine_ft_transfer_call() {
     assert!(res.is_success());
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_FEE,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
         contract
             .get_eth_on_near_balance(user_acc.id())
             .await
@@ -1324,7 +1324,7 @@ async fn test_engine_ft_transfer_call() {
             .0
     );
     assert_eq!(
-        DEPOSITED_FEE,
+        DEPOSITED_FEE + transfer_amount.0,
         contract
             .get_eth_on_near_balance(contract.contract.id())
             .await

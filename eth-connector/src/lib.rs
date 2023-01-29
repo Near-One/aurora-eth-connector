@@ -215,7 +215,7 @@ impl FungibleTokenCore for EthConnectorContract {
 }
 
 /// Fungible Token Trait implementation for compatibility with Engine NEP-141 methods.
-/// It's because we should ve known correct `sender_id`. In reference
+/// It's because should have a known correct `sender_id`. In reference
 /// implementation it's `predecessor_account_id`. To resolve it
 /// we just set `sender_id` explicitly as function parameter.
 /// Also we check access right to manage access rights.
@@ -645,5 +645,22 @@ impl Migration for EthConnectorContract {
             }
         }
         MigrationCheckResult::Success
+    }
+}
+
+#[cfg(feature = "integration-test")]
+use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
+
+#[cfg(feature = "integration-test")]
+#[near_bindgen]
+impl FungibleTokenReceiver for EthConnectorContract {
+    #[allow(unused_variables)]
+    fn ft_on_transfer(
+        &mut self,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        PromiseOrValue::Value(U128(0))
     }
 }
