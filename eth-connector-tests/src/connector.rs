@@ -312,6 +312,54 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
+async fn test_ft_transfer_call_user_message() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let balance = contract
+        .get_eth_on_near_balance(&receiver_id)
+        .await
+        .unwrap();
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_on_near_balance(contract.contract.id())
+        .await
+        .unwrap();
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let transfer_amount: U128 = 50.into();
+    let memo: Option<String> = None;
+    let message = "";
+    // Send to Aurora contract with wrong message should failed
+    let res = user_acc
+        .call(contract.contract.id(), "ft_transfer_call")
+        .args_json((contract.contract.id(), transfer_amount, &memo, message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    println!("{:#?}", res);
+    assert!(res.is_failure());
+    //assert!(contract.check_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+
+    // Assert balances remain unchanged
+    let balance = contract
+        .get_eth_on_near_balance(&receiver_id)
+        .await
+        .unwrap();
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+    let balance = contract
+        .get_eth_on_near_balance(contract.contract.id())
+        .await
+        .unwrap();
+    assert_eq!(balance.0, DEPOSITED_FEE);
+}
+
+#[tokio::test]
 async fn test_deposit_with_0x_prefix() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
 
