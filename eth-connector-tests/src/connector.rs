@@ -317,9 +317,9 @@ async fn test_ft_transfer_call_user_message() {
     contract.call_deposit_eth_to_near().await.unwrap();
 
     let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = contract.contract.id();
     let balance = contract
-        .get_eth_on_near_balance(&receiver_id)
+        .get_eth_on_near_balance(user_acc.id())
         .await
         .unwrap();
     assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
@@ -336,27 +336,72 @@ async fn test_ft_transfer_call_user_message() {
     // Send to Aurora contract with wrong message should failed
     let res = user_acc
         .call(contract.contract.id(), "ft_transfer_call")
-        .args_json((contract.contract.id(), transfer_amount, &memo, message))
+        .args_json((&receiver_id, transfer_amount, &memo, message))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
         .await
         .unwrap();
-    println!("{:#?}", res);
-    assert!(res.is_failure());
-    //assert!(contract.check_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    //println!("{:#?}", res);
+    assert!(res.is_success());
 
-    // Assert balances remain unchanged
     let balance = contract
         .get_eth_on_near_balance(&receiver_id)
         .await
         .unwrap();
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+    assert_eq!(balance.0, DEPOSITED_FEE + transfer_amount.0);
     let balance = contract
-        .get_eth_on_near_balance(contract.contract.id())
+        .get_eth_on_near_balance(user_acc.id())
         .await
         .unwrap();
-    assert_eq!(balance.0, DEPOSITED_FEE);
+    assert_eq!(
+        balance.0,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0
+    );
+
+    let res = contract
+        .contract
+        .call("set_engine_account")
+        .args_json((&receiver_id,))
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = contract
+        .contract
+        .call("get_engine_accounts")
+        .view()
+        .await
+        .unwrap()
+        .json::<Vec<AccountId>>()
+        .unwrap();
+    assert!(res.contains(&receiver_id));
+
+    let res = user_acc
+        .call(contract.contract.id(), "ft_transfer_call")
+        .args_json((&receiver_id, transfer_amount, &memo, message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    let balance = contract
+        .get_eth_on_near_balance(&receiver_id)
+        .await
+        .unwrap();
+    assert_eq!(balance.0, DEPOSITED_FEE + transfer_amount.0);
+    let balance = contract
+        .get_eth_on_near_balance(user_acc.id())
+        .await
+        .unwrap();
+    assert_eq!(
+        balance.0,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0
+    );
 }
 
 #[tokio::test]

@@ -85,3 +85,10 @@ pub trait EngineStorageManagement {
 
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool;
 }
+
+#[ext_contract(ext_known_enine_accounts)]
+pub trait KnownEnginAccountsManagement {
+    fn set_engine_account(&mut self, engine_account: AccountId);
+
+    fn get_engine_accounts(&self) -> Vec<AccountId>;
+}

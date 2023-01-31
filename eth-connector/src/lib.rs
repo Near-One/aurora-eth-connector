@@ -1,7 +1,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, EngineFungibleToken,
-    EngineStorageManagement, FungibleTokeStatistic,
+    EngineStorageManagement, FungibleTokeStatistic, KnownEnginAccountsManagement,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -55,6 +55,7 @@ pub struct EthConnectorContract {
     metadata: LazyOption<FungibleTokenMetadata>,
     used_proofs: LookupMap<String, bool>,
     accounts_counter: u64,
+    known_engine_accounts: Vec<AccountId>,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -116,9 +117,9 @@ impl EthConnectorContract {
         );
 
         // Verify message data before `ft_on_transfer` call for Engine accounts
-        // to avoid verification panics.
-        // It's allowed empty message if `receiver_id != known_engin_accounts`.
-        if receiver_id == known_engine_accounts {
+        // to avoid verification panics inside `ft_on_transfer`.
+        // Allowed empty message if `receiver_id != known_engin_accounts`.
+        if self.known_engine_accounts.contains(&receiver_id) {
             let _ = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
         }
 
@@ -126,7 +127,7 @@ impl EthConnectorContract {
         // if `predecessor_account_id` call `ft_transfer_call` as receiver itself
         // to call `ft_on_transfer`.
         if sender_id != receiver_id {
-            // It's panic if: sender_id == receiver_id
+            // It's panic if: `sender_id == receiver_id`
             self.ft
                 .internal_transfer(&sender_id, &receiver_id, amount, memo);
         }
@@ -175,6 +176,7 @@ impl EthConnectorContract {
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
             used_proofs: LookupMap::new(StorageKey::Proof),
             accounts_counter: 0,
+            known_engine_accounts: vec![],
         };
         this.register_if_not_exists(&owner_id);
         this
@@ -260,6 +262,18 @@ impl EngineFungibleToken for EthConnectorContract {
     ) -> PromiseOrValue<U128> {
         self.assert_access_right().sdk_unwrap();
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
+    }
+}
+
+/// Management for a known Engine accounts
+#[near_bindgen]
+impl KnownEnginAccountsManagement for EthConnectorContract {
+    fn set_engine_account(&mut self, engine_account: AccountId) {
+        self.known_engine_accounts.push(engine_account);
+    }
+
+    fn get_engine_accounts(&self) -> Vec<AccountId> {
+        self.known_engine_accounts.clone()
     }
 }
 
