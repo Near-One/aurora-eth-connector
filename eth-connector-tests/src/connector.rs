@@ -345,10 +345,7 @@ async fn test_ft_transfer_call_user_message() {
     //println!("{:#?}", res);
     assert!(res.is_success());
 
-    let balance = contract
-        .get_eth_on_near_balance(&receiver_id)
-        .await
-        .unwrap();
+    let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
     assert_eq!(balance.0, DEPOSITED_FEE + transfer_amount.0);
     let balance = contract
         .get_eth_on_near_balance(user_acc.id())
@@ -377,7 +374,7 @@ async fn test_ft_transfer_call_user_message() {
         .unwrap()
         .json::<Vec<AccountId>>()
         .unwrap();
-    assert!(res.contains(&receiver_id));
+    assert!(res.contains(receiver_id));
 
     let res = user_acc
         .call(contract.contract.id(), "ft_transfer_call")
@@ -389,10 +386,7 @@ async fn test_ft_transfer_call_user_message() {
         .unwrap();
     assert!(res.is_failure());
     assert!(contract.check_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
-    let balance = contract
-        .get_eth_on_near_balance(&receiver_id)
-        .await
-        .unwrap();
+    let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
     assert_eq!(balance.0, DEPOSITED_FEE + transfer_amount.0);
     let balance = contract
         .get_eth_on_near_balance(user_acc.id())
