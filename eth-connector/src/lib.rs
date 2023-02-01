@@ -274,6 +274,12 @@ impl KnownEngineAccountsManagement for EthConnectorContract {
         self.known_engine_accounts.push(engine_account);
     }
 
+    fn remove_engine_account(&mut self, engine_account: AccountId) {
+        self.assert_access_right().sdk_unwrap();
+        self.known_engine_accounts
+            .retain(|acc| *acc != engine_account);
+    }
+
     fn get_engine_accounts(&self) -> Vec<AccountId> {
         self.known_engine_accounts.clone()
     }

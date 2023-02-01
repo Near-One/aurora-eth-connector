@@ -90,5 +90,7 @@ pub trait EngineStorageManagement {
 pub trait KnownEngineAccountsManagement {
     fn set_engine_account(&mut self, engine_account: AccountId);
 
+    fn remove_engine_account(&mut self, engine_account: AccountId);
+
     fn get_engine_accounts(&self) -> Vec<AccountId>;
 }

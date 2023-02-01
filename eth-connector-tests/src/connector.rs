@@ -1680,3 +1680,49 @@ async fn test_engine_storage_unregister() {
     assert!(res.is_failure());
     assert!(contract.check_error_message(res, "The account eth_recipient.root is not registered"));
 }
+
+#[tokio::test]
+async fn test_manage_engine_accounts() {
+    let contract = TestContract::new().await.unwrap();
+    contract
+        .set_and_check_access_right(contract.contract.id())
+        .await
+        .unwrap();
+
+    let acc1 = AccountId::try_from("acc1.root".to_string()).unwrap();
+    let acc2 = AccountId::try_from("acc2.root".to_string()).unwrap();
+    contract.set_engine_account(&acc1).await.unwrap();
+    contract.set_engine_account(&acc2).await.unwrap();
+    let res = contract
+        .contract
+        .call("get_engine_accounts")
+        .view()
+        .await
+        .unwrap()
+        .json::<Vec<AccountId>>()
+        .unwrap();
+    assert_eq!(res.len(), 2);
+    assert!(res.contains(&acc1));
+    assert!(res.contains(&acc2));
+
+    let res = contract
+        .contract
+        .call("remove_engine_account")
+        .args_json((&acc1,))
+        .gas(DEFAULT_GAS)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+    let res = contract
+        .contract
+        .call("get_engine_accounts")
+        .view()
+        .await
+        .unwrap()
+        .json::<Vec<AccountId>>()
+        .unwrap();
+    assert_eq!(res.len(), 1);
+    assert!(!res.contains(&acc1));
+    assert!(res.contains(&acc2));
+}
