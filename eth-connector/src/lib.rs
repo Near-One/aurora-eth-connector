@@ -460,13 +460,15 @@ impl ConnectorWithdraw for EthConnectorContract {
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
+        #[serializer(borsh)] signer_id: AccountId,
     ) -> WithdrawResult {
         self.assert_access_right().sdk_unwrap();
         assert_one_yocto();
         let predecessor_account_id = env::predecessor_account_id();
         let current_account_id = env::current_account_id();
-        // Check is current account id is owner
-        let is_owner = current_account_id == predecessor_account_id;
+        // Check owner for admin access
+        let is_owner = self.known_engine_accounts.contains(&signer_id)
+            || current_account_id == predecessor_account_id;
         // Check is current flow paused. If it's owner just skip asserrion.
         self.assert_not_paused(PAUSE_WITHDRAW, is_owner)
             .map_err(|_| "WithdrawErrorPaused")
@@ -483,9 +485,15 @@ impl ConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl ConnectorDeposit for EthConnectorContract {
-    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
+    fn deposit(
+        &mut self,
+        #[serializer(borsh)] raw_proof: Proof,
+        #[serializer(borsh)] signer_id: AccountId,
+    ) -> Promise {
         self.assert_access_right().sdk_unwrap();
-        self.connector.deposit(raw_proof)
+        let is_engine_account = self.known_engine_accounts.contains(&signer_id);
+        self.connector
+            .deposit(raw_proof, signer_id, is_engine_account)
     }
 }
 

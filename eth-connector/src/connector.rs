@@ -10,7 +10,11 @@ use near_sdk::{
 
 #[ext_contract(ext_deposit)]
 pub trait ConnectorDeposit {
-    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise;
+    fn deposit(
+        &mut self,
+        #[serializer(borsh)] raw_proof: Proof,
+        #[serializer(borsh)] signer_id: AccountId,
+    ) -> Promise;
 }
 
 #[ext_contract(ext_withdraw)]
@@ -21,6 +25,7 @@ pub trait ConnectorWithdraw {
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
+        #[serializer(borsh)] signer_id: AccountId,
     ) -> WithdrawResult;
 }
 

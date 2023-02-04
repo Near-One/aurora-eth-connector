@@ -1,6 +1,6 @@
 use crate::{
     admin_controlled::PAUSE_DEPOSIT,
-    connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit},
+    connector::{ext_funds_finish, ext_proof_verifier},
     deposit_event::{DepositedEvent, TokenMessageData},
     errors, log, panic_err,
     proof::Proof,
@@ -80,12 +80,18 @@ impl AdminControlled for EthConnector {
     }
 }
 
-impl ConnectorDeposit for EthConnector {
-    fn deposit(&mut self, raw_proof: Proof) -> Promise {
+impl EthConnector {
+    pub(crate) fn deposit(
+        &mut self,
+        raw_proof: Proof,
+        signer_id: AccountId,
+        is_engine_account: bool,
+    ) -> Promise {
         let current_account_id = env::current_account_id();
         let predecessor_account_id = env::predecessor_account_id();
-        // Check is current account owner
-        let is_owner = current_account_id == predecessor_account_id;
+        // Check owner for admin access
+
+        let is_owner = is_engine_account || current_account_id == predecessor_account_id;
         // Check is current flow paused. If it's owner account just skip it.
         self.assert_not_paused(PAUSE_DEPOSIT, is_owner).sdk_unwrap();
 
@@ -135,7 +141,7 @@ impl ConnectorDeposit for EthConnector {
                 new_owner_id: account_id,
                 amount: event.amount,
                 proof_key: proof.get_key(),
-                relayer_id: predecessor_account_id,
+                relayer_id: signer_id,
                 fee: event.fee,
                 msg: None,
             },
@@ -162,7 +168,7 @@ impl ConnectorDeposit for EthConnector {
                     new_owner_id: current_account_id.clone(),
                     amount: event.amount,
                     proof_key: proof.get_key(),
-                    relayer_id: predecessor_account_id,
+                    relayer_id: signer_id,
                     fee: event.fee,
                     msg: Some(transfer_data),
                 }
