@@ -172,7 +172,7 @@ impl TestContract {
         Ok(self
             .contract
             .call("deposit")
-            .args_borsh(proof)
+            .args_borsh((proof, self.contract.id()))
             .gas(DEFAULT_GAS)
             .transact()
             .await?)
@@ -185,7 +185,7 @@ impl TestContract {
     ) -> anyhow::Result<ExecutionFinalResult> {
         Ok(user
             .call(self.contract.id(), "deposit")
-            .args_borsh(proof)
+            .args_borsh((proof, self.contract.id()))
             .gas(DEFAULT_GAS)
             .transact()
             .await?)
@@ -208,21 +208,21 @@ impl TestContract {
             .view()
             .await?
             .borsh::<bool>()
-            .unwrap();
+            .expect("call_is_used_proof");
         Ok(res)
     }
 
     pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
         let res = self.deposit_with_proof(&proof).await?;
-        assert!(res.is_success());
+        assert!(res.is_success(), "call_deposit_eth_to_aurora: {:#?}", res);
         Ok(())
     }
 
     pub async fn call_deposit_eth_to_near(&self) -> anyhow::Result<()> {
         let proof: Proof = self.get_proof(PROOF_DATA_NEAR);
         let res = self.deposit_with_proof(&proof).await?;
-        assert!(res.is_success());
+        assert!(res.is_success(), "call_deposit_eth_to_near: {:#?}", res);
         Ok(())
     }
 
@@ -234,7 +234,7 @@ impl TestContract {
             .view()
             .await?
             .json::<U128>()
-            .unwrap();
+            .expect("get_eth_on_near_balance");
         Ok(res)
     }
 
@@ -245,7 +245,7 @@ impl TestContract {
             .view()
             .await?
             .json::<U128>()
-            .unwrap())
+            .expect("total_supply"))
     }
 
     fn metadata_default() -> FungibleTokenMetadata {
