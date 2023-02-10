@@ -129,6 +129,16 @@ impl EthConnectorContract {
             // It's panic if: `sender_id == receiver_id`
             self.ft
                 .internal_transfer(&sender_id, &receiver_id, amount, memo);
+        } else {
+            // If `sender_id == receiver_id` we should verify
+            // that sender account has sufficient account balance.
+            // NOTE: Related to Audit AUR-11 report issue
+            require!(
+                amount > 0,
+                "The amount should be a positive non zero number"
+            );
+            let balance = self.ft.ft_balance_of(sender_id.clone());
+            require!(balance.0 >= amount, "Insufficient sender balance");
         }
 
         let receiver_gas = env::prepaid_gas()
@@ -467,7 +477,7 @@ impl ConnectorWithdraw for EthConnectorContract {
         let current_account_id = env::current_account_id();
         // Check is current account id is owner
         let is_owner = current_account_id == predecessor_account_id;
-        // Check is current flow paused. If it's owner just skip asserrion.
+        // Check is current flow paused. If it's owner just skip assertion.
         self.assert_not_paused(PAUSE_WITHDRAW, is_owner)
             .map_err(|_| "WithdrawErrorPaused")
             .sdk_unwrap();

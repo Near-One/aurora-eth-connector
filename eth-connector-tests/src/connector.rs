@@ -1455,17 +1455,17 @@ async fn test_engine_ft_transfer_call() {
     assert!(res.is_success());
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
+        DEPOSITED_FEE + transfer_amount.0,
         contract
-            .get_eth_on_near_balance(user_acc.id())
+            .get_eth_on_near_balance(contract.contract.id())
             .await
             .unwrap()
             .0
     );
     assert_eq!(
-        DEPOSITED_FEE + transfer_amount.0,
+        DEPOSITED_AMOUNT - DEPOSITED_FEE - transfer_amount.0,
         contract
-            .get_eth_on_near_balance(contract.contract.id())
+            .get_eth_on_near_balance(user_acc.id())
             .await
             .unwrap()
             .0
@@ -1725,4 +1725,78 @@ async fn test_manage_engine_accounts() {
     assert_eq!(res.len(), 1);
     assert!(!res.contains(&acc1));
     assert!(res.contains(&acc2));
+}
+
+#[tokio::test]
+async fn test_ft_transfer_call_insufficient_sender_balance() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+
+    let recipient_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let balance = contract.get_eth_on_near_balance(&recipient_id).await?;
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_FEE);
+
+    let balance = contract
+        .get_eth_on_near_balance(contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let fee: u128 = 0;
+    let mut msg = U256::from(fee).as_byte_slice().to_vec();
+    msg.append(
+        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
+            .as_bytes()
+            .to_vec(),
+    );
+    let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
+    let memo: Option<String> = None;
+
+    let transfer_amount: U128 = (DEPOSITED_FEE + 1).into();
+    let res = contract
+        .contract
+        .call("ft_transfer_call")
+        .args_json((&contract.contract.id(), transfer_amount, &memo, &message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "Insufficient sender balance"));
+    let balance = contract
+        .get_eth_on_near_balance(contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let transfer_amount: U128 = 0.into();
+    let res = contract
+        .contract
+        .call("ft_transfer_call")
+        .args_json((&contract.contract.id(), transfer_amount, &memo, &message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "The amount should be a positive non zero number"));
+    let balance = contract
+        .get_eth_on_near_balance(contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    let transfer_amount: U128 = DEPOSITED_FEE.into();
+    let res = contract
+        .contract
+        .call("ft_transfer_call")
+        .args_json((&contract.contract.id(), transfer_amount, &memo, &message))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+    let balance = contract
+        .get_eth_on_near_balance(contract.contract.id())
+        .await?;
+    assert_eq!(balance.0, DEPOSITED_FEE);
+
+    Ok(())
 }
