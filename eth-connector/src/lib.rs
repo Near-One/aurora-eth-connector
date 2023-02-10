@@ -528,11 +528,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             }
         } else {
             // Mint - calculate new balances
-            self.mint_eth_on_near(
-                deposit_call.new_owner_id.clone(),
-                deposit_call.amount - deposit_call.fee.as_u128(),
-            );
-            self.mint_eth_on_near(deposit_call.relayer_id, deposit_call.fee.as_u128());
+            self.mint_eth_on_near(deposit_call.new_owner_id.clone(), deposit_call.amount);
             // Store proof only after `mint` calculations
             self.record_proof(&deposit_call.proof_key).sdk_unwrap();
             PromiseOrValue::Value(None)
