@@ -29,4 +29,4 @@ rlp = { version = "0.5.0", default-features = false }
 aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git" }
 
 [features]
-migration_tests = []
+migration-tests = []
