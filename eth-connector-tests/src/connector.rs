@@ -19,43 +19,47 @@ use near_sdk::{
 use workspaces::AccountId;
 
 #[tokio::test]
-async fn test_ft_transfer() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    let _ = contract.transfer_to_contract().await?;
+async fn test_ft_transfer() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_contract().await.unwrap();
 
-    let transfer_amount = 70;
-    let receiver_id = contract.register_user(DEPOSITED_RECIPIENT).await?;
+    let transfer_amount: U128 = 70.into();
+    let receiver_id = contract.register_user(DEPOSITED_RECIPIENT).await.unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
-        .args_json((&receiver_id, transfer_amount.to_string(), "transfer memo"))
+        .args_json((&receiver_id, transfer_amount, "transfer memo"))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     assert_eq!(
-        contract.get_eth_on_near_balance(&receiver_id).await?.0,
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT + transfer_amount as u128
+        contract
+            .get_eth_on_near_balance(&receiver_id)
+            .await
+            .unwrap()
+            .0,
+        transfer_amount.0
     );
     assert_eq!(
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await?
+            .await
+            .unwrap()
             .0,
-        DEPOSITED_CONTRACT - transfer_amount as u128
+        DEPOSITED_CONTRACT - transfer_amount.0
     );
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
-    Ok(())
+    assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_CONTRACT);
 }
 
 #[tokio::test]
 async fn test_ft_transfer_user() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.transfer_to_contract().await?;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     let transfer_amount: U128 = 70.into();
     contract.set_and_check_access_right(user_acc.id()).await?;
@@ -71,14 +75,14 @@ async fn test_ft_transfer_user() -> anyhow::Result<()> {
 
     assert_eq!(
         contract.get_eth_on_near_balance(user_acc.id()).await?.0,
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT - transfer_amount.0
+        DEPOSITED_AMOUNT - transfer_amount.0
     );
     assert_eq!(
         contract
             .get_eth_on_near_balance(contract.contract.id())
             .await?
             .0,
-        DEPOSITED_CONTRACT + transfer_amount.0
+        transfer_amount.0
     );
     assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     Ok(())
@@ -87,12 +91,10 @@ async fn test_ft_transfer_user() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    let _ = contract.transfer_to_contract().await?;
+    contract.call_deposit_contract().await?;
 
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let res = contract
         .contract
         .call("withdraw")
@@ -114,11 +116,8 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
         .await?;
     assert_eq!(balance.0, DEPOSITED_CONTRACT - withdraw_amount);
 
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
-
     let balance = contract.total_supply().await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - withdraw_amount);
+    assert_eq!(balance.0, DEPOSITED_CONTRACT - withdraw_amount);
 
     Ok(())
 }
@@ -127,7 +126,7 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
 async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.transfer_to_contract().await?;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
@@ -147,17 +146,9 @@ async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
-
-    assert_eq!(
-        contract
-            .get_eth_on_near_balance(contract.contract.id())
-            .await?
-            .0,
-        DEPOSITED_CONTRACT
-    );
     assert_eq!(
         contract.get_eth_on_near_balance(user_acc.id()).await?.0,
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT - withdraw_amount
+        DEPOSITED_AMOUNT - withdraw_amount
     );
     assert_eq!(
         contract.total_supply().await?.0,
@@ -170,22 +161,25 @@ async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
 async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
+    contract.call_deposit_contract().await?;
     assert!(
         contract.call_is_used_proof(PROOF_DATA_NEAR).await?,
         "Expected not to fail because the proof should have been already used",
     );
-    let _ = contract.transfer_to_contract().await?;
 
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
 
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(
+        contract.total_supply().await?.0,
+        DEPOSITED_AMOUNT + DEPOSITED_CONTRACT
+    );
     Ok(())
 }
 
@@ -211,11 +205,11 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()>
 async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
-    let _ = contract.transfer_to_contract().await?;
+    contract.call_deposit_contract().await?;
 
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
@@ -244,30 +238,31 @@ async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
     assert!(res.is_success());
 
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(
+        contract.total_supply().await?.0,
+        DEPOSITED_AMOUNT + DEPOSITED_CONTRACT
+    );
     Ok(())
 }
 
 #[tokio::test]
 async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    let _ = contract.transfer_to_contract().await?;
+    contract.call_deposit_contract().await?;
 
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
-
-    let balance = contract
-        .get_eth_on_near_balance(contract.contract.id())
-        .await?;
-    assert_eq!(balance.0, DEPOSITED_CONTRACT);
+    assert_eq!(
+        DEPOSITED_CONTRACT,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await?
+            .0
+    );
 
     let transfer_amount: U128 = 50.into();
     let memo: Option<String> = None;
@@ -289,12 +284,14 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     assert!(contract.check_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
 
     // Assert balances remain unchanged
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
-    let balance = contract
-        .get_eth_on_near_balance(contract.contract.id())
-        .await?;
-    assert_eq!(balance.0, DEPOSITED_CONTRACT);
+
+    assert_eq!(
+        DEPOSITED_CONTRACT,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await?
+            .0
+    );
 
     // Sending to random account should not change balances
     let some_acc = AccountId::try_from("some-test-acc".to_string()).unwrap();
@@ -309,15 +306,15 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     assert!(res.is_success());
 
     // some-test-acc does not implement `ft_on_transfer` therefore the call fails and the transfer is reverted.
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
-    let balance = contract.get_eth_on_near_balance(&some_acc).await?;
-    assert_eq!(balance.0, 0);
-    let balance = contract
-        .get_eth_on_near_balance(contract.contract.id())
-        .await?;
-    assert_eq!(balance.0, DEPOSITED_CONTRACT);
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(0, contract.get_eth_on_near_balance(&some_acc).await?.0);
+    assert_eq!(
+        DEPOSITED_CONTRACT,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await?
+            .0
+    );
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_CONTRACT);
     Ok(())
 }
 
@@ -325,14 +322,15 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
 async fn test_ft_transfer_call_user_message() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
-    let user_acc = contract.transfer_to_contract().await.unwrap();
+    contract.call_deposit_contract().await.unwrap();
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
 
     let receiver_id = contract.contract.id();
     let balance = contract
         .get_eth_on_near_balance(user_acc.id())
         .await
         .unwrap();
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
+    assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
@@ -360,10 +358,7 @@ async fn test_ft_transfer_call_user_message() {
         .get_eth_on_near_balance(user_acc.id())
         .await
         .unwrap();
-    assert_eq!(
-        balance.0,
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT - transfer_amount.0
-    );
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - transfer_amount.0);
 
     contract
         .set_and_check_access_right(contract.contract.id())
@@ -399,10 +394,7 @@ async fn test_ft_transfer_call_user_message() {
         .get_eth_on_near_balance(user_acc.id())
         .await
         .unwrap();
-    assert_eq!(
-        balance.0,
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT - transfer_amount.0
-    );
+    assert_eq!(balance.0, DEPOSITED_AMOUNT - transfer_amount.0);
 }
 
 #[tokio::test]
@@ -551,13 +543,7 @@ async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    let _ = contract.transfer_to_contract().await?;
-
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
-
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
+    contract.call_deposit_contract().await?;
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
@@ -586,14 +572,11 @@ async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
         .await?;
     assert!(res.is_success());
 
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - DEPOSITED_CONTRACT);
-
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(contract.total_supply().await?.0, DEPOSITED_CONTRACT);
     Ok(())
 }
 
@@ -764,7 +747,8 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
 
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.transfer_to_contract().await?;
+    contract.call_deposit_contract().await?;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
     contract.set_and_check_access_right(user_acc.id()).await?;
 
     let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
@@ -855,7 +839,7 @@ async fn test_get_accounts_counter() -> anyhow::Result<()> {
 async fn test_get_accounts_counter_and_transfer() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
-    let _ = contract.transfer_to_contract().await?;
+    contract.call_deposit_contract().await?;
 
     let res = contract
         .contract
@@ -879,16 +863,16 @@ async fn test_get_accounts_counter_and_transfer() -> anyhow::Result<()> {
     assert!(res.is_success());
 
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
-    assert_eq!(
-        balance.0,
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT + transfer_amount.0
-    );
+    assert_eq!(balance.0, DEPOSITED_AMOUNT + transfer_amount.0);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
     assert_eq!(balance.0, DEPOSITED_CONTRACT - transfer_amount.0);
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
+    assert_eq!(
+        contract.total_supply().await?.0,
+        DEPOSITED_AMOUNT + DEPOSITED_CONTRACT
+    );
     let res = contract
         .contract
         .call("get_accounts_counter")
@@ -1027,7 +1011,7 @@ async fn test_deposit_to_aurora_amount_equal_fee_non_zero() -> anyhow::Result<()
 #[tokio::test]
 async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
+    contract.call_deposit_contract().await?;
 
     let transfer_amount: U128 = u128::MAX.into();
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
@@ -1044,13 +1028,20 @@ async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
         res,
         "Smart contract panicked: The account doesn't have enough balance"
     ));
+    assert_eq!(
+        DEPOSITED_CONTRACT,
+        contract
+            .get_eth_on_near_balance(contract.contract.id())
+            .await?
+            .0
+    );
     Ok(())
 }
 
 #[tokio::test]
 async fn test_ft_transfer_empty_value() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
+    contract.call_deposit_contract().await?;
 
     let transfer_amount = "";
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
@@ -1070,7 +1061,7 @@ async fn test_ft_transfer_empty_value() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_ft_transfer_wrong_u128_json_type() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
+    contract.call_deposit_contract().await?;
 
     let transfer_amount = 200;
     let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
@@ -1091,7 +1082,8 @@ async fn test_ft_transfer_wrong_u128_json_type() -> anyhow::Result<()> {
 async fn test_access_rights() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.transfer_to_contract().await?;
+    contract.call_deposit_contract().await?;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     let transfer_amount1: U128 = 50.into();
     let receiver_id = contract.register_user("test.root").await?;
@@ -1107,7 +1099,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
     assert!(res.is_success());
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT + transfer_amount1.0,
+        DEPOSITED_AMOUNT + transfer_amount1.0,
         contract.get_eth_on_near_balance(user_acc.id()).await?.0
     );
     assert_eq!(
@@ -1132,7 +1124,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
     assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT + transfer_amount1.0,
+        DEPOSITED_AMOUNT + transfer_amount1.0,
         contract.get_eth_on_near_balance(user_acc.id()).await?.0
     );
     assert_eq!(
@@ -1234,7 +1226,7 @@ async fn test_storage_withdraw() -> anyhow::Result<()> {
 async fn test_engine_ft_transfer() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
-    let user_acc = contract.transfer_to_contract().await.unwrap();
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
 
     let transfer_amount: U128 = 50.into();
     let receiver_id = contract.register_user("test.root").await.unwrap();
@@ -1251,17 +1243,9 @@ async fn test_engine_ft_transfer() {
     assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT,
+        DEPOSITED_AMOUNT,
         contract
             .get_eth_on_near_balance(user_acc.id())
-            .await
-            .unwrap()
-            .0
-    );
-    assert_eq!(
-        DEPOSITED_CONTRACT,
-        contract
-            .get_eth_on_near_balance(contract.contract.id())
             .await
             .unwrap()
             .0
@@ -1292,17 +1276,9 @@ async fn test_engine_ft_transfer() {
     assert!(res.is_success());
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT - transfer_amount.0,
+        DEPOSITED_AMOUNT - transfer_amount.0,
         contract
             .get_eth_on_near_balance(user_acc.id())
-            .await
-            .unwrap()
-            .0
-    );
-    assert_eq!(
-        DEPOSITED_CONTRACT,
-        contract
-            .get_eth_on_near_balance(contract.contract.id())
             .await
             .unwrap()
             .0
@@ -1322,7 +1298,7 @@ async fn test_engine_ft_transfer() {
 async fn test_engine_ft_transfer_call() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
-    let user_acc = contract.transfer_to_contract().await.unwrap();
+    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
 
     let receiver_id = contract.contract.id();
     let transfer_amount: U128 = 50.into();
@@ -1354,17 +1330,9 @@ async fn test_engine_ft_transfer_call() {
     assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT,
+        DEPOSITED_AMOUNT,
         contract
             .get_eth_on_near_balance(user_acc.id())
-            .await
-            .unwrap()
-            .0
-    );
-    assert_eq!(
-        DEPOSITED_CONTRACT,
-        contract
-            .get_eth_on_near_balance(contract.contract.id())
             .await
             .unwrap()
             .0
@@ -1393,7 +1361,7 @@ async fn test_engine_ft_transfer_call() {
     assert!(res.is_success());
 
     assert_eq!(
-        DEPOSITED_AMOUNT - DEPOSITED_CONTRACT - transfer_amount.0,
+        DEPOSITED_AMOUNT - transfer_amount.0,
         contract
             .get_eth_on_near_balance(user_acc.id())
             .await
@@ -1401,7 +1369,7 @@ async fn test_engine_ft_transfer_call() {
             .0
     );
     assert_eq!(
-        DEPOSITED_CONTRACT + transfer_amount.0,
+        transfer_amount.0,
         contract
             .get_eth_on_near_balance(contract.contract.id())
             .await

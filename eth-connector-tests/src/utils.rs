@@ -2,7 +2,7 @@ use aurora_engine_types::types::Address;
 use aurora_eth_connector::proof::Proof;
 use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
 use near_sdk::serde_json::json;
-use near_sdk::{json_types::U128, serde_json, ONE_YOCTO};
+use near_sdk::{json_types::U128, serde_json};
 use workspaces::network::NetworkClient;
 use workspaces::{result::ExecutionFinalResult, Account, AccountId, Contract, Worker};
 
@@ -320,18 +320,68 @@ impl TestContract {
         Ok(())
     }
 
-    pub async fn transfer_to_contract(&self) -> anyhow::Result<Account> {
-        let user_acc = self.create_sub_account("eth_recipient").await?;
-        let amount: U128 = DEPOSITED_CONTRACT.into();
-        let res = user_acc
-            .call(self.contract.id(), "ft_transfer")
-            .args_json((&self.contract.id(), amount, "transfer memo"))
-            .gas(DEFAULT_GAS)
-            .deposit(ONE_YOCTO)
-            .transact()
-            .await?;
-        assert!(res.is_success(), "transfer_to_contract: {:#?}", res);
-        Ok(user_acc)
+    pub fn mock_proof(recipient_id: &AccountId, deposit_amount: u128) -> String {
+        use aurora_engine_types::{
+            types::{Fee, NEP141Wei},
+            H160, H256, U256,
+        };
+
+        use aurora_eth_connector::deposit_event::{
+            DepositedEvent, TokenMessageData, DEPOSITED_EVENT,
+        };
+        use aurora_eth_connector::log_entry;
+
+        let eth_custodian_address = validate_eth_address(CUSTODIAN_ADDRESS);
+        let fee = Fee::new(NEP141Wei::new(0));
+        let message = recipient_id.to_string();
+        let token_message_data: TokenMessageData =
+            TokenMessageData::parse_event_message_and_prepare_token_message_data(&message, fee)
+                .unwrap();
+
+        let deposit_event = DepositedEvent {
+            eth_custodian_address,
+            sender: Address::new(H160([0u8; 20])),
+            token_message_data,
+            amount: deposit_amount,
+            fee,
+        };
+
+        let event_schema = ethabi::Event {
+            name: DEPOSITED_EVENT.into(),
+            inputs: DepositedEvent::event_params(),
+            anonymous: false,
+        };
+        let log_entry = log_entry::LogEntry {
+            address: eth_custodian_address.raw(),
+            topics: vec![
+                event_schema.signature(),
+                // the sender is not important
+                H256::zero(),
+            ],
+            data: ethabi::encode(&[
+                ethabi::Token::String(message),
+                ethabi::Token::Uint(U256::from(deposit_event.amount)),
+                ethabi::Token::Uint(U256::from(deposit_event.fee.as_u128())),
+            ]),
+        };
+        let data = Proof {
+            log_index: 1,
+            // Only this field matters for the purpose of this test
+            log_entry_data: rlp::encode(&log_entry).to_vec(),
+            receipt_index: 1,
+            receipt_data: Vec::new(),
+            header_data: Vec::new(),
+            proof: Vec::new(),
+        };
+        serde_json::to_string(&data).expect("failed serialize proof")
+    }
+
+    pub async fn call_deposit_contract(&self) -> anyhow::Result<()> {
+        let proof: Proof =
+            self.get_proof(&Self::mock_proof(self.contract.id(), DEPOSITED_CONTRACT));
+        let res = self.deposit_with_proof(&proof).await?;
+        assert!(res.is_success(), "call_deposit_contract: {:#?}", res);
+        Ok(())
     }
 }
 
