@@ -977,9 +977,8 @@ async fn test_deposit_to_aurora_amount_zero_fee_non_zero() -> anyhow::Result<()>
     let res = contract
         .deposit_with_proof(&contract.get_proof(proof_str))
         .await?;
-    println!("{:#?}", res);
-    assert!(res.is_success());
-    assert!(contract.call_is_used_proof(proof_str).await?,);
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "The amount should be a positive non zero number"));
     Ok(())
 }
 
@@ -1370,7 +1369,7 @@ async fn test_engine_ft_transfer_call() {
             .0
     );
     assert_eq!(
-        DEPOSITED_AMOUNT,
+        DEPOSITED_AMOUNT - transfer_amount.0,
         contract
             .get_eth_on_near_balance(user_acc.id())
             .await
