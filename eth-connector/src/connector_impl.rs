@@ -7,7 +7,7 @@ use crate::{
     types::SdkUnwrap,
     AdminControlled, PausedMask,
 };
-use aurora_engine_types::types::{Address, Fee};
+use aurora_engine_types::types::Address;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
     env, AccountId, Balance, Gas, Promise,
@@ -34,8 +34,6 @@ pub struct FinishDepositCallArgs {
     pub new_owner_id: AccountId,
     pub amount: Balance,
     pub proof_key: String,
-    pub relayer_id: AccountId,
-    pub fee: Fee,
     pub msg: Option<Vec<u8>>,
 }
 
@@ -96,11 +94,10 @@ impl ConnectorDeposit for EthConnector {
         let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
 
         log!(
-            "Deposit started: from {} to recipient {:?} with amount: {:?} and fee {:?}",
+            "Deposit started: from {} to recipient {:?} with amount: {:?}",
             event.sender.encode(),
             event.token_message_data.get_recipient(),
             event.amount,
-            event.fee
         );
 
         log!(
@@ -111,10 +108,6 @@ impl ConnectorDeposit for EthConnector {
 
         if event.eth_custodian_address != self.eth_custodian_address {
             panic_err(error::FtDepositError::CustodianAddressMismatch);
-        }
-
-        if event.fee.as_u128() >= event.amount {
-            panic_err(error::FtDepositError::InsufficientAmountForFee);
         }
 
         // Verify proof data with cross-contract call to prover account
@@ -135,12 +128,9 @@ impl ConnectorDeposit for EthConnector {
                 new_owner_id: account_id,
                 amount: event.amount,
                 proof_key: proof.get_key(),
-                relayer_id: predecessor_account_id,
-                fee: event.fee,
                 msg: None,
             },
             // Deposit to Eth accounts
-            // fee is being minted in the `ft_on_transfer` callback method
             TokenMessageData::Eth {
                 receiver_id,
                 message,
@@ -162,8 +152,6 @@ impl ConnectorDeposit for EthConnector {
                     new_owner_id: current_account_id.clone(),
                     amount: event.amount,
                     proof_key: proof.get_key(),
-                    relayer_id: predecessor_account_id,
-                    fee: event.fee,
                     msg: Some(transfer_data),
                 }
             }
