@@ -156,6 +156,7 @@ impl EthConnectorContract {
         eth_custodian_address: String,
         metadata: FungibleTokenMetadata,
         account_with_access_right: AccountId,
+        owner_id: AccountId,
     ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
@@ -167,6 +168,7 @@ impl EthConnectorContract {
             paused_mask,
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
             account_with_access_right,
+            owner_id,
         };
         let owner_id = env::current_account_id();
         let mut this = Self {
@@ -449,6 +451,10 @@ impl AdminControlled for EthConnectorContract {
     fn get_access_right(&self) -> AccountId {
         self.connector.get_access_right()
     }
+
+    fn is_owner(&self) -> bool {
+        self.connector.is_owner()
+    }
 }
 
 #[near_bindgen]
@@ -460,17 +466,12 @@ impl ConnectorWithdraw for EthConnectorContract {
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
-        #[serializer(borsh)] signer_id: AccountId,
     ) -> WithdrawResult {
         self.assert_access_right().sdk_unwrap();
         assert_one_yocto();
-        let predecessor_account_id = env::predecessor_account_id();
-        let current_account_id = env::current_account_id();
-        // Check owner for admin access
-        let is_owner = self.known_engine_accounts.contains(&signer_id)
-            || current_account_id == predecessor_account_id;
+
         // Check is current flow paused. If it's owner just skip asserrion.
-        self.assert_not_paused(PAUSE_WITHDRAW, is_owner)
+        self.assert_not_paused(PAUSE_WITHDRAW)
             .map_err(|_| "WithdrawErrorPaused")
             .sdk_unwrap();
         // Burn tokens to recipient
@@ -485,15 +486,9 @@ impl ConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl ConnectorDeposit for EthConnectorContract {
-    fn deposit(
-        &mut self,
-        #[serializer(borsh)] raw_proof: Proof,
-        #[serializer(borsh)] signer_id: AccountId,
-    ) -> Promise {
+    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
         self.assert_access_right().sdk_unwrap();
-        let is_engine_account = self.known_engine_accounts.contains(&signer_id);
-        self.connector
-            .deposit(raw_proof, signer_id, is_engine_account)
+        self.connector.deposit(raw_proof)
     }
 }
 

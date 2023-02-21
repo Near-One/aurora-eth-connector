@@ -18,18 +18,15 @@ pub trait AdminControlled {
     /// called by owner of the contract.
     fn set_paused_flags(&mut self, paused: PausedMask);
 
-    /// Return if the contract is paused for the current flag and user
-    fn is_paused(&self, flag: PausedMask, is_owner: bool) -> bool {
-        (self.get_paused_flags() & flag) != 0 && !is_owner
+    /// Return if the contract is paused for the current flag.
+    /// If it's owner, result always `false` - unpaused.
+    fn is_paused(&self, flag: PausedMask) -> bool {
+        (self.get_paused_flags() & flag) != 0 && !self.is_owner()
     }
 
     /// Asserts the passed paused flag is not set. Returns `PausedError` if paused.
-    fn assert_not_paused(
-        &self,
-        flag: PausedMask,
-        is_owner: bool,
-    ) -> Result<(), error::AdminControlledError> {
-        if self.is_paused(flag, is_owner) {
+    fn assert_not_paused(&self, flag: PausedMask) -> Result<(), error::AdminControlledError> {
+        if self.is_paused(flag) {
             Err(error::AdminControlledError::Paused)
         } else {
             Ok(())
@@ -45,6 +42,7 @@ pub trait AdminControlled {
     /// Check access right for predecessor account
     fn assert_access_right(&self) -> Result<(), error::AdminControlledError> {
         if self.get_access_right() == near_sdk::env::predecessor_account_id()
+            || self.is_owner()
             || near_sdk::env::predecessor_account_id() == near_sdk::env::current_account_id()
         {
             Ok(())
@@ -52,6 +50,9 @@ pub trait AdminControlled {
             Err(error::AdminControlledError::AccessRight)
         }
     }
+
+    /// Check is predecessor account ID is owner
+    fn is_owner(&self) -> bool;
 }
 
 pub mod error {

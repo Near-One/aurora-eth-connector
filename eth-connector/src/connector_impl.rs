@@ -60,6 +60,9 @@ pub struct EthConnector {
 
     /// Account with access right for current contract
     pub account_with_access_right: AccountId,
+
+    /// Owner account ID
+    pub owner_id: AccountId,
 }
 
 impl AdminControlled for EthConnector {
@@ -78,22 +81,18 @@ impl AdminControlled for EthConnector {
     fn get_access_right(&self) -> AccountId {
         self.account_with_access_right.clone()
     }
+
+    fn is_owner(&self) -> bool {
+        self.owner_id == env::predecessor_account_id()
+    }
 }
 
 impl EthConnector {
-    pub(crate) fn deposit(
-        &mut self,
-        raw_proof: Proof,
-        signer_id: AccountId,
-        is_engine_account: bool,
-    ) -> Promise {
+    pub(crate) fn deposit(&mut self, raw_proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
-        let predecessor_account_id = env::predecessor_account_id();
-        // Check owner for admin access
 
-        let is_owner = is_engine_account || current_account_id == predecessor_account_id;
         // Check is current flow paused. If it's owner account just skip it.
-        self.assert_not_paused(PAUSE_DEPOSIT, is_owner).sdk_unwrap();
+        self.assert_not_paused(PAUSE_DEPOSIT).sdk_unwrap();
 
         log!("[Deposit tokens]");
         let proof = raw_proof.clone();
@@ -134,6 +133,8 @@ impl EthConnector {
         let mut proof_to_verify = raw_proof.try_to_vec().unwrap();
         proof_to_verify.extend(skip_bridge_call);
 
+        // We do not use relayer id. But for backward compatibility, we should set it.
+        let relayer_id = current_account_id.clone();
         // Finalize deposit
         let finish_deposit_data = match event.token_message_data {
             // Deposit to NEAR accounts
@@ -141,7 +142,7 @@ impl EthConnector {
                 new_owner_id: account_id,
                 amount: event.amount,
                 proof_key: proof.get_key(),
-                relayer_id: signer_id,
+                relayer_id,
                 fee: event.fee,
                 msg: None,
             },
@@ -168,7 +169,7 @@ impl EthConnector {
                     new_owner_id: current_account_id.clone(),
                     amount: event.amount,
                     proof_key: proof.get_key(),
-                    relayer_id: signer_id,
+                    relayer_id,
                     fee: event.fee,
                     msg: Some(transfer_data),
                 }
