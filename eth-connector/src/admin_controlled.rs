@@ -51,6 +51,17 @@ pub trait AdminControlled {
         }
     }
 
+    /// Asseert only owners of contract access right
+    fn assert_owner_access_right(&self) -> Result<(), error::AdminControlledError> {
+        if self.is_owner()
+            || near_sdk::env::predecessor_account_id() == near_sdk::env::current_account_id()
+        {
+            Ok(())
+        } else {
+            Err(error::AdminControlledError::AccessRight)
+        }
+    }
+
     /// Check is predecessor account ID is owner
     fn is_owner(&self) -> bool;
 }

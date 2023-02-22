@@ -438,13 +438,13 @@ impl AdminControlled for EthConnectorContract {
         self.connector.get_paused_flags()
     }
 
-    #[private]
     fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
+        self.connector.assert_owner_access_right().sdk_unwrap();
         self.connector.set_paused_flags(paused)
     }
 
-    #[private]
     fn set_access_right(&mut self, account: &AccountId) {
+        self.connector.assert_owner_access_right().sdk_unwrap();
         self.connector.set_access_right(account)
     }
 

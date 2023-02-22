@@ -25,37 +25,16 @@ pub struct TestContract {
 
 impl TestContract {
     pub async fn new() -> anyhow::Result<TestContract> {
-        use std::str::FromStr;
-
-        let (contract, root_account) = Self::deploy_aurora_contract().await?;
-
-        let prover_account: AccountId = contract.id().clone();
-        let eth_custodian_address = CUSTODIAN_ADDRESS;
-        let metadata = Self::metadata_default();
-        let account_with_access_right: AccountId = AccountId::from_str(CONTRACT_ACC).unwrap();
-        // Init eth-connector
-        let res = contract
-            .call("new")
-            .args_json((
-                prover_account,
-                eth_custodian_address,
-                metadata,
-                account_with_access_right,
-            ))
-            .gas(DEFAULT_GAS)
-            .transact()
-            .await?;
-        assert!(res.is_success());
-
-        Ok(Self {
-            contract,
-            root_account,
-        })
+        Self::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, CONTRACT_ACC).await
     }
 
-    pub async fn new_with_custodian(eth_custodian_address: &str) -> anyhow::Result<TestContract> {
+    pub async fn new_with_custodian_and_owner(
+        eth_custodian_address: &str,
+        owner_id: &str,
+    ) -> anyhow::Result<TestContract> {
         use std::str::FromStr;
         let (contract, root_account) = Self::deploy_aurora_contract().await?;
+        let owner_id: AccountId = AccountId::from_str(owner_id).unwrap();
 
         let prover_account: AccountId = contract.id().clone();
         let metadata = Self::metadata_default();
@@ -66,6 +45,7 @@ impl TestContract {
             .args_json(json!({
                 "prover_account": prover_account,
                 "account_with_access_right": account_with_access_right,
+                "owner_id": owner_id,
                 "eth_custodian_address": eth_custodian_address,
                 "metadata": metadata,
             }))
@@ -172,7 +152,7 @@ impl TestContract {
         Ok(self
             .contract
             .call("deposit")
-            .args_borsh((proof, self.contract.id()))
+            .args_borsh(proof)
             .gas(DEFAULT_GAS)
             .transact()
             .await?)
@@ -185,7 +165,7 @@ impl TestContract {
     ) -> anyhow::Result<ExecutionFinalResult> {
         Ok(user
             .call(self.contract.id(), "deposit")
-            .args_borsh((proof, self.contract.id()))
+            .args_borsh(proof)
             .gas(DEFAULT_GAS)
             .transact()
             .await?)
