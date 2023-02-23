@@ -129,6 +129,16 @@ impl EthConnectorContract {
             // It's panic if: `sender_id == receiver_id`
             self.ft
                 .internal_transfer(&sender_id, &receiver_id, amount, memo);
+        } else {
+            // If `sender_id == receiver_id` we should verify
+            // that sender account has sufficient account balance.
+            // NOTE: Related to Audit AUR-11 report issue
+            require!(
+                amount > 0,
+                "The amount should be a positive non zero number"
+            );
+            let balance = self.ft.ft_balance_of(sender_id.clone());
+            require!(balance.0 >= amount, "Insufficient sender balance");
         }
 
         let receiver_gas = env::prepaid_gas()
@@ -531,11 +541,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             }
         } else {
             // Mint - calculate new balances
-            self.mint_eth_on_near(
-                deposit_call.new_owner_id.clone(),
-                deposit_call.amount - deposit_call.fee.as_u128(),
-            );
-            self.mint_eth_on_near(deposit_call.relayer_id, deposit_call.fee.as_u128());
+            self.mint_eth_on_near(deposit_call.new_owner_id.clone(), deposit_call.amount);
             // Store proof only after `mint` calculations
             self.record_proof(&deposit_call.proof_key).sdk_unwrap();
             PromiseOrValue::Value(None)

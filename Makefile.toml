@@ -3,7 +3,7 @@ env_files = [
     { path = ".env/testnet.env", profile = "testnet" },
     { path = ".env/local.env", profile = "local" },
     { path = ".env/custom.env", profile = "custom" },
-    { path = ".env/local.env", profile = "development" },
+    { path = ".env/development.env", profile = "development" },
 ]
 
 [config]
@@ -142,7 +142,7 @@ args = [
 ]
 
 [tasks.build-test]
-condition = { profiles = ["mainnet", "testnet", "custom"] }
+condition = { profiles = ["mainnet", "testnet", "development", "custom"] }
 env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATURES_BUILD_TEST}", "WASM_FILE" = "${WASM_FILE_TEST}", "RELEASE" = "--release", "TARGET_DIR" = "release" }
 category = "Build"
 run_task = "build-contract-flow"
@@ -169,7 +169,7 @@ category = "Build"
 run_task = "build-contract-flow"
 
 [tasks.test-workspace]
-condition = { profiles = ["mainnet", "testnet", "custom"] }
+condition = { profiles = ["mainnet", "testnet", "development", "custom"] }
 category = "Test"
 command = "${CARGO}"
 args = [
