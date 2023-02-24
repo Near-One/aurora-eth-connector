@@ -625,8 +625,11 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, PAUSE_WITHDRAW};
 
     // 1st deposit call when unpaused - should succeed
-    let contract = TestContract::new().await?;
+    let contract =
+        TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root").await?;
     contract.call_deposit_eth_to_near().await?;
+    let owner_acc = contract.create_sub_account("owner").await?;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     let sender_id = DEPOSITED_RECIPIENT;
     let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
@@ -695,6 +698,32 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
 
+    let res = user_acc
+        .call(contract.contract.id(), "withdraw")
+        .args_borsh((&sender_id, recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    let res = owner_acc
+        .call(contract.contract.id(), "withdraw")
+        .args_borsh((&sender_id, recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+
     Ok(())
 }
 
@@ -702,7 +731,10 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
 async fn test_deposit_pausability() -> anyhow::Result<()> {
     use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, UNPAUSE_ALL};
 
-    let contract = TestContract::new().await?;
+    let contract =
+        TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root").await?;
+    contract.call_deposit_eth_to_near().await?;
+    let owner_acc = contract.create_sub_account("owner").await?;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     contract.set_and_check_access_right(user_acc.id()).await?;
@@ -711,6 +743,7 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
     let res = contract
         .user_deposit_with_proof(&user_acc, &contract.get_proof(PROOF_DATA_NEAR))
         .await?;
+    println!("{:#?}", res);
     assert!(res.is_success());
 
     // Pause deposit
@@ -731,6 +764,12 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
         .await?;
     assert!(res.is_failure());
     assert!(contract.check_error_message(res, "ERR_PAUSED"));
+
+    let proof_data = TestContract::mock_proof(owner_acc.id(), 10);
+    let res = contract
+        .user_deposit_with_proof(&owner_acc, &contract.get_proof(&proof_data))
+        .await?;
+    assert!(res.is_success());
 
     // Unpause all
     let res = contract

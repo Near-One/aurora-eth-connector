@@ -82,6 +82,7 @@ impl AdminControlled for EthConnector {
 
     fn is_owner(&self) -> bool {
         self.owner_id == env::predecessor_account_id()
+            || env::current_account_id() == env::predecessor_account_id()
     }
 }
 
