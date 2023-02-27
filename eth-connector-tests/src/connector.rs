@@ -733,17 +733,15 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
 
     let contract =
         TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root").await?;
-    contract.call_deposit_eth_to_near().await?;
+
     let owner_acc = contract.create_sub_account("owner").await?;
     let user_acc = contract.create_sub_account("eth_recipient").await?;
 
     contract.set_and_check_access_right(user_acc.id()).await?;
 
     // 1st deposit call - should succeed
-    let res = contract
-        .user_deposit_with_proof(&user_acc, &contract.get_proof(PROOF_DATA_NEAR))
-        .await?;
-    println!("{:#?}", res);
+    let proof1 = contract.mock_proof(user_acc.id(), 10, 1);
+    let res = contract.user_deposit_with_proof(&user_acc, &proof1).await?;
     assert!(res.is_success());
 
     // Pause deposit
@@ -756,18 +754,15 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
         .await?;
     assert!(res.is_success());
 
-    // 2nd deposit call - should fail
-    // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
-    // method which should be paused
-    let res = contract
-        .user_deposit_with_proof(&user_acc, &contract.get_proof(PROOF_DATA_ETH))
-        .await?;
+    // 2nd deposit call - should fail for `user_acc`
+    let proof2 = contract.mock_proof(user_acc.id(), 20, 2);
+    let res = contract.user_deposit_with_proof(&user_acc, &proof2).await?;
     assert!(res.is_failure());
     assert!(contract.check_error_message(res, "ERR_PAUSED"));
 
-    let proof_data = TestContract::mock_proof(owner_acc.id(), 10);
+    let proof3 = contract.mock_proof(user_acc.id(), 30, 3);
     let res = contract
-        .user_deposit_with_proof(&owner_acc, &contract.get_proof(&proof_data))
+        .user_deposit_with_proof(&owner_acc, &proof3)
         .await?;
     assert!(res.is_success());
 
@@ -782,14 +777,10 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
     assert!(res.is_success());
 
     // 3rd deposit call - should succeed
-    let res = contract
-        .user_deposit_with_proof(&user_acc, &contract.get_proof(PROOF_DATA_ETH))
-        .await?;
+    let proof4 = contract.mock_proof(user_acc.id(), 40, 4);
+    let res = contract.user_deposit_with_proof(&user_acc, &proof4).await?;
     assert!(res.is_success());
-    assert_eq!(
-        contract.total_supply().await?.0,
-        DEPOSITED_AMOUNT + DEPOSITED_EVM_AMOUNT
-    );
+    assert_eq!(contract.total_supply().await?.0, 80);
     Ok(())
 }
 

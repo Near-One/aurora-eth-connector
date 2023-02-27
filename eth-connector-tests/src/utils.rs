@@ -300,7 +300,12 @@ impl TestContract {
         Ok(())
     }
 
-    pub fn mock_proof(recipient_id: &AccountId, deposit_amount: u128) -> String {
+    pub fn mock_proof(
+        &self,
+        recipient_id: &AccountId,
+        deposit_amount: u128,
+        proof_index: u64,
+    ) -> Proof {
         use aurora_engine_types::{
             types::{Fee, NEP141Wei},
             H160, H256, U256,
@@ -344,21 +349,19 @@ impl TestContract {
                 ethabi::Token::Uint(U256::from(deposit_event.fee.as_u128())),
             ]),
         };
-        let data = Proof {
-            log_index: 1,
+        Proof {
+            log_index: proof_index,
             // Only this field matters for the purpose of this test
             log_entry_data: rlp::encode(&log_entry).to_vec(),
             receipt_index: 1,
             receipt_data: Vec::new(),
             header_data: Vec::new(),
             proof: Vec::new(),
-        };
-        serde_json::to_string(&data).expect("failed serialize proof")
+        }
     }
 
     pub async fn call_deposit_contract(&self) -> anyhow::Result<()> {
-        let proof: Proof =
-            self.get_proof(&Self::mock_proof(self.contract.id(), DEPOSITED_CONTRACT));
+        let proof: Proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1);
         let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_contract: {:#?}", res);
         Ok(())
