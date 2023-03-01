@@ -25,37 +25,16 @@ pub struct TestContract {
 
 impl TestContract {
     pub async fn new() -> anyhow::Result<TestContract> {
-        use std::str::FromStr;
-
-        let (contract, root_account) = Self::deploy_aurora_contract().await?;
-
-        let prover_account: AccountId = contract.id().clone();
-        let eth_custodian_address = CUSTODIAN_ADDRESS;
-        let metadata = Self::metadata_default();
-        let account_with_access_right: AccountId = AccountId::from_str(CONTRACT_ACC).unwrap();
-        // Init eth-connector
-        let res = contract
-            .call("new")
-            .args_json((
-                prover_account,
-                eth_custodian_address,
-                metadata,
-                account_with_access_right,
-            ))
-            .gas(DEFAULT_GAS)
-            .transact()
-            .await?;
-        assert!(res.is_success());
-
-        Ok(Self {
-            contract,
-            root_account,
-        })
+        Self::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, CONTRACT_ACC).await
     }
 
-    pub async fn new_with_custodian(eth_custodian_address: &str) -> anyhow::Result<TestContract> {
+    pub async fn new_with_custodian_and_owner(
+        eth_custodian_address: &str,
+        owner_id: &str,
+    ) -> anyhow::Result<TestContract> {
         use std::str::FromStr;
         let (contract, root_account) = Self::deploy_aurora_contract().await?;
+        let owner_id: AccountId = AccountId::from_str(owner_id).unwrap();
 
         let prover_account: AccountId = contract.id().clone();
         let metadata = Self::metadata_default();
@@ -66,6 +45,7 @@ impl TestContract {
             .args_json(json!({
                 "prover_account": prover_account,
                 "account_with_access_right": account_with_access_right,
+                "owner_id": owner_id,
                 "eth_custodian_address": eth_custodian_address,
                 "metadata": metadata,
             }))
@@ -208,21 +188,21 @@ impl TestContract {
             .view()
             .await?
             .borsh::<bool>()
-            .unwrap();
+            .expect("call_is_used_proof");
         Ok(res)
     }
 
     pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
         let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
         let res = self.deposit_with_proof(&proof).await?;
-        assert!(res.is_success());
+        assert!(res.is_success(), "call_deposit_eth_to_aurora: {:#?}", res);
         Ok(())
     }
 
     pub async fn call_deposit_eth_to_near(&self) -> anyhow::Result<()> {
         let proof: Proof = self.get_proof(PROOF_DATA_NEAR);
         let res = self.deposit_with_proof(&proof).await?;
-        assert!(res.is_success());
+        assert!(res.is_success(), "call_deposit_eth_to_near: {:#?}", res);
         Ok(())
     }
 
@@ -234,7 +214,7 @@ impl TestContract {
             .view()
             .await?
             .json::<U128>()
-            .unwrap();
+            .expect("get_eth_on_near_balance");
         Ok(res)
     }
 
@@ -245,7 +225,7 @@ impl TestContract {
             .view()
             .await?
             .json::<U128>()
-            .unwrap())
+            .expect("total_supply"))
     }
 
     fn metadata_default() -> FungibleTokenMetadata {
@@ -320,7 +300,12 @@ impl TestContract {
         Ok(())
     }
 
-    pub fn mock_proof(recipient_id: &AccountId, deposit_amount: u128) -> String {
+    pub fn mock_proof(
+        &self,
+        recipient_id: &AccountId,
+        deposit_amount: u128,
+        proof_index: u64,
+    ) -> Proof {
         use aurora_engine_types::{
             types::{Fee, NEP141Wei},
             H160, H256, U256,
@@ -364,21 +349,19 @@ impl TestContract {
                 ethabi::Token::Uint(U256::from(deposit_event.fee.as_u128())),
             ]),
         };
-        let data = Proof {
-            log_index: 1,
+        Proof {
+            log_index: proof_index,
             // Only this field matters for the purpose of this test
             log_entry_data: rlp::encode(&log_entry).to_vec(),
             receipt_index: 1,
             receipt_data: Vec::new(),
             header_data: Vec::new(),
             proof: Vec::new(),
-        };
-        serde_json::to_string(&data).expect("failed serialize proof")
+        }
     }
 
     pub async fn call_deposit_contract(&self) -> anyhow::Result<()> {
-        let proof: Proof =
-            self.get_proof(&Self::mock_proof(self.contract.id(), DEPOSITED_CONTRACT));
+        let proof: Proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1);
         let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_contract: {:#?}", res);
         Ok(())

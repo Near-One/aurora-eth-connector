@@ -166,6 +166,7 @@ impl EthConnectorContract {
         eth_custodian_address: String,
         metadata: FungibleTokenMetadata,
         account_with_access_right: AccountId,
+        owner_id: AccountId,
     ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
@@ -177,6 +178,7 @@ impl EthConnectorContract {
             paused_mask,
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
             account_with_access_right,
+            owner_id,
         };
         let owner_id = env::current_account_id();
         let mut this = Self {
@@ -446,18 +448,22 @@ impl AdminControlled for EthConnectorContract {
         self.connector.get_paused_flags()
     }
 
-    #[private]
     fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
+        self.connector.assert_owner_access_right().sdk_unwrap();
         self.connector.set_paused_flags(paused)
     }
 
-    #[private]
     fn set_access_right(&mut self, account: &AccountId) {
+        self.connector.assert_owner_access_right().sdk_unwrap();
         self.connector.set_access_right(account)
     }
 
     fn get_access_right(&self) -> AccountId {
         self.connector.get_access_right()
+    }
+
+    fn is_owner(&self) -> bool {
+        self.connector.is_owner()
     }
 }
 
@@ -473,12 +479,9 @@ impl ConnectorWithdraw for EthConnectorContract {
     ) -> WithdrawResult {
         self.assert_access_right().sdk_unwrap();
         assert_one_yocto();
-        let predecessor_account_id = env::predecessor_account_id();
-        let current_account_id = env::current_account_id();
-        // Check is current account id is owner
-        let is_owner = current_account_id == predecessor_account_id;
-        // Check is current flow paused. If it's owner just skip assertion.
-        self.assert_not_paused(PAUSE_WITHDRAW, is_owner)
+
+        // Check is current flow paused. If it's owner just skip asserrion.
+        self.assert_not_paused(PAUSE_WITHDRAW)
             .map_err(|_| "WithdrawErrorPaused")
             .sdk_unwrap();
         // Burn tokens to recipient

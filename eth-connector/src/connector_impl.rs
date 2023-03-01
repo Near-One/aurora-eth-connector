@@ -1,6 +1,6 @@
 use crate::{
     admin_controlled::PAUSE_DEPOSIT,
-    connector::{ext_funds_finish, ext_proof_verifier, ConnectorDeposit},
+    connector::{ext_funds_finish, ext_proof_verifier},
     deposit_event::{DepositedEvent, TokenMessageData},
     errors, log, panic_err,
     proof::Proof,
@@ -58,6 +58,9 @@ pub struct EthConnector {
 
     /// Account with access right for current contract
     pub account_with_access_right: AccountId,
+
+    /// Owner account ID
+    pub owner_id: AccountId,
 }
 
 impl AdminControlled for EthConnector {
@@ -76,16 +79,19 @@ impl AdminControlled for EthConnector {
     fn get_access_right(&self) -> AccountId {
         self.account_with_access_right.clone()
     }
+
+    fn is_owner(&self) -> bool {
+        self.owner_id == env::predecessor_account_id()
+            || env::current_account_id() == env::predecessor_account_id()
+    }
 }
 
-impl ConnectorDeposit for EthConnector {
-    fn deposit(&mut self, raw_proof: Proof) -> Promise {
+impl EthConnector {
+    pub(crate) fn deposit(&mut self, raw_proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
-        let predecessor_account_id = env::predecessor_account_id();
-        // Check is current account owner
-        let is_owner = current_account_id == predecessor_account_id;
+
         // Check is current flow paused. If it's owner account just skip it.
-        self.assert_not_paused(PAUSE_DEPOSIT, is_owner).sdk_unwrap();
+        self.assert_not_paused(PAUSE_DEPOSIT).sdk_unwrap();
 
         log!("[Deposit tokens]");
         let proof = raw_proof.clone();
