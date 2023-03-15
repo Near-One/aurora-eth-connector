@@ -75,18 +75,18 @@ impl EthConnectorContract {
     }
 
     /// Record used proof as hash key
-    fn record_proof(&mut self, key: &str) -> Result<(), errors::ProofUsed> {
+    fn record_proof(&mut self, key: String) -> Result<(), errors::ProofUsed> {
         crate::log!("Record proof: {}", key);
-        if self.is_used_event(key) {
+        if self.is_used_event(&key) {
             return Err(errors::ProofUsed);
         }
-        self.used_proofs.insert(key.to_string(), true);
+        self.used_proofs.insert(key, true);
         Ok(())
     }
 
     /// Check is event of proof already used
     fn is_used_event(&self, key: &str) -> bool {
-        self.used_proofs.contains_key(&key.to_string())
+        self.used_proofs.contains_key(key)
     }
 
     // Register user and calculate counter
@@ -523,7 +523,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             // Mint - calculate new balances
             self.mint_eth_on_near(deposit_call.new_owner_id, deposit_call.amount);
             // Store proof only after `mint` calculations
-            self.record_proof(&deposit_call.proof_key).sdk_unwrap();
+            self.record_proof(deposit_call.proof_key).sdk_unwrap();
 
             let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
                 .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
@@ -543,7 +543,7 @@ impl ConnectorFundsFinish for EthConnectorContract {
             // Mint - calculate new balances
             self.mint_eth_on_near(deposit_call.new_owner_id.clone(), deposit_call.amount);
             // Store proof only after `mint` calculations
-            self.record_proof(&deposit_call.proof_key).sdk_unwrap();
+            self.record_proof(deposit_call.proof_key).sdk_unwrap();
             PromiseOrValue::Value(None)
         }
     }
