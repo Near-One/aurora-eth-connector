@@ -26,7 +26,7 @@ impl Proof {
                 .sdk_unwrap(),
         );
         data.extend_from_slice(&self.header_data);
-        near_sdk::env::sha256(&data[..])
+        near_sdk::env::sha256(&data)
             .iter()
             .map(|n| n.to_string())
             .collect()
