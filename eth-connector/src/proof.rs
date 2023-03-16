@@ -25,10 +25,42 @@ impl Proof {
                 .map_err(|_| ERR_BORSH_SERIALIZE)
                 .sdk_unwrap(),
         );
-        data.extend(self.header_data.clone());
-        near_sdk::env::sha256(&data[..])
+        data.extend_from_slice(&self.header_data);
+        near_sdk::env::sha256(&data)
             .iter()
             .map(|n| n.to_string())
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Proof;
+
+    #[test]
+    fn test_proof_key() {
+        check_proof_key(
+            Proof {
+                log_index: 1,
+                receipt_index: 1,
+                ..Default::default()
+            },
+            "1297721518512077871939115641114233180253108247225100248224214775219368216419218177247",
+        );
+        check_proof_key(
+            Proof {
+                log_index: 1,
+                receipt_index: 1,
+                header_data: vec![17, 99, 173, 233, 9, 0, 68, 10, 7, 20, 71, 10],
+                ..Default::default()
+            },
+            "802298938109391379364782362347023517020015374823090151126200144662201181825340111",
+        );
+    }
+
+    #[track_caller]
+    fn check_proof_key(proof: Proof, expected_key: &str) {
+        let actual_key = proof.get_key();
+        assert_eq!(expected_key, actual_key);
     }
 }
