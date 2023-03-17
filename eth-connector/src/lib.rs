@@ -497,7 +497,6 @@ impl ConnectorWithdraw for EthConnectorContract {
 #[near_bindgen]
 impl ConnectorDeposit for EthConnectorContract {
     fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
-        self.assert_access_right().sdk_unwrap();
         self.connector.deposit(raw_proof)
     }
 }
