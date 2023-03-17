@@ -178,9 +178,8 @@ impl EthConnectorContract {
             paused_mask,
             eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
             account_with_access_right,
-            owner_id,
+            owner_id: owner_id.clone(),
         };
-        let owner_id = env::current_account_id();
         let mut this = Self {
             ft: FungibleToken::new(StorageKey::FungibleToken),
             connector: connector_data,
@@ -189,6 +188,7 @@ impl EthConnectorContract {
             accounts_counter: 0,
             known_engine_accounts: vec![],
         };
+        this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(&owner_id);
         this
     }
