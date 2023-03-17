@@ -181,7 +181,11 @@ impl EthConnectorContract {
             owner_id: owner_id.clone(),
         };
         let mut this = Self {
-            ft: FungibleToken::new(StorageKey::FungibleToken),
+            ft: FungibleToken {
+                accounts: near_sdk::collections::LookupMap::new(StorageKey::FungibleToken),
+                total_supply: 0,
+                account_storage_usage: 0,
+            },
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
             used_proofs: LookupMap::new(StorageKey::Proof),
@@ -671,5 +675,45 @@ impl FungibleTokenReceiver for EthConnectorContract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         PromiseOrValue::Value(U128(0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// In the original implementation of the eth-connector contract the storage balance
+    /// was always 0. This test confirms this is true for the new implementation.
+    #[test]
+    fn test_storage_balance_bounds() {
+        let contract = create_contract();
+        let storage_balance = contract
+            .storage_balance_of(contract.connector.owner_id.clone())
+            .unwrap();
+        assert_eq!(storage_balance.total.0, 0);
+        assert_eq!(storage_balance.available.0, 0);
+    }
+
+    fn create_contract() -> EthConnectorContract {
+        let prover_account = "prover.near".parse().unwrap();
+        let eth_custodian_address = Address::from_array([0xab; 20]).encode();
+        let metadata = FungibleTokenMetadata {
+            spec: FT_METADATA_SPEC.to_string(),
+            name: "Ether".to_string(),
+            symbol: "ETH".to_string(),
+            icon: None,
+            reference: None,
+            reference_hash: None,
+            decimals: 18,
+        };
+        let account_with_access_right = "engine.near".parse().unwrap();
+        let owner_id = "owner.near".parse().unwrap();
+        EthConnectorContract::new(
+            prover_account,
+            eth_custodian_address,
+            metadata,
+            account_with_access_right,
+            owner_id,
+        )
     }
 }
