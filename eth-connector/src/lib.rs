@@ -480,7 +480,7 @@ impl ConnectorWithdraw for EthConnectorContract {
         self.assert_access_right().sdk_unwrap();
         assert_one_yocto();
 
-        // Check is current flow paused. If it's owner just skip asserrion.
+        // Check is current flow paused. If it's owner just skip assertion.
         self.assert_not_paused(PAUSE_WITHDRAW)
             .map_err(|_| "WithdrawErrorPaused")
             .sdk_unwrap();

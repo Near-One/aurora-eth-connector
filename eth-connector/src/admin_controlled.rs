@@ -84,3 +84,40 @@ pub mod error {
         }
     }
 }
+
+#[test]
+fn test_pause_control() {
+    use crate::connector_impl::EthConnector;
+
+    let mut connector = EthConnector {
+        prover_account: "prover".parse().unwrap(),
+        eth_custodian_address: Default::default(),
+        paused_mask: UNPAUSE_ALL,
+        account_with_access_right: "aurora".parse().unwrap(),
+        owner_id: "aurora".parse().unwrap(),
+    };
+
+    assert!(connector.assert_not_paused(PAUSE_DEPOSIT).is_ok());
+    assert!(connector.assert_not_paused(PAUSE_WITHDRAW).is_ok());
+
+    connector.set_paused_flags(PAUSE_DEPOSIT);
+
+    assert!(connector.assert_not_paused(PAUSE_DEPOSIT).is_err());
+    assert!(connector.assert_not_paused(PAUSE_WITHDRAW).is_ok());
+
+    connector.set_paused_flags(UNPAUSE_ALL);
+    connector.set_paused_flags(PAUSE_WITHDRAW);
+
+    assert!(connector.assert_not_paused(PAUSE_DEPOSIT).is_ok());
+    assert!(connector.assert_not_paused(PAUSE_WITHDRAW).is_err());
+
+    connector.set_paused_flags(PAUSE_WITHDRAW | PAUSE_DEPOSIT);
+
+    assert!(connector.assert_not_paused(PAUSE_DEPOSIT).is_err());
+    assert!(connector.assert_not_paused(PAUSE_WITHDRAW).is_err());
+
+    connector.set_paused_flags(UNPAUSE_ALL);
+
+    assert!(connector.assert_not_paused(PAUSE_DEPOSIT).is_ok());
+    assert!(connector.assert_not_paused(PAUSE_WITHDRAW).is_ok());
+}
