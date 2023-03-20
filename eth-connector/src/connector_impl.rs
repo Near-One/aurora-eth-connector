@@ -87,14 +87,13 @@ impl AdminControlled for EthConnector {
 }
 
 impl EthConnector {
-    pub(crate) fn deposit(&mut self, raw_proof: Proof) -> Promise {
+    pub(crate) fn deposit(&mut self, proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
 
         // Check is current flow paused. If it's owner account just skip it.
         self.assert_not_paused(PAUSE_DEPOSIT).sdk_unwrap();
 
         log!("[Deposit tokens]");
-        let proof = raw_proof.clone();
 
         // Fetch event data from Proof
         let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
@@ -124,7 +123,7 @@ impl EthConnector {
 
         // Do not skip bridge call. This is only used for development and diagnostics.
         let skip_bridge_call = false.try_to_vec().unwrap();
-        let mut proof_to_verify = raw_proof.try_to_vec().unwrap();
+        let mut proof_to_verify = proof.try_to_vec().unwrap();
         proof_to_verify.extend(skip_bridge_call);
 
         // Finalize deposit
