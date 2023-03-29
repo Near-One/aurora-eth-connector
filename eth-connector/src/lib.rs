@@ -1,7 +1,8 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
-    ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, EngineFungibleToken,
-    EngineStorageManagement, FungibleTokeStatistic, KnownEngineAccountsManagement,
+    ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, EngineConnectorWithdraw,
+    EngineFungibleToken, EngineStorageManagement, FungibleTokeStatistic,
+    KnownEngineAccountsManagement,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -476,6 +477,33 @@ impl ConnectorWithdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
     fn withdraw(
+        &mut self,
+        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] amount: Balance,
+    ) -> WithdrawResult {
+        assert_one_yocto();
+
+        // Check is current flow paused. If it's owner just skip assertion.
+        self.assert_not_paused(PAUSE_WITHDRAW)
+            .map_err(|_| "WithdrawErrorPaused")
+            .sdk_unwrap();
+
+        let sender_id = env::predecessor_account_id();
+        // Burn tokens to recipient
+        self.ft.internal_withdraw(&sender_id, amount);
+        WithdrawResult {
+            recipient_id: recipient_address,
+            amount,
+            eth_custodian_address: self.connector.eth_custodian_address,
+        }
+    }
+}
+
+#[near_bindgen]
+impl EngineConnectorWithdraw for EthConnectorContract {
+    #[payable]
+    #[result_serializer(borsh)]
+    fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
