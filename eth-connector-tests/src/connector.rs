@@ -1222,7 +1222,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let res = user_acc
-        .call(contract.contract.id(), "withdraw")
+        .call(contract.contract.id(), "engine_withdraw")
         .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -1248,7 +1248,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
 
     let res = contract
         .contract
-        .call("withdraw")
+        .call("engine_withdraw")
         .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
