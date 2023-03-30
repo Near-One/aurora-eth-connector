@@ -685,7 +685,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     // 1st withdraw call when unpaused  - should succeed
     let res = contract
         .contract
-        .call("withdraw")
+        .call("engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -731,7 +731,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     // 2nd withdraw call when paused, but the admin is calling it - should succeed
     let res = contract
         .contract
-        .call("withdraw")
+        .call("engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -746,7 +746,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     assert_eq!(data.eth_custodian_address, custodian_addr);
 
     let res = user_acc
-        .call(contract.contract.id(), "withdraw")
+        .call(contract.contract.id(), "engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -757,7 +757,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
 
     let res = owner_acc
-        .call(contract.contract.id(), "withdraw")
+        .call(contract.contract.id(), "engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
