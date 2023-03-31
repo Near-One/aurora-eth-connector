@@ -1,0 +1,20 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: aurora-eth-connector
+  title: Aurora Eth Connector
+  description: |-
+    Fungible Token implementation is the smart contract on the NEAR Protocol for Aurora Engine. It is implementation for NEP-141.
+  tags:
+    - contract
+    - near
+  links: []
+  annotations:
+    aurora.dev/security-tier: "1"
+spec:
+  owner: protocol-team
+  type: contract
+  lifecycle: production
+  system: aurora-engine
+  interactsWith: []

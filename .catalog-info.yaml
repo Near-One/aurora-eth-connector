@@ -1,0 +1,9 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: aurora-eth-connector-public
+  description: Public Aurora Eth Connector repository
+spec:
+  targets:
+    - ./**/.catalog-info.yaml
