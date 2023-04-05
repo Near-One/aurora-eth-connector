@@ -18,7 +18,6 @@ pub trait ConnectorWithdraw {
     #[result_serializer(borsh)]
     fn withdraw(
         &mut self,
-        #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
     ) -> WithdrawResult;
@@ -44,6 +43,18 @@ pub trait ProofVerifier {
 #[ext_contract(ext_ft_statistic)]
 pub trait FungibleTokeStatistic {
     fn get_accounts_counter(&self) -> U64;
+}
+
+/// Withdraw method for legacy implementation in Engine
+#[ext_contract(ext_engine_withdraw)]
+pub trait EngineConnectorWithdraw {
+    #[result_serializer(borsh)]
+    fn engine_withdraw(
+        &mut self,
+        #[serializer(borsh)] sender_id: AccountId,
+        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] amount: Balance,
+    ) -> WithdrawResult;
 }
 
 /// Engin compatible methods for NEP-141

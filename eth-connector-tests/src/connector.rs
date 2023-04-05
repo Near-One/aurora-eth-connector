@@ -98,7 +98,7 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
     let res = contract
         .contract
         .call("withdraw")
-        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
+        .args_borsh((recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -130,10 +130,57 @@ async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
 
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
-    contract.set_and_check_access_right(user_acc.id()).await?;
 
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
+        .args_borsh((recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_success());
+
+    let data: WithdrawResult = res.borsh()?;
+    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    assert_eq!(data.recipient_id, recipient_addr);
+    assert_eq!(data.amount, withdraw_amount);
+    assert_eq!(data.eth_custodian_address, custodian_addr);
+    assert_eq!(
+        contract.get_eth_on_near_balance(user_acc.id()).await?.0,
+        DEPOSITED_AMOUNT - withdraw_amount
+    );
+    assert_eq!(
+        contract.total_supply().await?.0,
+        DEPOSITED_AMOUNT - withdraw_amount
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_withdraw_eth_from_near_engine() -> anyhow::Result<()> {
+    let contract = TestContract::new().await?;
+    contract.call_deposit_eth_to_near().await?;
+    let user_acc = contract.create_sub_account("eth_recipient").await?;
+
+    let withdraw_amount = 100;
+    let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+
+    // Only approved accounts can call this function
+    let res = user_acc
+        .call(contract.contract.id(), "engine_withdraw")
+        .args_borsh((user_acc.id(), recipient_addr, withdraw_amount))
+        .gas(DEFAULT_GAS)
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await?;
+    assert!(res.is_failure());
+    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+
+    // The purpose of this withdraw variant is that it can withdraw on behalf of a user.
+    // In this example the contract itself withdraws on behalf of the user
+    let res = contract
+        .contract
+        .call("engine_withdraw")
         .args_borsh((user_acc.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -638,7 +685,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     // 1st withdraw call when unpaused  - should succeed
     let res = contract
         .contract
-        .call("withdraw")
+        .call("engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -684,7 +731,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     // 2nd withdraw call when paused, but the admin is calling it - should succeed
     let res = contract
         .contract
-        .call("withdraw")
+        .call("engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -699,7 +746,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     assert_eq!(data.eth_custodian_address, custodian_addr);
 
     let res = user_acc
-        .call(contract.contract.id(), "withdraw")
+        .call(contract.contract.id(), "engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -710,7 +757,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
     assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
 
     let res = owner_acc
-        .call(contract.contract.id(), "withdraw")
+        .call(contract.contract.id(), "engine_withdraw")
         .args_borsh((&sender_id, recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -799,7 +846,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
     // 1st withdraw - should succeed
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
-        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
+        .args_borsh((recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -825,7 +872,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
     // 2nd withdraw - should fail
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
-        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
+        .args_borsh((recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -845,7 +892,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
 
     let res = user_acc
         .call(contract.contract.id(), "withdraw")
-        .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
+        .args_borsh((recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
         .transact()
@@ -1175,7 +1222,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let res = user_acc
-        .call(contract.contract.id(), "withdraw")
+        .call(contract.contract.id(), "engine_withdraw")
         .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
@@ -1201,7 +1248,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
 
     let res = contract
         .contract
-        .call("withdraw")
+        .call("engine_withdraw")
         .args_borsh((contract.contract.id(), recipient_addr, withdraw_amount))
         .gas(DEFAULT_GAS)
         .deposit(ONE_YOCTO)
