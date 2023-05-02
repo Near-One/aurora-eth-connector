@@ -1,7 +1,6 @@
 use crate::utils::{TestContract, DEFAULT_GAS};
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
 use aurora_eth_connector::migration::{CheckResult, InputData};
-use near_sdk::{AccountId, Balance};
 use std::collections::HashMap;
 
 #[tokio::test]
