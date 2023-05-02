@@ -91,6 +91,7 @@ impl TestContract {
     }
 
     /// Waiting for the account creation
+    #[allow(dead_code)]
     async fn waiting_account_creation<T: NetworkClient + ?Sized>(
         worker: &Worker<T>,
         account_id: &AccountId,
@@ -113,12 +114,11 @@ impl TestContract {
     }
 
     pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionResult<()>> {
-        Ok(self
-            .contract
+        self.contract
             .deposit(proof.clone())
             .max_gas()
             .transact()
-            .await?)
+            .await
     }
 
     pub async fn user_deposit_with_proof(
