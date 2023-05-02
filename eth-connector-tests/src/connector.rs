@@ -218,7 +218,7 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
         "Expected not to fail because the proof should have been already used",
     );
 
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
@@ -258,7 +258,7 @@ async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
     contract.call_deposit_eth_to_near().await?;
     contract.call_deposit_contract().await?;
 
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
@@ -345,7 +345,7 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     );
 
     // Sending to random account should not change balances
-    let some_acc = AccountId::try_from("some-test-acc".to_string()).unwrap();
+    let some_acc = "some-test-acc".parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer_call")
@@ -945,7 +945,7 @@ async fn test_get_accounts_counter_and_transfer() -> anyhow::Result<()> {
     assert_eq!(res.0, 2);
 
     let transfer_amount: U128 = 70.into();
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -993,7 +993,7 @@ async fn test_deposit_to_near_with_zero_fee() -> anyhow::Result<()> {
     );
 
     let deposited_amount = 3000;
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
 
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, deposited_amount);
@@ -1126,7 +1126,7 @@ async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
     contract.call_deposit_contract().await?;
 
     let transfer_amount: U128 = u128::MAX.into();
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -1156,7 +1156,7 @@ async fn test_ft_transfer_empty_value() -> anyhow::Result<()> {
     contract.call_deposit_contract().await?;
 
     let transfer_amount = "";
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -1176,7 +1176,7 @@ async fn test_ft_transfer_wrong_u128_json_type() -> anyhow::Result<()> {
     contract.call_deposit_contract().await?;
 
     let transfer_amount = 200;
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -1707,8 +1707,8 @@ async fn test_manage_engine_accounts() {
         .await
         .unwrap();
 
-    let acc1 = AccountId::try_from("acc1.root".to_string()).unwrap();
-    let acc2 = AccountId::try_from("acc2.root".to_string()).unwrap();
+    let acc1 = "acc1.root".parse().unwrap();
+    let acc2 = "acc2.root".parse().unwrap();
     contract.set_engine_account(&acc1).await.unwrap();
     contract.set_engine_account(&acc2).await.unwrap();
     let res = contract
@@ -1750,7 +1750,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() -> anyhow::Result<(
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
-    let recipient_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let recipient_id = DEPOSITED_RECIPIENT.parse().unwrap();
     let balance = contract.get_eth_on_near_balance(&recipient_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 

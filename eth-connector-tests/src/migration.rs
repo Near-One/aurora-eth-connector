@@ -114,10 +114,9 @@ async fn test_migration_state() -> anyhow::Result<()> {
 
     // Accounts migration
     let mut accounts_gas_burnt = 0;
-    let mut accounts: HashMap<AccountId, Balance> = HashMap::new();
+    let mut accounts = HashMap::new();
     let mut accounts_count = 0;
     for (i, (account, amount)) in data.accounts.iter().enumerate() {
-        let account = AccountId::try_from(account.to_string()).unwrap();
         accounts.insert(account.clone(), amount.as_u128());
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
@@ -255,8 +254,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     accounts = HashMap::new();
     accounts_count = 0;
     for (i, (account, amount)) in data.accounts.iter().enumerate() {
-        let account = AccountId::try_from(account.to_string()).unwrap();
-        accounts.insert(account, amount.as_u128());
+        accounts.insert(account.clone(), amount.as_u128());
         if accounts.len() < limit && i < data.accounts.len() - 1 {
             continue;
         }
