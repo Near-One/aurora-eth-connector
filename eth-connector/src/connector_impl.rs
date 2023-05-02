@@ -13,10 +13,10 @@ use near_sdk::{
     env, AccountId, Balance, Gas, Promise,
 };
 
-/// NEAR Gas for calling `fininsh_deposit` promise. Used in the `deposit` logic.
+/// NEAR Gas for calling `finish_deposit` promise. Used in the `deposit` logic.
 pub const GAS_FOR_FINISH_DEPOSIT: Gas = Gas(50_000_000_000_000);
 /// NEAR Gas for calling `verify_log_entry` promise. Used in the `deposit` logic.
-// Note: Is 40Tgas always enough?
+// Note: Is 40 TGas always enough?
 const GAS_FOR_VERIFY_LOG_ENTRY: Gas = Gas(40_000_000_000_000);
 
 /// transfer eth-connector call args
@@ -48,18 +48,15 @@ pub struct WithdrawResult {
 /// Connector specific data. It always should contain `prover account` -
 #[derive(BorshSerialize, BorshDeserialize)]
 pub struct EthConnector {
-    /// It used in the Deposit flow, to verify log entry form incoming proof.
+    /// The account is used in the Deposit flow to verify the incoming proof's log entry.
     pub prover_account: AccountId,
-    /// It is Eth address, used in the Deposit and Withdraw logic.
+    /// The ETH address is used in the Deposit and Withdraw logic.
     pub eth_custodian_address: Address,
-
-    /// Admin controlled
+    /// Admin controlled.
     pub paused_mask: PausedMask,
-
-    /// Account with access right for current contract
+    /// Account with access right for the current contract.
     pub account_with_access_right: AccountId,
-
-    /// Owner account ID
+    /// Owner's account id.
     pub owner_id: AccountId,
 }
 
@@ -87,7 +84,7 @@ impl AdminControlled for EthConnector {
 }
 
 impl EthConnector {
-    pub(crate) fn deposit(&mut self, proof: Proof) -> Promise {
+    pub(crate) fn deposit(&mut self, proof: &Proof) -> Promise {
         let current_account_id = env::current_account_id();
 
         // Check is current flow paused. If it's owner account just skip it.

@@ -27,6 +27,10 @@ pub struct FtTransferMessageData {
 impl FtTransferMessageData {
     /// Get on-transfer data from arguments message field.
     /// Used for `ft_transfer_call` and `ft_on_transfer`
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the message has wrong format.
     pub fn parse_on_transfer_message(
         message: &str,
     ) -> Result<Self, error::ParseOnTransferMessageError> {
@@ -37,7 +41,7 @@ impl FtTransferMessageData {
             return Err(error::ParseOnTransferMessageError::TooManyParts);
         }
         // Check relayer account id from 1-th data element
-        let account_id = AccountId::try_from(data[0].to_string())
+        let account_id = AccountId::try_from_slice(data[0].as_bytes())
             .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
 
         // Decode message array from 2-th element of data array
@@ -59,16 +63,18 @@ impl FtTransferMessageData {
         let fee: Fee = fee_u128.into();
 
         // Get recipient Eth address from message slice
-        let recipient = Address::try_from_slice(&msg[32..52]).unwrap();
+        let recipient = Address::try_from_slice(&msg[32..52])
+            .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
 
-        Ok(FtTransferMessageData {
+        Ok(Self {
             relayer: account_id,
             recipient,
             fee,
         })
     }
 
-    /// Encode to String with specific rules
+    /// Encode to String with specific rules.
+    #[must_use]
     pub fn encode(&self) -> String {
         // The first data section should contain fee data.
         // Pay attention, that for compatibility reasons we used U256 type
@@ -81,16 +87,15 @@ impl FtTransferMessageData {
     }
 
     /// Prepare message for `ft_transfer_call` -> `ft_on_transfer`
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the `recipient` has wrong format of `Address`.
     pub fn prepare_message_for_on_transfer(
         relayer_account_id: &AccountId,
         fee: Fee,
         recipient: String,
     ) -> Result<Self, error::ParseEventMessageError> {
-        // The first data section should contain fee data.
-        // Pay attention, that for compatibility reasons we used U256 type
-        // it means 32 bytes for fee data
-        let mut data = U256::from(fee.as_u128()).as_byte_slice().to_vec();
-
         // Check message length.
         let address = if recipient.len() == 42 {
             recipient
@@ -104,8 +109,6 @@ impl FtTransferMessageData {
         };
         let recipient_address = Address::decode(&address)
             .map_err(error::ParseEventMessageError::EthAddressValidationError)?;
-        // Second data section should contain Eth address
-        data.extend(recipient_address.as_bytes());
 
         Ok(Self {
             relayer: relayer_account_id.clone(),
@@ -137,10 +140,14 @@ impl TokenMessageData {
     /// For Eth logic flow message validated and prepared for  `ft_on_transfer` logic.
     /// It mean validating Eth address correctness and preparing message for
     /// parsing for `ft_on_transfer` message parsing with correct and validated data.
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the message has wrong format.
     pub fn parse_event_message_and_prepare_token_message_data(
         message: &str,
         fee: Fee,
-    ) -> Result<TokenMessageData, error::ParseEventMessageError> {
+    ) -> Result<Self, error::ParseEventMessageError> {
         let data: Vec<_> = message.split(':').collect();
         // Data array can contain 1 or 2 elements
         if data.len() >= 3 {
@@ -151,7 +158,7 @@ impl TokenMessageData {
 
         // If data array contain only one element it should return NEAR account id
         if data.len() == 1 {
-            Ok(TokenMessageData::Near(account_id))
+            Ok(Self::Near(account_id))
         } else {
             let raw_message = data[1].into();
             let message = FtTransferMessageData::prepare_message_for_on_transfer(
@@ -160,7 +167,7 @@ impl TokenMessageData {
                 raw_message,
             )?;
 
-            Ok(TokenMessageData::Eth {
+            Ok(Self::Eth {
                 receiver_id: account_id,
                 message,
             })
@@ -168,6 +175,7 @@ impl TokenMessageData {
     }
 
     // Get recipient account id from Eth part of Token message data
+    #[must_use]
     pub fn get_recipient(&self) -> AccountId {
         match self {
             Self::Near(acc) => acc.clone(),
@@ -188,6 +196,10 @@ pub struct EthEvent {
 #[allow(dead_code)]
 impl EthEvent {
     /// Get Ethereum event from `log_entry_data`
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the data has wrong format.
     pub fn fetch_log_entry_data(
         name: &str,
         params: EventParams,
@@ -228,6 +240,7 @@ pub struct DepositedEvent {
 
 impl DepositedEvent {
     #[allow(dead_code)]
+    #[must_use]
     pub fn event_params() -> EventParams {
         vec![
             EventParam {
@@ -254,6 +267,10 @@ impl DepositedEvent {
     }
 
     /// Parses raw Ethereum logs proof's entry data
+    ///
+    /// # Errors
+    ///
+    /// Will return an error if the data has wrong format.
     pub fn from_log_entry_data(data: &[u8]) -> Result<Self, error::ParseError> {
         let event = EthEvent::fetch_log_entry_data(DEPOSITED_EVENT, Self::event_params(), data)
             .map_err(error::ParseError::LogParseFailed)?;
@@ -301,8 +318,8 @@ impl DepositedEvent {
 }
 
 pub mod error {
-    use super::*;
     use crate::errors;
+    use aurora_engine_types::types::address::error::AddressError;
 
     #[derive(Debug)]
     pub enum DecodeError {

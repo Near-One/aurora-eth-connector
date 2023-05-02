@@ -1,13 +1,13 @@
-use crate::utils::*;
+use crate::utils::{TestContract, DEFAULT_GAS};
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
-use aurora_eth_connector::migration::{MigrationCheckResult, MigrationInputData};
+use aurora_eth_connector::migration::{CheckResult, InputData};
 use near_sdk::{AccountId, Balance};
 use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_migration_access_right() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
-    let data = MigrationInputData {
+    let data = InputData {
         accounts: HashMap::new(),
         total_supply: None,
         account_storage_usage: None,
@@ -22,7 +22,7 @@ async fn test_migration_access_right() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "Method migrate is private"));
+    assert!(contract.check_error_message(&res, "Method migrate is private"));
     Ok(())
 }
 
@@ -36,7 +36,7 @@ async fn test_migration() -> anyhow::Result<()> {
             .iter()
             .map(|&s| s.into())
             .collect();
-    let data = MigrationInputData {
+    let data = InputData {
         accounts: HashMap::new(),
         total_supply: None,
         account_storage_usage: None,
@@ -51,14 +51,13 @@ async fn test_migration() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_success());
-    assert!(res.total_gas_burnt as f64 / 1_000_000_000_000. < 95.6);
-    println!(
-        "Gas burnt: {:.1} TGas",
-        res.total_gas_burnt as f64 / 1_000_000_000_000.
-    );
+    assert!(to_tera(res.total_gas_burnt) < 95.6);
+    println!("Gas burnt: {:.1} TGas", to_tera(res.total_gas_burnt));
+
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 #[tokio::test]
 async fn test_migration_state() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
@@ -79,7 +78,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
             &data.proofs[i..i + limit]
         };
         proofs_count += proofs.len();
-        let args = MigrationInputData {
+        let args = InputData {
             accounts: HashMap::new(),
             total_supply: None,
             account_storage_usage: None,
@@ -98,18 +97,18 @@ async fn test_migration_state() -> anyhow::Result<()> {
         println!(
             "Proofs: {:?} [{:.1} TGas]",
             proofs_count,
-            proofs_gas_burnt as f64 / 1_000_000_000_000.
+            to_tera(proofs_gas_burnt)
         );
         if i + limit >= data.proofs.len() {
             break;
-        } else {
-            i += limit;
         }
+
+        i += limit;
     }
     assert_eq!(proofs_count, data.proofs.len());
     // INCREASED!
     //assert!(proofs_gas_burnt as f64 / 1_000_000_000_000. < 5416.1);
-    assert!(proofs_gas_burnt as f64 / 1_000_000_000_000. < 10326.0);
+    assert!(to_tera(proofs_gas_burnt) < 10326.0);
     total_gas_burnt += proofs_gas_burnt;
     println!();
 
@@ -125,7 +124,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
         }
         accounts_count += &accounts.len();
 
-        let args = MigrationInputData {
+        let args = InputData {
             accounts,
             total_supply: None,
             account_storage_usage: None,
@@ -145,7 +144,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
         println!(
             "Accounts: {:?} [{:.1} TGas]",
             accounts_count,
-            accounts_gas_burnt as f64 / 1_000_000_000_000.
+            to_tera(accounts_gas_burnt)
         );
         // Clear
         accounts = HashMap::new();
@@ -157,15 +156,15 @@ async fn test_migration_state() -> anyhow::Result<()> {
     // INCREASED!
     // assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1520.);
     assert!(
-        accounts_gas_burnt as f64 / 1_000_000_000_000. < 1984.,
+        to_tera(accounts_gas_burnt) < 1984.,
         "{:?} < {:?}",
-        accounts_gas_burnt as f64 / 1_000_000_000_000.,
+        to_tera(accounts_gas_burnt),
         1984.
     );
     total_gas_burnt += accounts_gas_burnt;
 
     // Migrate Contract data
-    let args = MigrationInputData {
+    let args = InputData {
         accounts: HashMap::new(),
         total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
@@ -185,25 +184,22 @@ async fn test_migration_state() -> anyhow::Result<()> {
     //assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 6878.6);
     // INCREASED!
     //assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 11852.6);
-    println!("\n{:?}", total_gas_burnt);
+    println!("\n{total_gas_burnt:?}");
     assert!(
-        total_gas_burnt as f64 / 1_000_000_000_000. < 12315.,
+        to_tera(total_gas_burnt) < 12315.,
         "{:?} < {:?}",
-        total_gas_burnt as f64 / 1_000_000_000_000.,
+        to_tera(total_gas_burnt),
         12315.
     );
 
-    println!(
-        "Total Gas burnt: {:.1} TGas\n",
-        total_gas_burnt as f64 / 1_000_000_000_000.
-    );
+    println!("Total Gas burnt: {:.1} TGas\n", to_tera(total_gas_burnt));
 
     //============================
     // Verify correctness
     //============================
 
     // Check basic (NEP-141) contract data
-    let args = MigrationInputData {
+    let args = InputData {
         accounts: HashMap::new(),
         total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
@@ -216,9 +212,9 @@ async fn test_migration_state() -> anyhow::Result<()> {
         .args_borsh(args)
         .view()
         .await?
-        .borsh::<MigrationCheckResult>()
+        .borsh::<CheckResult>()
         .unwrap();
-    assert_eq!(res, MigrationCheckResult::Success);
+    assert_eq!(res, CheckResult::Success);
 
     // Check proofs data
     proofs_count = 0;
@@ -230,7 +226,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
             &data.proofs[i..i + limit]
         };
         proofs_count += proofs.len();
-        let args = MigrationInputData {
+        let args = InputData {
             accounts: HashMap::new(),
             total_supply: None,
             account_storage_usage: None,
@@ -243,16 +239,16 @@ async fn test_migration_state() -> anyhow::Result<()> {
             .args_borsh(args)
             .view()
             .await?
-            .borsh::<MigrationCheckResult>()
+            .borsh::<CheckResult>()
             .unwrap();
-        assert_eq!(res, MigrationCheckResult::Success);
+        assert_eq!(res, CheckResult::Success);
 
-        println!("Proofs checked: [{:?}]", proofs_count);
+        println!("Proofs checked: [{proofs_count:?}]");
         if i + limit >= data.proofs.len() {
             break;
-        } else {
-            i += limit;
         }
+
+        i += limit;
     }
 
     // Check accounts data
@@ -265,7 +261,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
             continue;
         }
         accounts_count += accounts.len();
-        let args = MigrationInputData {
+        let args = InputData {
             accounts,
             total_supply: None,
             account_storage_usage: None,
@@ -278,12 +274,17 @@ async fn test_migration_state() -> anyhow::Result<()> {
             .args_borsh(args)
             .view()
             .await?
-            .borsh::<MigrationCheckResult>()
+            .borsh::<CheckResult>()
             .unwrap();
-        assert_eq!(res, MigrationCheckResult::Success);
+        assert_eq!(res, CheckResult::Success);
         accounts = HashMap::new();
-        println!("Accounts checked: [{:?}]", accounts_count);
+        println!("Accounts checked: [{accounts_count:?}]");
     }
 
     Ok(())
+}
+
+#[allow(clippy::cast_precision_loss)]
+fn to_tera(gas: u64) -> f64 {
+    gas as f64 / 1_000_000_000_000.
 }
