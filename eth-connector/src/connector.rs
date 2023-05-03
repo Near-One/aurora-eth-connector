@@ -9,12 +9,12 @@ use near_sdk::{
 };
 
 #[ext_contract(ext_deposit)]
-pub trait ConnectorDeposit {
+pub trait Deposit {
     fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise;
 }
 
 #[ext_contract(ext_withdraw)]
-pub trait ConnectorWithdraw {
+pub trait Withdraw {
     #[result_serializer(borsh)]
     fn withdraw(
         &mut self,
@@ -24,7 +24,7 @@ pub trait ConnectorWithdraw {
 }
 
 #[ext_contract(ext_funds_finish)]
-pub trait ConnectorFundsFinish {
+pub trait FundsFinish {
     fn finish_deposit(
         &mut self,
         #[serializer(borsh)] deposit_call: FinishDepositCallArgs,
@@ -41,7 +41,7 @@ pub trait ProofVerifier {
 }
 
 #[ext_contract(ext_ft_statistic)]
-pub trait FungibleTokeStatistic {
+pub trait FungibleTokenStatistic {
     fn get_accounts_counter(&self) -> U64;
 }
 

@@ -9,18 +9,19 @@ pub struct LogEntry {
 
 impl rlp::Decodable for LogEntry {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let result = LogEntry {
-            address: rlp.val_at(0usize)?,
-            topics: rlp.list_at(1usize)?,
-            data: rlp.val_at(2usize)?,
+        let result = Self {
+            address: rlp.val_at(0)?,
+            topics: rlp.list_at(1)?,
+            data: rlp.val_at(2)?,
         };
+
         Ok(result)
     }
 }
 
 impl rlp::Encodable for LogEntry {
     fn rlp_append(&self, stream: &mut rlp::RlpStream) {
-        stream.begin_list(3usize);
+        stream.begin_list(3);
         stream.append(&self.address);
         stream.append_list::<H256, _>(&self.topics);
         stream.append(&self.data);

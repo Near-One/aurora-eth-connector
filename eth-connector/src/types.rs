@@ -8,9 +8,9 @@ macro_rules! log {
     };
 }
 
-/// Panic with error dat argument
+/// Panic with the message from the error argument.
 pub fn panic_err<E: AsRef<[u8]>>(err: E) -> ! {
-    panic_str(&String::from_utf8(err.as_ref().to_vec()).unwrap())
+    panic_str(&String::from_utf8_lossy(err.as_ref()))
 }
 
 pub trait SdkExpect<T> {
@@ -19,19 +19,13 @@ pub trait SdkExpect<T> {
 
 impl<T> SdkExpect<T> for Option<T> {
     fn sdk_expect(self, msg: &str) -> T {
-        match self {
-            Some(t) => t,
-            None => panic_str(msg),
-        }
+        self.unwrap_or_else(|| panic_str(msg))
     }
 }
 
-impl<T, E> SdkExpect<T> for core::result::Result<T, E> {
+impl<T, E> SdkExpect<T> for Result<T, E> {
     fn sdk_expect(self, msg: &str) -> T {
-        match self {
-            Ok(t) => t,
-            Err(_) => panic_str(msg),
-        }
+        self.unwrap_or_else(|_| panic_str(msg))
     }
 }
 
@@ -41,18 +35,12 @@ pub trait SdkUnwrap<T> {
 
 impl<T> SdkUnwrap<T> for Option<T> {
     fn sdk_unwrap(self) -> T {
-        match self {
-            Some(t) => t,
-            None => panic_str("ERR_UNWRAP"),
-        }
+        self.unwrap_or_else(|| panic_str("ERR_UNWRAP"))
     }
 }
 
-impl<T, E: AsRef<[u8]>> SdkUnwrap<T> for core::result::Result<T, E> {
+impl<T, E: AsRef<[u8]>> SdkUnwrap<T> for Result<T, E> {
     fn sdk_unwrap(self) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => panic_str(&String::from_utf8(e.as_ref().to_vec()).unwrap()),
-        }
+        self.unwrap_or_else(|e| panic_str(&String::from_utf8_lossy(e.as_ref())))
     }
 }

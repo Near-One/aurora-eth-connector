@@ -3,7 +3,7 @@ use near_sdk::{ext_contract, AccountId, Balance, StorageUsage};
 use std::collections::HashMap;
 
 #[derive(BorshDeserialize, BorshSerialize)]
-pub struct MigrationInputData {
+pub struct InputData {
     pub accounts: HashMap<AccountId, Balance>,
     pub total_supply: Option<Balance>,
     pub account_storage_usage: Option<StorageUsage>,
@@ -12,7 +12,7 @@ pub struct MigrationInputData {
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
-pub enum MigrationCheckResult {
+pub enum CheckResult {
     Success,
     AccountNotExist(Vec<AccountId>),
     AccountAmount(HashMap<AccountId, Balance>),
@@ -24,11 +24,8 @@ pub enum MigrationCheckResult {
 
 #[ext_contract(ext_deposit)]
 pub trait Migration {
-    fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData);
+    fn migrate(&mut self, #[serializer(borsh)] data: InputData);
 
     #[result_serializer(borsh)]
-    fn check_migration_correctness(
-        &self,
-        #[serializer(borsh)] data: MigrationInputData,
-    ) -> MigrationCheckResult;
+    fn check_migration_correctness(&self, #[serializer(borsh)] data: InputData) -> CheckResult;
 }
