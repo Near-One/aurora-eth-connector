@@ -1,24 +1,15 @@
-use crate::utils::{TestContract, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT, DEPOSITED_RECIPIENT};
+use crate::utils::{
+    validate_eth_address, TestContract, CUSTODIAN_ADDRESS, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT,
+    DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
+};
+use aurora_workspace_eth_connector::types::WithdrawResult;
 use near_sdk::{json_types::U128, ONE_YOCTO};
-
-// use crate::utils::{
-//     validate_eth_address, TestContract, CONTRACT_ACC, CUSTODIAN_ADDRESS, DEFAULT_GAS,
-//     DEPOSITED_AMOUNT, DEPOSITED_CONTRACT, DEPOSITED_EVM_AMOUNT, DEPOSITED_RECIPIENT,
-//     PROOF_DATA_ETH, PROOF_DATA_NEAR, RECIPIENT_ETH_ADDRESS,
-// };
 // use aurora_engine_types::{
 //     types::{Address, Fee, NEP141Wei},
 //     H256, U256,
 // };
-// use aurora_eth_connector::{
-//     connector_impl::WithdrawResult,
-//     deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT},
-//     log_entry,
-//     proof::Proof,
-// };
 // use byte_slice_cast::AsByteSlice;
 // use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds};
-// use near_sdk::serde_json::json;
 // use workspaces::AccountId;
 
 #[tokio::test]
@@ -59,13 +50,16 @@ async fn test_ft_transfer() {
 }
 
 #[tokio::test]
-async fn test_ft_transfer_user() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.contract_account("eth_recipient").await?;
+async fn test_ft_transfer_user() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let transfer_amount: U128 = 70.into();
-    contract.set_and_check_access_right(user_acc.id()).await?;
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
 
     let memo = Some(String::from("transfer memo"));
     let res = user_acc
@@ -73,42 +67,47 @@ async fn test_ft_transfer_user() -> anyhow::Result<()> {
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     assert_eq!(
-        contract.get_eth_on_near_balance(user_acc.id()).await?.0,
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0,
         DEPOSITED_AMOUNT - transfer_amount.0
     );
     assert_eq!(
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await?
+            .await
+            .unwrap()
             .0,
         transfer_amount.0
     );
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
-    Ok(())
+    assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
 }
-/*
+
 #[tokio::test]
-async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_contract().await?;
+async fn test_withdraw_eth_from_near() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_contract().await.unwrap();
 
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let res = contract
         .contract
-        .call("withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
-        .gas(DEFAULT_GAS)
+        .withdraw(recipient_addr, withdraw_amount)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
-    let data: WithdrawResult = res.borsh()?;
+    let data: WithdrawResult = res.into_value();
     let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
@@ -116,97 +115,101 @@ async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT - withdraw_amount);
 
-    let balance = contract.total_supply().await?;
+    let balance = contract.total_supply().await.unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT - withdraw_amount);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn test_withdraw_eth_from_near_user() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.create_sub_account("eth_recipient").await?;
+async fn test_withdraw_eth_from_near_user() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
 
     let res = user_acc
-        .call(contract.contract.id(), "withdraw")
-        .args_borsh((recipient_addr, withdraw_amount))
-        .gas(DEFAULT_GAS)
+        .withdraw(recipient_addr, withdraw_amount)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
-    let data: WithdrawResult = res.borsh()?;
+    let data: WithdrawResult = res.into_value();
     let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
     assert_eq!(
-        contract.get_eth_on_near_balance(user_acc.id()).await?.0,
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0,
         DEPOSITED_AMOUNT - withdraw_amount
     );
     assert_eq!(
-        contract.total_supply().await?.0,
+        contract.total_supply().await.unwrap().0,
         DEPOSITED_AMOUNT - withdraw_amount
     );
-    Ok(())
 }
 
 #[tokio::test]
-async fn test_withdraw_eth_from_near_engine() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.create_sub_account("eth_recipient").await?;
+async fn test_withdraw_eth_from_near_engine() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
 
     // Only approved accounts can call this function
     let res = user_acc
-        .call(contract.contract.id(), "engine_withdraw")
-        .args_borsh((user_acc.id(), recipient_addr, withdraw_amount))
-        .gas(DEFAULT_GAS)
+        .engine_withdraw(user_acc.id().clone(), recipient_addr, withdraw_amount)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
-    assert!(res.is_failure());
+        .await
+        .unwrap_err();
     assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     // The purpose of this withdraw variant is that it can withdraw on behalf of a user.
     // In this example the contract itself withdraws on behalf of the user
     let res = contract
         .contract
-        .call("engine_withdraw")
-        .args_borsh((user_acc.id(), recipient_addr, withdraw_amount))
-        .gas(DEFAULT_GAS)
+        .engine_withdraw(user_acc.id().clone(), recipient_addr, withdraw_amount)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
-    let data: WithdrawResult = res.borsh()?;
+    let data: WithdrawResult = res.into_value();
     let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
     assert_eq!(
-        contract.get_eth_on_near_balance(user_acc.id()).await?.0,
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0,
         DEPOSITED_AMOUNT - withdraw_amount
     );
     assert_eq!(
-        contract.total_supply().await?.0,
+        contract.total_supply().await.unwrap().0,
         DEPOSITED_AMOUNT - withdraw_amount
     );
-    Ok(())
 }
-
+/*
 #[tokio::test]
 async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;

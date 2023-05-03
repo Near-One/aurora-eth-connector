@@ -117,8 +117,8 @@ impl TestContract {
     }
 
     #[must_use]
-    pub fn check_error_message(&self, res: &ExecutionFinalResult, error_msg: &str) -> bool {
-        format!("{res:?}").contains(error_msg)
+    pub fn check_error_message(&self, res: &anyhow::Error, error_msg: &str) -> bool {
+        format!("{:?}", res.to_string()).contains(error_msg)
     }
 
     pub async fn call_is_used_proof(&self, proof_str: &str) -> anyhow::Result<bool> {
