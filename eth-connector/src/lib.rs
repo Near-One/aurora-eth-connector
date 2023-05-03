@@ -1,8 +1,9 @@
+#![deny(clippy::pedantic, clippy::nursery)]
+#![allow(clippy::module_name_repetitions)]
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
-    ConnectorDeposit, ConnectorFundsFinish, ConnectorWithdraw, EngineConnectorWithdraw,
-    EngineFungibleToken, EngineStorageManagement, FungibleTokeStatistic,
-    KnownEngineAccountsManagement,
+    Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
+    FungibleTokenStatistic, KnownEngineAccountsManagement, Withdraw,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -67,12 +68,12 @@ enum StorageKey {
 }
 
 impl EthConnectorContract {
-    ///  Mint nETH tokens
-    fn mint_eth_on_near(&mut self, owner_id: AccountId, amount: Balance) {
+    ///  Mint `nETH` tokens
+    fn mint_eth_on_near(&mut self, owner_id: &AccountId, amount: Balance) {
         crate::log!("Mint {} nETH tokens for: {}", amount, owner_id);
         // Create account to avoid panic with deposit
-        self.register_if_not_exists(&owner_id);
-        self.ft.internal_deposit(&owner_id, amount)
+        self.register_if_not_exists(owner_id);
+        self.ft.internal_deposit(owner_id, amount);
     }
 
     /// Record used proof as hash key
@@ -123,14 +124,10 @@ impl EthConnectorContract {
             let _ = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
         }
 
-        // Special case, we do not fail if `sender_id = receiver_id`
+        // Special case, we do not fail if `sender_id == receiver_id`
         // if `predecessor_account_id` call `ft_transfer_call` as receiver itself
         // to call `ft_on_transfer`.
-        if sender_id != receiver_id {
-            // It's panic if: `sender_id == receiver_id`
-            self.ft
-                .internal_transfer(&sender_id, &receiver_id, amount, memo);
-        } else {
+        if sender_id == receiver_id {
             // If `sender_id == receiver_id` we should verify
             // that sender account has sufficient account balance.
             // NOTE: Related to Audit AUR-11 report issue
@@ -140,6 +137,9 @@ impl EthConnectorContract {
             );
             let balance = self.ft.ft_balance_of(sender_id.clone());
             require!(balance.0 >= amount, "Insufficient sender balance");
+        } else {
+            self.ft
+                .internal_transfer(&sender_id, &receiver_id, amount, memo);
         }
 
         let receiver_gas = env::prepaid_gas()
@@ -162,12 +162,13 @@ impl EthConnectorContract {
 #[near_bindgen]
 impl EthConnectorContract {
     #[init]
+    #[must_use]
     pub fn new(
         prover_account: AccountId,
-        eth_custodian_address: String,
-        metadata: FungibleTokenMetadata,
+        eth_custodian_address: Address,
+        metadata: &FungibleTokenMetadata,
         account_with_access_right: AccountId,
-        owner_id: AccountId,
+        owner_id: &AccountId,
     ) -> Self {
         require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
@@ -177,7 +178,7 @@ impl EthConnectorContract {
         let connector_data = EthConnector {
             prover_account,
             paused_mask,
-            eth_custodian_address: Address::decode(&eth_custodian_address).unwrap(),
+            eth_custodian_address,
             account_with_access_right,
             owner_id: owner_id.clone(),
         };
@@ -188,23 +189,24 @@ impl EthConnectorContract {
                 account_storage_usage: 0,
             },
             connector: connector_data,
-            metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
+            metadata: LazyOption::new(StorageKey::Metadata, Some(metadata)),
             used_proofs: LookupMap::new(StorageKey::Proof),
             accounts_counter: 0,
             known_engine_accounts: vec![],
         };
         this.register_if_not_exists(&env::current_account_id());
-        this.register_if_not_exists(&owner_id);
+        this.register_if_not_exists(owner_id);
         this
     }
 
     #[result_serializer(borsh)]
-    pub fn is_used_proof(&self, #[serializer(borsh)] proof: Proof) -> bool {
+    pub fn is_used_proof(&self, #[serializer(borsh)] proof: &Proof) -> bool {
         self.is_used_event(&proof.get_key())
     }
 
     #[cfg(feature = "integration-test")]
     #[result_serializer(borsh)]
+    #[must_use]
     pub fn verify_log_entry() -> bool {
         crate::log!("Call from verify_log_entry");
         true
@@ -220,7 +222,7 @@ impl FungibleTokenCore for EthConnectorContract {
     #[payable]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
         self.register_if_not_exists(&receiver_id);
-        self.ft.ft_transfer(receiver_id, amount, memo)
+        self.ft.ft_transfer(receiver_id, amount, memo);
     }
 
     #[payable]
@@ -302,7 +304,7 @@ impl KnownEngineAccountsManagement for EthConnectorContract {
     }
 }
 
-/// Implementations used only for EngineStorageManagement
+/// Implementations used only for `EngineStorageManagement`
 impl EthConnectorContract {
     fn internal_storage_balance_of(&self, account_id: &AccountId) -> Option<StorageBalance> {
         if self.ft.accounts.contains_key(account_id) {
@@ -347,6 +349,11 @@ impl EthConnectorContract {
 /// we just set `sender_id` explicitly as function parameter.
 #[near_bindgen]
 impl EngineStorageManagement for EthConnectorContract {
+    /// Store a deposit for account.
+    ///
+    /// # Panics
+    ///
+    /// If the attached deposit is less then the balance of the smart contract.
     #[allow(unused_variables)]
     #[payable]
     fn engine_storage_deposit(
@@ -387,18 +394,21 @@ impl EngineStorageManagement for EthConnectorContract {
         self.assert_access_right().sdk_unwrap();
         assert_one_yocto();
         let predecessor_account_id = sender_id;
-        if let Some(storage_balance) = self.internal_storage_balance_of(&predecessor_account_id) {
-            match amount {
-                Some(amount) if amount.0 > 0 => {
-                    env::panic_str("The amount is greater than the available storage balance");
-                }
-                _ => storage_balance,
-            }
-        } else {
-            env::panic_str(
-                format!("The account {} is not registered", &predecessor_account_id).as_str(),
-            );
-        }
+        self.internal_storage_balance_of(&predecessor_account_id)
+            .map_or_else(
+                || {
+                    env::panic_str(
+                        format!("The account {} is not registered", &predecessor_account_id)
+                            .as_str(),
+                    );
+                },
+                |storage_balance| match amount {
+                    Some(amount) if amount.0 > 0 => {
+                        env::panic_str("The amount is greater than the available storage balance");
+                    }
+                    _ => storage_balance,
+                },
+            )
     }
 
     #[payable]
@@ -439,7 +449,7 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 }
 
 #[near_bindgen]
-impl FungibleTokeStatistic for EthConnectorContract {
+impl FungibleTokenStatistic for EthConnectorContract {
     #[result_serializer(borsh)]
     fn get_accounts_counter(&self) -> U64 {
         self.accounts_counter.into()
@@ -455,12 +465,12 @@ impl AdminControlled for EthConnectorContract {
 
     fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
         self.connector.assert_owner_access_right().sdk_unwrap();
-        self.connector.set_paused_flags(paused)
+        self.connector.set_paused_flags(paused);
     }
 
     fn set_access_right(&mut self, account: &AccountId) {
         self.connector.assert_owner_access_right().sdk_unwrap();
-        self.connector.set_access_right(account)
+        self.connector.set_access_right(account);
     }
 
     fn get_access_right(&self) -> AccountId {
@@ -473,7 +483,7 @@ impl AdminControlled for EthConnectorContract {
 }
 
 #[near_bindgen]
-impl ConnectorWithdraw for EthConnectorContract {
+impl Withdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
     fn withdraw(
@@ -527,14 +537,14 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 }
 
 #[near_bindgen]
-impl ConnectorDeposit for EthConnectorContract {
+impl Deposit for EthConnectorContract {
     fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
-        self.connector.deposit(raw_proof)
+        self.connector.deposit(&raw_proof)
     }
 }
 
 #[near_bindgen]
-impl ConnectorFundsFinish for EthConnectorContract {
+impl FundsFinish for EthConnectorContract {
     #[private]
     fn finish_deposit(
         &mut self,
@@ -549,46 +559,43 @@ impl ConnectorFundsFinish for EthConnectorContract {
 
         crate::log!("Finish deposit with the amount: {}", deposit_call.amount);
 
-        // Mint tokens to recipient minus fee
-        if let Some(msg) = deposit_call.msg {
-            // Mint - calculate new balances
-            self.mint_eth_on_near(deposit_call.new_owner_id, deposit_call.amount);
-            // Store proof only after `mint` calculations
-            self.record_proof(deposit_call.proof_key).sdk_unwrap();
+        // Mint - calculate new balances
+        self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
+        // Store proof only after `mint` calculations
+        self.record_proof(deposit_call.proof_key).sdk_unwrap();
 
-            let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
-                .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
-                .sdk_unwrap();
-            let promise = self.internal_ft_transfer_call(
-                env::predecessor_account_id(),
-                data.receiver_id,
-                data.amount.into(),
-                data.memo,
-                data.msg,
-            );
-            match promise {
-                PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
-                PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
-            }
-        } else {
-            // Mint - calculate new balances
-            self.mint_eth_on_near(deposit_call.new_owner_id.clone(), deposit_call.amount);
-            // Store proof only after `mint` calculations
-            self.record_proof(deposit_call.proof_key).sdk_unwrap();
-            PromiseOrValue::Value(None)
-        }
+        // Mint tokens to recipient minus fee
+        deposit_call.msg.map_or_else(
+            || PromiseOrValue::Value(None),
+            |msg| {
+                let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
+                    .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
+                    .sdk_unwrap();
+                let promise = self.internal_ft_transfer_call(
+                    env::predecessor_account_id(),
+                    data.receiver_id,
+                    data.amount.into(),
+                    data.memo,
+                    data.msg,
+                );
+                match promise {
+                    PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
+                    PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
+                }
+            },
+        )
     }
 }
 
 #[cfg(feature = "migration")]
-use crate::migration::{Migration, MigrationCheckResult, MigrationInputData};
+use crate::migration::{CheckResult, InputData, Migration};
 
 #[cfg(feature = "migration")]
 #[near_bindgen]
 impl Migration for EthConnectorContract {
     /// Migrate contract data
     #[private]
-    fn migrate(&mut self, #[serializer(borsh)] data: MigrationInputData) {
+    fn migrate(&mut self, #[serializer(borsh)] data: InputData) {
         // Insert account
         for (account, amount) in &data.accounts {
             self.ft.accounts.insert(account, amount);
@@ -630,30 +637,28 @@ impl Migration for EthConnectorContract {
     }
 
     #[result_serializer(borsh)]
-    fn check_migration_correctness(
-        &self,
-        #[serializer(borsh)] data: MigrationInputData,
-    ) -> MigrationCheckResult {
+    fn check_migration_correctness(&self, #[serializer(borsh)] data: InputData) -> CheckResult {
         use std::collections::HashMap;
 
         // Check accounts
         let mut accounts_not_found: Vec<AccountId> = vec![];
-        let mut accounts_with_amount_not_found: HashMap<AccountId, Balance> = HashMap::new();
+        let mut accounts_with_amount_not_found = HashMap::new();
+
         for (account, amount) in &data.accounts {
-            match self.ft.accounts.get(account) {
-                Some(ref value) => {
+            self.ft.accounts.get(account).as_ref().map_or_else(
+                || accounts_not_found.push(account.clone()),
+                |value| {
                     if value != amount {
                         accounts_with_amount_not_found.insert(account.clone(), *value);
                     }
-                }
-                _ => accounts_not_found.push(account.clone()),
-            }
+                },
+            );
         }
         if !accounts_not_found.is_empty() {
-            return MigrationCheckResult::AccountNotExist(accounts_not_found);
+            return CheckResult::AccountNotExist(accounts_not_found);
         }
         if !accounts_with_amount_not_found.is_empty() {
-            return MigrationCheckResult::AccountAmount(accounts_with_amount_not_found);
+            return CheckResult::AccountAmount(accounts_with_amount_not_found);
         }
 
         // Check proofs
@@ -665,26 +670,26 @@ impl Migration for EthConnectorContract {
             }
         }
         if !proofs_not_found.is_empty() {
-            return MigrationCheckResult::Proof(proofs_not_found);
+            return CheckResult::Proof(proofs_not_found);
         }
 
         if let Some(account_storage_usage) = data.account_storage_usage {
             if self.ft.account_storage_usage != account_storage_usage {
-                return MigrationCheckResult::StorageUsage(self.ft.account_storage_usage);
+                return CheckResult::StorageUsage(self.ft.account_storage_usage);
             }
         }
         if let Some(total_supply) = data.total_supply {
             if self.ft.total_supply != total_supply {
-                return MigrationCheckResult::TotalSupply(self.ft.total_supply);
+                return CheckResult::TotalSupply(self.ft.total_supply);
             }
         }
 
         if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
             if self.accounts_counter != statistics_aurora_accounts_counter {
-                return MigrationCheckResult::StatisticsCounter(self.accounts_counter);
+                return CheckResult::StatisticsCounter(self.accounts_counter);
             }
         }
-        MigrationCheckResult::Success
+        CheckResult::Success
     }
 }
 
@@ -723,7 +728,7 @@ mod tests {
 
     fn create_contract() -> EthConnectorContract {
         let prover_account = "prover.near".parse().unwrap();
-        let eth_custodian_address = Address::from_array([0xab; 20]).encode();
+        let eth_custodian_address = Address::from_array([0xab; 20]);
         let metadata = FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
             name: "Ether".to_string(),
@@ -738,9 +743,9 @@ mod tests {
         EthConnectorContract::new(
             prover_account,
             eth_custodian_address,
-            metadata,
+            &metadata,
             account_with_access_right,
-            owner_id,
+            &owner_id,
         )
     }
 }

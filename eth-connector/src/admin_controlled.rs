@@ -25,6 +25,10 @@ pub trait AdminControlled {
     }
 
     /// Asserts the passed paused flag is not set. Returns `PausedError` if paused.
+    ///
+    /// # Errors
+    ///
+    /// Error is returned if the smart contract is paused.
     fn assert_not_paused(&self, flag: PausedMask) -> Result<(), error::AdminControlledError> {
         if self.is_paused(flag) {
             Err(error::AdminControlledError::Paused)
@@ -40,6 +44,10 @@ pub trait AdminControlled {
     fn get_access_right(&self) -> AccountId;
 
     /// Check access right for predecessor account
+    ///
+    /// # Errors
+    ///
+    /// Error is returned if the caller hasn't rights.
     fn assert_access_right(&self) -> Result<(), error::AdminControlledError> {
         if self.get_access_right() == near_sdk::env::predecessor_account_id()
             || self.is_owner()
@@ -51,7 +59,11 @@ pub trait AdminControlled {
         }
     }
 
-    /// Asseert only owners of contract access right
+    /// Assert only owners of contract access right
+    ///
+    /// # Errors
+    ///
+    /// Error is returned if the caller isn't owner.
     fn assert_owner_access_right(&self) -> Result<(), error::AdminControlledError> {
         if self.is_owner()
             || near_sdk::env::predecessor_account_id() == near_sdk::env::current_account_id()
@@ -91,7 +103,7 @@ fn test_pause_control() {
 
     let mut connector = EthConnector {
         prover_account: "prover".parse().unwrap(),
-        eth_custodian_address: Default::default(),
+        eth_custodian_address: aurora_engine_types::types::Address::default(),
         paused_mask: UNPAUSE_ALL,
         account_with_access_right: "aurora".parse().unwrap(),
         owner_id: "aurora".parse().unwrap(),

@@ -1,4 +1,11 @@
-use crate::utils::*;
+use crate::utils::{TestContract, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT, DEPOSITED_RECIPIENT};
+use near_sdk::{json_types::U128, ONE_YOCTO};
+
+// use crate::utils::{
+//     validate_eth_address, TestContract, CONTRACT_ACC, CUSTODIAN_ADDRESS, DEFAULT_GAS,
+//     DEPOSITED_AMOUNT, DEPOSITED_CONTRACT, DEPOSITED_EVM_AMOUNT, DEPOSITED_RECIPIENT,
+//     PROOF_DATA_ETH, PROOF_DATA_NEAR, RECIPIENT_ETH_ADDRESS,
+// };
 // use aurora_engine_types::{
 //     types::{Address, Fee, NEP141Wei},
 //     H256, U256,
@@ -11,8 +18,8 @@ use crate::utils::*;
 // };
 // use byte_slice_cast::AsByteSlice;
 // use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds};
+// use near_sdk::serde_json::json;
 // use workspaces::AccountId;
-use near_sdk::{json_types::U128, ONE_YOCTO};
 
 #[tokio::test]
 async fn test_ft_transfer() {
@@ -170,7 +177,7 @@ async fn test_withdraw_eth_from_near_engine() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     // The purpose of this withdraw variant is that it can withdraw on behalf of a user.
     // In this example the contract itself withdraws on behalf of the user
@@ -210,7 +217,7 @@ async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
         "Expected not to fail because the proof should have been already used",
     );
 
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
@@ -250,7 +257,7 @@ async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
     contract.call_deposit_eth_to_near().await?;
     contract.call_deposit_contract().await?;
 
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
@@ -324,7 +331,7 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    assert!(contract.check_error_message(&res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
 
     // Assert balances remain unchanged
 
@@ -337,7 +344,7 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     );
 
     // Sending to random account should not change balances
-    let some_acc = AccountId::try_from("some-test-acc".to_string()).unwrap();
+    let some_acc = "some-test-acc".parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer_call")
@@ -430,7 +437,7 @@ async fn test_ft_transfer_call_user_message() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    assert!(contract.check_error_message(&res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
     let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT + transfer_amount.0);
     let balance = contract
@@ -454,7 +461,7 @@ async fn test_set_and_get_engine_account() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     contract
         .set_and_check_access_right(user_acc.id())
@@ -562,7 +569,7 @@ async fn test_deposit_with_same_proof() -> anyhow::Result<()> {
         .deposit_with_proof(&contract.get_proof(PROOF_DATA_NEAR))
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_PROOF_EXIST"));
+    assert!(contract.check_error_message(&res, "ERR_PROOF_EXIST"));
 
     Ok(())
 }
@@ -578,7 +585,7 @@ async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
         .deposit_with_proof(&contract.get_proof(PROOF_DATA_NEAR))
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_WRONG_EVENT_ADDRESS"));
+    assert!(contract.check_error_message(&res, "ERR_WRONG_EVENT_ADDRESS"));
     assert!(
         !contract.call_is_used_proof(PROOF_DATA_NEAR).await?,
         "Expected not to fail because the proof should not have been already used",
@@ -641,7 +648,7 @@ async fn test_admin_controlled_only_admin_can_pause() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     let res = contract
         .contract
@@ -750,7 +757,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow
         .await?;
 
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     let res = owner_acc
         .call(contract.contract.id(), "engine_withdraw")
@@ -801,7 +808,7 @@ async fn test_deposit_pausability() -> anyhow::Result<()> {
     let proof2 = contract.mock_proof(user_acc.id(), 20, 2);
     let res = contract.user_deposit_with_proof(&user_acc, &proof2).await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_PAUSED"));
+    assert!(contract.check_error_message(&res, "ERR_PAUSED"));
 
     let proof3 = contract.mock_proof(user_acc.id(), 30, 3);
     let res = contract
@@ -874,7 +881,7 @@ async fn test_withdraw_from_near_pausability() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "WithdrawErrorPaused"));
+    assert!(contract.check_error_message(&res, "WithdrawErrorPaused"));
 
     // Unpause all
     let res = contract
@@ -937,7 +944,7 @@ async fn test_get_accounts_counter_and_transfer() -> anyhow::Result<()> {
     assert_eq!(res.0, 2);
 
     let transfer_amount: U128 = 70.into();
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -985,7 +992,7 @@ async fn test_deposit_to_near_with_zero_fee() -> anyhow::Result<()> {
     );
 
     let deposited_amount = 3000;
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
 
     let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
     assert_eq!(balance.0, deposited_amount);
@@ -1076,7 +1083,7 @@ async fn test_deposit_to_aurora_amount_zero_fee_non_zero() -> anyhow::Result<()>
         .deposit_with_proof(&contract.get_proof(proof_str))
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "The amount should be a positive non zero number"));
+    assert!(contract.check_error_message(&res, "The amount should be a positive non zero number"));
     Ok(())
 }
 
@@ -1118,7 +1125,7 @@ async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
     contract.call_deposit_contract().await?;
 
     let transfer_amount: U128 = u128::MAX.into();
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -1129,7 +1136,7 @@ async fn test_ft_transfer_max_value() -> anyhow::Result<()> {
         .await?;
     assert!(res.is_failure());
     assert!(contract.check_error_message(
-        res,
+        &res,
         "Smart contract panicked: The account doesn't have enough balance"
     ));
     assert_eq!(
@@ -1148,7 +1155,7 @@ async fn test_ft_transfer_empty_value() -> anyhow::Result<()> {
     contract.call_deposit_contract().await?;
 
     let transfer_amount = "";
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -1158,7 +1165,7 @@ async fn test_ft_transfer_empty_value() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "cannot parse integer from empty string"));
+    assert!(contract.check_error_message(&res, "cannot parse integer from empty string"));
     Ok(())
 }
 
@@ -1168,7 +1175,7 @@ async fn test_ft_transfer_wrong_u128_json_type() -> anyhow::Result<()> {
     contract.call_deposit_contract().await?;
 
     let transfer_amount = 200;
-    let receiver_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
     let res = contract
         .contract
         .call("ft_transfer")
@@ -1178,7 +1185,7 @@ async fn test_ft_transfer_wrong_u128_json_type() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "invalid type: integer `200`, expected a string"));
+    assert!(contract.check_error_message(&res, "invalid type: integer `200`, expected a string"));
     Ok(())
 }
 
@@ -1225,7 +1232,7 @@ async fn test_access_rights() -> anyhow::Result<()> {
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     assert_eq!(
         DEPOSITED_AMOUNT + transfer_amount1.0,
@@ -1320,7 +1327,7 @@ async fn test_storage_withdraw() -> anyhow::Result<()> {
         .await?;
     assert!(res.is_failure());
     assert!(contract.check_error_message(
-        res,
+        &res,
         "The amount is greater than the available storage balance"
     ));
     Ok(())
@@ -1344,7 +1351,7 @@ async fn test_engine_ft_transfer() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     assert_eq!(
         DEPOSITED_AMOUNT,
@@ -1431,7 +1438,7 @@ async fn test_engine_ft_transfer_call() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     assert_eq!(
         DEPOSITED_AMOUNT,
@@ -1509,7 +1516,7 @@ async fn test_engine_storage_deposit() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     contract
         .set_and_check_access_right(user_acc.id())
@@ -1574,7 +1581,7 @@ async fn test_engine_storage_withdraw() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     contract
         .set_and_check_access_right(user_acc.id())
@@ -1606,7 +1613,7 @@ async fn test_engine_storage_withdraw() {
         .unwrap();
     assert!(res.is_failure());
     assert!(contract.check_error_message(
-        res,
+        &res,
         "The amount is greater than the available storage balance"
     ));
 }
@@ -1634,7 +1641,7 @@ async fn test_engine_storage_unregister() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     contract
         .set_and_check_access_right(user_acc.id())
@@ -1665,7 +1672,7 @@ async fn test_engine_storage_unregister() {
         .await
         .unwrap();
     assert!(contract.check_error_message(
-        res,
+        &res,
         "The amount is greater than the available storage balance"
     ));
 
@@ -1688,7 +1695,7 @@ async fn test_engine_storage_unregister() {
         .await
         .unwrap();
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "The account eth_recipient.root is not registered"));
+    assert!(contract.check_error_message(&res, "The account eth_recipient.root is not registered"));
 }
 
 #[tokio::test]
@@ -1699,8 +1706,8 @@ async fn test_manage_engine_accounts() {
         .await
         .unwrap();
 
-    let acc1 = AccountId::try_from("acc1.root".to_string()).unwrap();
-    let acc2 = AccountId::try_from("acc2.root".to_string()).unwrap();
+    let acc1 = "acc1.root".parse().unwrap();
+    let acc2 = "acc2.root".parse().unwrap();
     contract.set_engine_account(&acc1).await.unwrap();
     contract.set_engine_account(&acc2).await.unwrap();
     let res = contract
@@ -1742,7 +1749,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() -> anyhow::Result<(
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
 
-    let recipient_id = AccountId::try_from(DEPOSITED_RECIPIENT.to_string()).unwrap();
+    let recipient_id = DEPOSITED_RECIPIENT.parse().unwrap();
     let balance = contract.get_eth_on_near_balance(&recipient_id).await?;
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
@@ -1771,7 +1778,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() -> anyhow::Result<(
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "Insufficient sender balance"));
+    assert!(contract.check_error_message(&res, "Insufficient sender balance"));
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
         .await?;
@@ -1787,7 +1794,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() -> anyhow::Result<(
         .transact()
         .await?;
     assert!(res.is_failure());
-    assert!(contract.check_error_message(res, "The amount should be a positive non zero number"));
+    assert!(contract.check_error_message(&res, "The amount should be a positive non zero number"));
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
         .await?;

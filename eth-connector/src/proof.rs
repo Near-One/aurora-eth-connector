@@ -13,6 +13,7 @@ pub struct Proof {
 }
 
 impl Proof {
+    #[must_use]
     pub fn get_key(&self) -> String {
         let mut data = self
             .log_index
@@ -28,7 +29,7 @@ impl Proof {
         data.extend_from_slice(&self.header_data);
         near_sdk::env::sha256(&data)
             .iter()
-            .map(|n| n.to_string())
+            .map(ToString::to_string)
             .collect()
     }
 }
@@ -40,7 +41,7 @@ mod tests {
     #[test]
     fn test_proof_key() {
         check_proof_key(
-            Proof {
+            &Proof {
                 log_index: 1,
                 receipt_index: 1,
                 ..Default::default()
@@ -48,7 +49,7 @@ mod tests {
             "1297721518512077871939115641114233180253108247225100248224214775219368216419218177247",
         );
         check_proof_key(
-            Proof {
+            &Proof {
                 log_index: 1,
                 receipt_index: 1,
                 header_data: vec![17, 99, 173, 233, 9, 0, 68, 10, 7, 20, 71, 10],
@@ -59,7 +60,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_proof_key(proof: Proof, expected_key: &str) {
+    fn check_proof_key(proof: &Proof, expected_key: &str) {
         let actual_key = proof.get_key();
         assert_eq!(expected_key, actual_key);
     }
