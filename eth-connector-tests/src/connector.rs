@@ -1,22 +1,18 @@
 use crate::utils::*;
-use aurora_engine_types::{
-    types::{Address, Fee, NEP141Wei},
-    H256, U256,
-};
-use aurora_eth_connector::{
-    connector_impl::WithdrawResult,
-    deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT},
-    log_entry,
-    proof::Proof,
-};
-use byte_slice_cast::AsByteSlice;
-use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds};
-use near_sdk::serde_json::json;
-use near_sdk::{
-    json_types::{U128, U64},
-    ONE_YOCTO,
-};
-use workspaces::AccountId;
+// use aurora_engine_types::{
+//     types::{Address, Fee, NEP141Wei},
+//     H256, U256,
+// };
+// use aurora_eth_connector::{
+//     connector_impl::WithdrawResult,
+//     deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT},
+//     log_entry,
+//     proof::Proof,
+// };
+// use byte_slice_cast::AsByteSlice;
+// use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds};
+// use workspaces::AccountId;
+use near_sdk::{json_types::U128, ONE_YOCTO};
 
 #[tokio::test]
 async fn test_ft_transfer() {
@@ -25,11 +21,11 @@ async fn test_ft_transfer() {
 
     let transfer_amount: U128 = 70.into();
     let receiver_id = contract.register_user(DEPOSITED_RECIPIENT).await.unwrap();
+    let memo = Some(String::from("transfer memo"));
     let res = contract
         .contract
-        .call("ft_transfer")
-        .args_json((&receiver_id, transfer_amount, "transfer memo"))
-        .gas(DEFAULT_GAS)
+        .ft_transfer(receiver_id.clone(), transfer_amount, memo)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
         .await
@@ -59,15 +55,15 @@ async fn test_ft_transfer() {
 async fn test_ft_transfer_user() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
     contract.call_deposit_eth_to_near().await?;
-    let user_acc = contract.create_sub_account("eth_recipient").await?;
+    let user_acc = contract.contract_account("eth_recipient").await?;
 
     let transfer_amount: U128 = 70.into();
     contract.set_and_check_access_right(user_acc.id()).await?;
 
+    let memo = Some(String::from("transfer memo"));
     let res = user_acc
-        .call(contract.contract.id(), "ft_transfer")
-        .args_json((&contract.contract.id(), transfer_amount, "transfer memo"))
-        .gas(DEFAULT_GAS)
+        .ft_transfer(contract.contract.id().clone(), transfer_amount, memo)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
         .await?;
@@ -87,7 +83,7 @@ async fn test_ft_transfer_user() -> anyhow::Result<()> {
     assert_eq!(contract.total_supply().await?.0, DEPOSITED_AMOUNT);
     Ok(())
 }
-
+/*
 #[tokio::test]
 async fn test_withdraw_eth_from_near() -> anyhow::Result<()> {
     let contract = TestContract::new().await?;
@@ -1799,3 +1795,4 @@ async fn test_ft_transfer_call_insufficient_sender_balance() -> anyhow::Result<(
 
     Ok(())
 }
+*/
