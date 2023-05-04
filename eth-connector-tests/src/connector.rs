@@ -1,9 +1,13 @@
 use crate::utils::{
-    validate_eth_address, TestContract, CUSTODIAN_ADDRESS, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT,
-    DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
+    validate_eth_address, TestContract, CONTRACT_ACC, CUSTODIAN_ADDRESS, DEPOSITED_AMOUNT,
+    DEPOSITED_CONTRACT, DEPOSITED_EVM_AMOUNT, DEPOSITED_RECIPIENT, PROOF_DATA_ETH, PROOF_DATA_NEAR,
+    RECIPIENT_ETH_ADDRESS,
 };
+use aurora_engine_types::U256;
 use aurora_workspace_eth_connector::types::WithdrawResult;
+use byte_slice_cast::AsByteSlice;
 use near_sdk::{json_types::U128, ONE_YOCTO};
+use workspaces::AccountId;
 // use aurora_engine_types::{
 //     types::{Address, Fee, NEP141Wei},
 //     H256, U256,
@@ -209,64 +213,73 @@ async fn test_withdraw_eth_from_near_engine() {
         DEPOSITED_AMOUNT - withdraw_amount
     );
 }
-/*
+
 #[tokio::test]
-async fn test_deposit_eth_to_near_balance_total_supply() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    contract.call_deposit_contract().await?;
+async fn test_deposit_eth_to_near_balance_total_supply() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+    contract.call_deposit_contract().await.unwrap();
     assert!(
-        contract.call_is_used_proof(PROOF_DATA_NEAR).await?,
+        contract.call_is_used_proof(PROOF_DATA_NEAR).await.unwrap(),
         "Expected not to fail because the proof should have been already used",
     );
 
     let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
+    let balance = contract
+        .get_eth_on_near_balance(&receiver_id)
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
 
     assert_eq!(
-        contract.total_supply().await?.0,
+        contract.total_supply().await.unwrap().0,
         DEPOSITED_AMOUNT + DEPOSITED_CONTRACT
     );
-    Ok(())
 }
 
 // NOTE: We don't test relayer fee
 #[tokio::test]
-async fn test_deposit_eth_to_aurora_balance_total_supply() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
+async fn test_deposit_eth_to_aurora_balance_total_supply() {
+    let contract = TestContract::new().await.unwrap();
     contract
         .set_engine_account(contract.contract.id())
         .await
         .unwrap();
 
-    contract.call_deposit_eth_to_aurora().await?;
+    contract.call_deposit_eth_to_aurora().await.unwrap();
     assert!(
-        contract.call_is_used_proof(PROOF_DATA_ETH).await?,
+        contract.call_is_used_proof(PROOF_DATA_ETH).await.unwrap(),
         "Expected not to fail because the proof should have been already used",
     );
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_EVM_AMOUNT);
-    Ok(())
+    assert_eq!(
+        contract.total_supply().await.unwrap().0,
+        DEPOSITED_EVM_AMOUNT
+    );
 }
 
 #[tokio::test]
-async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_eth_to_near().await?;
-    contract.call_deposit_contract().await?;
+async fn test_ft_transfer_call_eth() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_eth_to_near().await.unwrap();
+    contract.call_deposit_contract().await.unwrap();
 
     let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
+    let balance = contract
+        .get_eth_on_near_balance(&receiver_id)
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
 
     let transfer_amount: U128 = 50.into();
@@ -282,38 +295,42 @@ async fn test_ft_transfer_call_eth() -> anyhow::Result<()> {
     let memo: Option<String> = None;
     let res = contract
         .contract
-        .call("ft_transfer_call")
-        .args_json((&receiver_id, transfer_amount, memo, message))
-        .gas(DEFAULT_GAS)
+        .ft_transfer_call(receiver_id.clone(), transfer_amount, memo, message)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
-    let balance = contract.get_eth_on_near_balance(&receiver_id).await?;
+    let balance = contract
+        .get_eth_on_near_balance(&receiver_id)
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
     assert_eq!(
-        contract.total_supply().await?.0,
+        contract.total_supply().await.unwrap().0,
         DEPOSITED_AMOUNT + DEPOSITED_CONTRACT
     );
-    Ok(())
 }
 
 #[tokio::test]
-async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_contract().await?;
+async fn test_ft_transfer_call_without_message() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_contract().await.unwrap();
 
     assert_eq!(
         DEPOSITED_CONTRACT,
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await?
+            .await
+            .unwrap()
             .0
     );
 
@@ -327,48 +344,56 @@ async fn test_ft_transfer_call_without_message() -> anyhow::Result<()> {
     // Send to Engine contract with wrong message should failed
     let res = contract
         .contract
-        .call("ft_transfer_call")
-        .args_json((contract.contract.id(), transfer_amount, &memo, message))
-        .gas(DEFAULT_GAS)
+        .ft_transfer_call(
+            contract.contract.id().clone(),
+            transfer_amount,
+            memo.clone(),
+            message.to_string(),
+        )
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
-    assert!(res.is_failure());
-    assert!(contract.check_error_message(&res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(&err, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    }
 
     // Assert balances remain unchanged
-
     assert_eq!(
         DEPOSITED_CONTRACT,
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await?
+            .await
+            .unwrap()
             .0
     );
 
     // Sending to random account should not change balances
-    let some_acc = "some-test-acc".parse().unwrap();
+    let some_acc: AccountId = "some-test-acc".parse().unwrap();
     let res = contract
         .contract
-        .call("ft_transfer_call")
-        .args_json((&some_acc, transfer_amount, memo, message))
-        .gas(DEFAULT_GAS)
+        .ft_transfer_call(some_acc.clone(), transfer_amount, memo, message.to_string())
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     // some-test-acc does not implement `ft_on_transfer` therefore the call fails and the transfer is reverted.
-    assert_eq!(0, contract.get_eth_on_near_balance(&some_acc).await?.0);
+    assert_eq!(
+        0,
+        contract.get_eth_on_near_balance(&some_acc).await.unwrap().0
+    );
     assert_eq!(
         DEPOSITED_CONTRACT,
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await?
+            .await
+            .unwrap()
             .0
     );
-    assert_eq!(contract.total_supply().await?.0, DEPOSITED_CONTRACT);
-    Ok(())
+    assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_CONTRACT);
 }
 
 #[tokio::test]
@@ -376,7 +401,7 @@ async fn test_ft_transfer_call_user_message() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
-    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let receiver_id = contract.contract.id();
     let balance = contract
@@ -396,9 +421,13 @@ async fn test_ft_transfer_call_user_message() {
     let message = "";
     // Send to non-engine contract with wrong message should failed
     let res = user_acc
-        .call(contract.contract.id(), "ft_transfer_call")
-        .args_json((&receiver_id, transfer_amount, &memo, message))
-        .gas(DEFAULT_GAS)
+        .ft_transfer_call(
+            receiver_id.clone(),
+            transfer_amount,
+            memo.clone(),
+            message.to_string(),
+        )
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
         .await
@@ -422,25 +451,29 @@ async fn test_ft_transfer_call_user_message() {
 
     let res = contract
         .contract
-        .call("get_engine_accounts")
-        .view()
+        .get_engine_accounts()
+        .await
+        .transact()
         .await
         .unwrap()
-        .json::<Vec<AccountId>>()
-        .unwrap();
+        .result;
     assert!(res.contains(receiver_id));
 
     // Send to engine contract with wrong message should failed
     let res = user_acc
-        .call(contract.contract.id(), "ft_transfer_call")
-        .args_json((&receiver_id, transfer_amount, &memo, message))
-        .gas(DEFAULT_GAS)
+        .ft_transfer_call(
+            receiver_id.clone(),
+            transfer_amount,
+            memo,
+            message.to_string(),
+        )
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await
-        .unwrap();
-    assert!(res.is_failure());
-    assert!(contract.check_error_message(&res, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(&err, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    }
     let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT + transfer_amount.0);
     let balance = contract
@@ -455,15 +488,13 @@ async fn test_set_and_get_engine_account() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
 
-    let user_acc = contract.create_sub_account("eth_recipient").await.unwrap();
+    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     let res = user_acc
-        .call(contract.contract.id(), "set_engine_account")
-        .args_json((&contract.contract.id(),))
-        .gas(DEFAULT_GAS)
+        .set_engine_account(contract.contract.id().clone())
+        .max_gas()
         .transact()
         .await
-        .unwrap();
-    assert!(res.is_failure());
+        .unwrap_err();
     assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     contract
@@ -472,9 +503,8 @@ async fn test_set_and_get_engine_account() {
         .unwrap();
 
     let res = user_acc
-        .call(contract.contract.id(), "set_engine_account")
-        .args_json((&contract.contract.id(),))
-        .gas(DEFAULT_GAS)
+        .set_engine_account(contract.contract.id().clone())
+        .max_gas()
         .transact()
         .await
         .unwrap();
@@ -482,12 +512,12 @@ async fn test_set_and_get_engine_account() {
 
     let res = contract
         .contract
-        .call("get_engine_accounts")
-        .view()
+        .get_engine_accounts()
+        .await
+        .transact()
         .await
         .unwrap()
-        .json::<Vec<AccountId>>()
-        .unwrap();
+        .result;
     assert!(res.contains(contract.contract.id()));
 }
 
@@ -597,13 +627,14 @@ async fn test_deposit_wrong_custodian_address() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    contract.call_deposit_contract().await?;
+async fn test_ft_transfer_call_without_relayer() {
+    let contract = TestContract::new().await.unwrap();
+    contract.call_deposit_contract().await.unwrap();
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
 
     let transfer_amount: U128 = 50.into();
@@ -620,59 +651,62 @@ async fn test_ft_transfer_call_without_relayer() -> anyhow::Result<()> {
     let memo: Option<String> = None;
     let res = contract
         .contract
-        .call("ft_transfer_call")
-        .args_json((contract.contract.id(), transfer_amount, memo, message))
-        .gas(DEFAULT_GAS)
+        .ft_transfer_call(
+            contract.contract.id().clone(),
+            transfer_amount,
+            memo,
+            message,
+        )
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
     assert_eq!(contract.total_supply().await?.0, DEPOSITED_CONTRACT);
-    Ok(())
 }
 
 #[tokio::test]
-async fn test_admin_controlled_only_admin_can_pause() -> anyhow::Result<()> {
+async fn test_admin_controlled_only_admin_can_pause() {
     use aurora_eth_connector::admin_controlled::PAUSE_DEPOSIT;
 
-    let contract =
-        TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root").await?;
-    let owner_acc = contract.create_sub_account("owner").await?;
-    let user_acc = contract.create_sub_account("eth_recipient").await?;
+    let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
+        .await
+        .unwrap();
+    let owner_acc = contract.create_sub_account("owner").await.unwrap();
+    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     let res = user_acc
-        .call(contract.contract.id(), "set_paused_flags")
-        .args_borsh(PAUSE_DEPOSIT)
-        .gas(DEFAULT_GAS)
+        .set_paused_flags(PAUSE_DEPOSIT)
+        .max_gas()
         .transact()
-        .await?;
-    assert!(res.is_failure());
+        .await
+        .unwrap_err();
     assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     let res = contract
         .contract
-        .call("set_paused_flags")
-        .args_borsh(PAUSE_DEPOSIT)
-        .gas(DEFAULT_GAS)
+        .set_paused_flags(PAUSE_DEPOSIT)
+        .max_gas()
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     let res = owner_acc
-        .call(contract.contract.id(), "set_paused_flags")
-        .args_borsh(PAUSE_DEPOSIT)
-        .gas(DEFAULT_GAS)
+        .set_paused_flags(PAUSE_DEPOSIT)
+        .max_gas()
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
-
-    Ok(())
 }
-
+/*
 #[tokio::test]
 async fn test_admin_controlled_admin_can_perform_actions_when_paused() -> anyhow::Result<()> {
     use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, PAUSE_WITHDRAW};

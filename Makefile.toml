@@ -178,7 +178,7 @@ args = [
     "${CARGO_FEATURES_TEST}",
     "--",
     "--test-threads=4",
-    "--nocapture"
+    # "--nocapture"
 ]
 
 [tasks.test-flow]
