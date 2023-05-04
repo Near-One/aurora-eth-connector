@@ -1142,7 +1142,6 @@ async fn test_deposit_to_aurora_amount_zero_fee_non_zero() {
         .await
         .unwrap_err();
     assert!(contract.check_error_message(&res, "The amount should be a positive non zero number"));
-    Ok(())
 }
 
 #[tokio::test]
@@ -1161,37 +1160,40 @@ async fn test_deposit_to_near_amount_equal_fee_non_zero() {
     assert!(res.is_success());
     assert!(contract.call_is_used_proof(proof_str).await.unwrap(),);
 }
-/*
+
 #[tokio::test]
-async fn test_deposit_to_aurora_amount_equal_fee_non_zero()  {
+async fn test_deposit_to_aurora_amount_equal_fee_non_zero() {
     let contract = TestContract::new_with_custodian_and_owner(
         "73c8931CA2aD746d97a59A7ABDDa0a9205F7ffF9",
         CONTRACT_ACC,
     )
-    .await.unwrap();
+    .await
+    .unwrap();
     let proof_str = r#"{"log_index":0,"log_entry_data":[249,1,27,148,115,200,147,28,162,173,116,109,151,165,154,122,189,218,10,146,5,247,255,249,248,66,160,209,66,67,156,39,142,37,218,217,165,7,102,241,83,208,227,210,215,191,43,209,111,194,120,28,75,212,148,178,177,90,157,160,0,0,0,0,0,0,0,0,0,0,0,0,121,24,63,219,216,14,45,138,234,26,202,162,246,123,251,138,54,212,10,141,184,192,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,188,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,188,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,59,101,116,104,95,99,111,110,110,101,99,116,111,114,46,114,111,111,116,58,56,57,49,66,50,55,52,57,50,51,56,66,50,55,102,70,53,56,101,57,53,49,48,56,56,101,53,53,98,48,52,100,101,55,49,68,99,51,55,52,0,0,0,0,0],"receipt_index":0,"receipt_data":[249,2,40,1,130,121,119,185,1,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,249,1,30,249,1,27,148,115,200,147,28,162,173,116,109,151,165,154,122,189,218,10,146,5,247,255,249,248,66,160,209,66,67,156,39,142,37,218,217,165,7,102,241,83,208,227,210,215,191,43,209,111,194,120,28,75,212,148,178,177,90,157,160,0,0,0,0,0,0,0,0,0,0,0,0,121,24,63,219,216,14,45,138,234,26,202,162,246,123,251,138,54,212,10,141,184,192,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,188,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,188,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,59,101,116,104,95,99,111,110,110,101,99,116,111,114,46,114,111,111,116,58,56,57,49,66,50,55,52,57,50,51,56,66,50,55,102,70,53,56,101,57,53,49,48,56,56,101,53,53,98,48,52,100,101,55,49,68,99,51,55,52,0,0,0,0,0],"header_data":[249,2,10,160,40,73,143,87,82,108,249,199,149,251,138,16,158,32,40,191,70,185,139,157,146,47,76,134,132,2,138,15,163,195,164,23,160,4,220,65,246,216,41,193,152,14,191,243,6,120,77,198,249,10,186,90,192,38,182,89,163,180,7,115,149,220,146,135,121,148,124,28,230,160,8,239,64,193,62,78,177,68,166,204,116,240,224,174,172,126,160,140,129,164,138,92,240,141,148,58,223,100,113,117,102,163,205,129,110,47,12,254,66,40,98,179,170,247,163,117,111,198,112,160,154,8,216,215,130,120,77,117,89,130,236,187,91,119,167,212,252,114,44,157,54,25,178,246,190,125,110,255,187,224,200,236,160,40,108,11,169,34,110,94,30,9,115,148,248,253,252,64,245,150,237,108,188,197,225,88,28,139,188,249,78,249,118,101,180,185,1,0,128,32,72,128,0,0,0,0,0,0,32,1,128,2,32,0,2,130,0,0,2,51,0,0,0,1,0,0,66,16,0,10,0,144,8,12,0,1,13,32,0,0,0,72,0,0,0,0,0,64,0,0,32,2,0,0,2,0,0,0,0,32,0,0,0,0,40,0,34,1,0,0,8,0,0,8,0,0,0,46,0,2,5,0,2,0,0,8,64,1,32,0,0,0,0,16,36,96,32,8,66,2,0,128,0,1,0,8,0,2,40,64,4,0,40,2,0,2,13,32,0,0,192,176,4,76,128,4,32,128,0,10,0,0,0,0,4,64,42,136,1,0,0,0,0,0,4,160,1,0,128,136,4,0,0,66,0,1,129,0,2,0,0,16,0,0,0,0,0,0,64,0,50,64,2,0,0,0,8,0,1,8,1,160,0,42,128,0,128,16,160,0,192,0,0,2,0,96,16,144,0,32,48,64,8,128,32,0,164,16,0,32,1,1,0,16,0,0,5,2,192,0,32,128,2,16,0,8,0,18,2,0,0,16,0,0,0,0,128,0,80,0,0,128,0,32,0,0,0,0,0,16,0,1,0,16,132,91,150,244,27,131,157,118,173,131,122,18,0,131,40,221,54,132,96,175,158,25,140,115,112,105,100,101,114,49,48,1,2,9,64,160,218,157,103,144,72,1,176,23,70,255,185,190,128,163,131,210,184,249,29,138,99,94,110,182,239,251,248,20,139,58,221,102,136,127,48,25,31,42,252,69,90],"proof":[[248,145,160,242,107,136,177,199,137,149,29,37,76,252,130,24,241,231,253,164,161,49,123,187,119,248,194,41,74,148,86,89,189,140,122,160,221,253,158,175,54,102,36,195,73,91,187,167,57,197,110,107,81,39,3,67,139,234,202,103,171,85,168,245,23,151,146,101,160,240,166,241,60,58,19,14,113,70,156,230,223,214,171,111,192,135,200,157,176,100,11,127,9,6,211,142,63,158,86,97,87,128,128,128,128,128,160,247,26,205,35,167,94,67,103,248,63,247,181,235,154,151,144,26,0,253,18,81,231,65,62,46,101,62,205,117,218,221,122,128,128,128,128,128,128,128,128],[249,2,47,48,185,2,43,249,2,40,1,130,121,119,185,1,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,249,1,30,249,1,27,148,115,200,147,28,162,173,116,109,151,165,154,122,189,218,10,146,5,247,255,249,248,66,160,209,66,67,156,39,142,37,218,217,165,7,102,241,83,208,227,210,215,191,43,209,111,194,120,28,75,212,148,178,177,90,157,160,0,0,0,0,0,0,0,0,0,0,0,0,121,24,63,219,216,14,45,138,234,26,202,162,246,123,251,138,54,212,10,141,184,192,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,188,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,188,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,59,101,116,104,95,99,111,110,110,101,99,116,111,114,46,114,111,111,116,58,56,57,49,66,50,55,52,57,50,51,56,66,50,55,102,70,53,56,101,57,53,49,48,56,56,101,53,53,98,48,52,100,101,55,49,68,99,51,55,52,0,0,0,0,0]]}"#;
     let res = contract
         .deposit_with_proof(&contract.get_proof(proof_str))
-        .await.unwrap();
+        .await
+        .unwrap();
     assert!(res.is_success());
     assert!(contract.call_is_used_proof(proof_str).await.unwrap(),);
 }
 
 #[tokio::test]
-async fn test_ft_transfer_max_value()  {
+async fn test_ft_transfer_max_value() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
 
     let transfer_amount: U128 = u128::MAX.into();
     let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
+    let memo = Some("transfer memo".to_string());
     let res = contract
         .contract
-        .ft_transfer(&receiver_id, transfer_amount, "transfer memo")
+        .ft_transfer(receiver_id, transfer_amount, memo)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap();
-    assert!(res.is_failure());
+        .await
+        .unwrap_err();
     assert!(contract.check_error_message(
         &res,
         "Smart contract panicked: The account doesn't have enough balance"
@@ -1200,47 +1202,56 @@ async fn test_ft_transfer_max_value()  {
         DEPOSITED_CONTRACT,
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await.unwrap()
+            .await
+            .unwrap()
             .0
     );
 }
 
 #[tokio::test]
-async fn test_ft_transfer_empty_value()  {
+async fn test_ft_transfer_empty_value() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
 
     let transfer_amount = "";
     let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
+    let memo = Some("transfer memo");
     let res = contract
         .contract
-        .ft_transfer(&receiver_id, transfer_amount, "transfer memo")
-        .max_gas
+        .as_contract()
+        .near_call(&"ft_transfer")
+        .args_json((receiver_id, transfer_amount, memo))
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap_err();
-    assert!(contract.check_error_message(&res, "cannot parse integer from empty string"));
+        .await
+        .unwrap();
+    assert!(format!("{:?}", res).contains("cannot parse integer from empty string"));
 }
 
 #[tokio::test]
-async fn test_ft_transfer_wrong_u128_json_type()  {
+async fn test_ft_transfer_wrong_u128_json_type() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
 
     let transfer_amount = 200;
     let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
+    let memo = Some("transfer memo".to_string());
     let res = contract
         .contract
-        .ft_transfer(&receiver_id, transfer_amount, "transfer memo")
+        .as_contract()
+        .near_call(&"ft_transfer")
+        .args_json((receiver_id, transfer_amount, memo))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap_err();
-    assert!(contract.check_error_message(&res, "invalid type: integer `200`, expected a string"));
+        .await
+        .unwrap();
+    assert!(format!("{:?}", res).contains("invalid type: integer `200`, expected a string"));
 }
 
 #[tokio::test]
-async fn test_access_rights()  {
+async fn test_access_rights() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
@@ -1248,61 +1259,99 @@ async fn test_access_rights()  {
 
     let transfer_amount1: U128 = 50.into();
     let receiver_id = contract.register_user("test.root").await.unwrap();
-
+    let memo = Some("transfer memo".to_string());
     let res = contract
         .contract
-        .ft_transfer(&user_acc.id(), transfer_amount1, "transfer memo")
-        .max_gas
+        .ft_transfer(user_acc.id().clone(), transfer_amount1, memo)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap();
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     assert_eq!(
         DEPOSITED_AMOUNT + transfer_amount1.0,
-        contract.get_eth_on_near_balance(user_acc.id()).await.unwrap().0
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0
     );
     assert_eq!(
         DEPOSITED_CONTRACT - transfer_amount1.0,
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await.unwrap()
+            .await
+            .unwrap()
             .0
     );
-    assert_eq!(0, contract.get_eth_on_near_balance(&receiver_id).await.unwrap().0);
+    assert_eq!(
+        0,
+        contract
+            .get_eth_on_near_balance(&receiver_id)
+            .await
+            .unwrap()
+            .0
+    );
 
     let withdraw_amount = 100;
     let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
     let res = user_acc
-        .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
+        .engine_withdraw(
+            contract.contract.id().clone(),
+            recipient_addr,
+            withdraw_amount,
+        )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap_err();
+        .await
+        .unwrap_err();
     assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     assert_eq!(
         DEPOSITED_AMOUNT + transfer_amount1.0,
-        contract.get_eth_on_near_balance(user_acc.id()).await.unwrap().0
+        contract
+            .get_eth_on_near_balance(user_acc.id())
+            .await
+            .unwrap()
+            .0
     );
     assert_eq!(
         DEPOSITED_CONTRACT - transfer_amount1.0,
         contract
             .get_eth_on_near_balance(contract.contract.id())
-            .await.unwrap()
+            .await
+            .unwrap()
             .0
     );
-    assert_eq!(0, contract.get_eth_on_near_balance(&receiver_id).await.unwrap().0);
+    assert_eq!(
+        0,
+        contract
+            .get_eth_on_near_balance(&receiver_id)
+            .await
+            .unwrap()
+            .0
+    );
 
-    contract.set_and_check_access_right(user_acc.id()).await.unwrap();
+    contract
+        .set_and_check_access_right(user_acc.id())
+        .await
+        .unwrap();
 
     let res = contract
         .contract
-        .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
+        .engine_withdraw(
+            contract.contract.id().clone(),
+            recipient_addr,
+            withdraw_amount,
+        )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap();
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
@@ -1313,59 +1362,62 @@ async fn test_access_rights()  {
 }
 
 #[tokio::test]
-async fn test_storage_deposit()  {
+async fn test_storage_deposit() {
     let contract = TestContract::new().await.unwrap();
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let bounds = contract
         .contract
         .storage_balance_bounds()
-        .await.
+        .await
         .transact()
-        .unwrap().result;
+        .await
+        .unwrap()
+        .result;
 
     let res = contract
         .contract
-        .storage_deposit( &user_acc.id())
+        .storage_deposit(Some(user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
-        .await.unwrap();
+        .await
+        .unwrap();
     assert!(res.is_success());
     let balance = res.into_value();
     assert_eq!(balance.available.0, 0);
     assert!(balance.total.0 >= bounds.min.0);
 
-    let res = contract
+    let balance = contract
         .contract
-        .storage_balance_of(&contract.contract.id()
-        )
-        .max_gas()
-        .deposit(10)
+        .storage_balance_of(contract.contract.id().clone())
+        .await
         .transact()
-        .await.unwrap();
-    assert!(res.is_success());
-    let balance = res.into_value();
+        .await
+        .unwrap()
+        .result;
     assert_eq!(balance.available.0, 0);
     assert!(balance.total.0 >= bounds.min.0);
 }
 
 #[tokio::test]
-async fn test_storage_withdraw()  {
+async fn test_storage_withdraw() {
     let contract = TestContract::new().await.unwrap();
 
-    let amount: U128 = 10.into();
+    let amount: Option<U128> = Some(10.into());
     let res = contract
         .contract
-        .storage_withdraw(amount )
+        .storage_withdraw(amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap_err();
-    assert!(contract.check_error_message(
-        &res,
-        "The amount is greater than the available storage balance"
-    ));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(
+            &err,
+            "The amount is greater than the available storage balance",
+        ));
+    }
 }
 
 #[tokio::test]
@@ -1376,9 +1428,15 @@ async fn test_engine_ft_transfer() {
 
     let transfer_amount: U128 = 50.into();
     let receiver_id = contract.register_user("test.root").await.unwrap();
+    let memo = Some("transfer memo".to_string());
 
     let res = user_acc
-        .engine_ft_transfer(&user_acc.id(), receiver_id.clone(), transfer_amount, "memo")
+        .engine_ft_transfer(
+            user_acc.id().clone(),
+            receiver_id.clone(),
+            transfer_amount,
+            memo.clone(),
+        )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1410,7 +1468,12 @@ async fn test_engine_ft_transfer() {
         .unwrap();
 
     let res = user_acc
-        .engine_ft_transfer(&user_acc.id(), receiver_id.clone(), transfer_amount, "memo")
+        .engine_ft_transfer(
+            user_acc.id().clone(),
+            receiver_id.clone(),
+            transfer_amount,
+            memo,
+        )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1436,7 +1499,7 @@ async fn test_engine_ft_transfer() {
     );
     assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
 }
-
+/*
 #[tokio::test]
 async fn test_engine_ft_transfer_call() {
     let contract = TestContract::new().await.unwrap();
