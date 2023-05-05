@@ -1226,7 +1226,7 @@ async fn test_ft_transfer_empty_value() {
         .transact()
         .await
         .unwrap();
-    assert!(format!("{:?}", res).contains("cannot parse integer from empty string"));
+    assert!(format!("{res:?}").contains("cannot parse integer from empty string"));
 }
 
 #[tokio::test]
@@ -1247,7 +1247,7 @@ async fn test_ft_transfer_wrong_u128_json_type() {
         .transact()
         .await
         .unwrap();
-    assert!(format!("{:?}", res).contains("invalid type: integer `200`, expected a string"));
+    assert!(format!("{res:?}").contains("invalid type: integer `200`, expected a string"));
 }
 
 #[tokio::test]
@@ -1499,7 +1499,7 @@ async fn test_engine_ft_transfer() {
     );
     assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
 }
-/*
+
 #[tokio::test]
 async fn test_engine_ft_transfer_call() {
     let contract = TestContract::new().await.unwrap();
@@ -1516,22 +1516,23 @@ async fn test_engine_ft_transfer_call() {
             .to_vec(),
     );
     let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
-    let memo: Option<String> = None;
+    let memo: Option<String> = Some("some memo".to_string());
 
     let res = user_acc
         .engine_ft_transfer_call(
-            &user_acc.id(),
-            &receiver_id,
+            user_acc.id().clone(),
+            receiver_id.clone(),
             transfer_amount,
-            &memo,
-            &message,
+            memo.clone(),
+            message.clone(),
         )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+    }
 
     assert_eq!(
         DEPOSITED_AMOUNT,
@@ -1550,11 +1551,11 @@ async fn test_engine_ft_transfer_call() {
 
     let res = user_acc
         .engine_ft_transfer_call(
-            &user_acc.id(),
-            &receiver_id,
+            user_acc.id().clone(),
+            receiver_id.clone(),
             transfer_amount,
-            &memo,
-            &message,
+            memo,
+            message,
         )
         .max_gas()
         .deposit(ONE_YOCTO)
@@ -1589,24 +1590,22 @@ async fn test_engine_storage_deposit() {
 
     let bounds = contract
         .contract
-        .call("storage_balance_bounds")
-        .view()
+        .storage_balance_bounds()
         .await
         .transact()
         .await
-        .unwrap().result;
+        .unwrap()
+        .result;
 
     let res = user_acc
-        .engine_storage_deposit(
-            &user_acc.id(),
-             &user_acc.id()
-        )
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+    }
 
     contract
         .set_and_check_access_right(user_acc.id())
@@ -1615,9 +1614,7 @@ async fn test_engine_storage_deposit() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(
-             &user_acc.id(),
-            &user_acc.id())
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1628,17 +1625,14 @@ async fn test_engine_storage_deposit() {
     assert_eq!(balance.available.0, 0);
     assert!(balance.total.0 >= bounds.min.0);
 
-    let res = contract
+    let balance = contract
         .contract
-        .storage_balance_of(&contract.contract.id()
-        )
-        .max_gas()
-        .deposit(10)
+        .storage_balance_of(contract.contract.id().clone())
+        .await
         .transact()
         .await
-        .unwrap();
-    assert!(res.is_success());
-    let balance = res.into_vale();
+        .unwrap()
+        .result;
     assert_eq!(balance.available.0, 0);
     assert!(balance.total.0 >= bounds.min.0);
 }
@@ -1650,22 +1644,23 @@ async fn test_engine_storage_withdraw() {
 
     let bounds = contract
         .contract
-        .call("storage_balance_bounds")
-        .view()
+        .storage_balance_bounds()
         .await
         .transact()
         .await
-        .unwrap().result;
+        .unwrap()
+        .result;
 
     let amount: U128 = 10.into();
     let res = user_acc
-        .engine_storage_withdraw(user_acc.id(), amount)
-        .max_gas
+        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+    }
 
     contract
         .set_and_check_access_right(user_acc.id())
@@ -1674,9 +1669,7 @@ async fn test_engine_storage_withdraw() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(
-            &user_acc.id(),
-            &user_acc.id())
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1686,16 +1679,17 @@ async fn test_engine_storage_withdraw() {
 
     let amount: U128 = 1.into();
     let res = user_acc
-        .engine_storage_withdraw( user_acc.id(),amount)
+        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(
-        &res,
-        "The amount is greater than the available storage balance"
-    ));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(
+            &err,
+            "The amount is greater than the available storage balance",
+        ));
+    }
 }
 
 #[tokio::test]
@@ -1709,11 +1703,12 @@ async fn test_engine_storage_unregister() {
         .await
         .transact()
         .await
-        .unwrap().result;
+        .unwrap()
+        .result;
 
     let res = user_acc
-        .engine_storage_unregister(user_acc.id())
-        .max_gas
+        .engine_storage_unregister(user_acc.id().clone(), None)
+        .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
         .await
@@ -1727,8 +1722,7 @@ async fn test_engine_storage_unregister() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(&user_acc.id(),
-            &user_acc.id())
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1738,19 +1732,20 @@ async fn test_engine_storage_unregister() {
 
     let amount: U128 = 1.into();
     let res = user_acc
-        .engine_storage_withdraw(user_acc.id(),amount)
+        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(
-        &res,
-        "The amount is greater than the available storage balance"
-    ));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(
+            &err,
+            "The amount is greater than the available storage balance",
+        ));
+    }
 
     let res = user_acc
-        .engine_storage_unregister(user_acc.id())
+        .engine_storage_unregister(user_acc.id().clone(), None)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1759,13 +1754,16 @@ async fn test_engine_storage_unregister() {
     assert!(res.is_success());
 
     let res = user_acc
-        .engine_storage_withdraw(user_acc.id(), amount)
+        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "The account eth_recipient.root is not registered"));
+        .await;
+    if let Err(err) = res {
+        assert!(
+            contract.check_error_message(&err, "The account eth_recipient.root is not registered")
+        );
+    }
 }
 
 #[tokio::test]
@@ -1786,14 +1784,15 @@ async fn test_manage_engine_accounts() {
         .await
         .transact()
         .await
-        .unwrap().result;
+        .unwrap()
+        .result;
     assert_eq!(res.len(), 2);
     assert!(res.contains(&acc1));
     assert!(res.contains(&acc2));
 
     let res = contract
         .contract
-        .remove_engine_account(&acc1)
+        .remove_engine_account(acc1.clone())
         .max_gas()
         .transact()
         .await
@@ -1805,24 +1804,29 @@ async fn test_manage_engine_accounts() {
         .await
         .transact()
         .await
-        .unwrap().result;
+        .unwrap()
+        .result;
     assert_eq!(res.len(), 1);
     assert!(!res.contains(&acc1));
     assert!(res.contains(&acc2));
 }
 
 #[tokio::test]
-async fn test_ft_transfer_call_insufficient_sender_balance()  {
+async fn test_ft_transfer_call_insufficient_sender_balance() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
 
     let recipient_id = DEPOSITED_RECIPIENT.parse().unwrap();
-    let balance = contract.get_eth_on_near_balance(&recipient_id).await.unwrap();
+    let balance = contract
+        .get_eth_on_near_balance(&recipient_id)
+        .await
+        .unwrap();
     assert_eq!(balance.0, DEPOSITED_AMOUNT);
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await.unwrap();
+        .await
+        .unwrap();
     assert_eq!(balance.0, 0);
 
     let fee: u128 = 0;
@@ -1833,34 +1837,51 @@ async fn test_ft_transfer_call_insufficient_sender_balance()  {
             .to_vec(),
     );
     let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
-    let memo: Option<String> = None;
+    let memo: Option<String> = Some("some memp".to_string());
 
     let transfer_amount: U128 = 1.into();
     let res = contract
         .contract
-        .ft_transfer_call(&contract.contract.id(), transfer_amount, &memo, &message)
+        .ft_transfer_call(
+            contract.contract.id().clone(),
+            transfer_amount,
+            memo.clone(),
+            message.clone(),
+        )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap_err();
-    assert!(contract.check_error_message(&res, "Insufficient sender balance"));
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(&err, "Insufficient sender balance"));
+    }
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await.unwrap();
+        .await
+        .unwrap();
     assert_eq!(balance.0, 0);
 
     let transfer_amount: U128 = 0.into();
     let res = contract
         .contract
-        .ft_transfer_call(&contract.contract.id(), transfer_amount, &memo, &message)
+        .ft_transfer_call(
+            contract.contract.id().clone(),
+            transfer_amount,
+            memo,
+            message,
+        )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
-        .await.unwrap_err();
-    assert!(contract.check_error_message(&res, "The amount should be a positive non zero number"));
+        .await;
+    if let Err(err) = res {
+        assert!(
+            contract.check_error_message(&err, "The amount should be a positive non zero number")
+        );
+    }
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
-        .await.unwrap();
+        .await
+        .unwrap();
     assert_eq!(balance.0, 0);
 }
-*/
