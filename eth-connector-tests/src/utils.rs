@@ -33,13 +33,12 @@ impl TestContract {
         eth_custodian_address: &str,
         owner_id: &str,
     ) -> anyhow::Result<Self> {
-        use std::str::FromStr;
         let (contract, root_account) = Self::deploy_aurora_contract().await?;
-        let owner_id: AccountId = AccountId::from_str(owner_id).unwrap();
+        let owner_id: AccountId = owner_id.parse().unwrap();
 
         let prover_account: AccountId = contract.id().clone();
         let metadata = Self::metadata_default();
-        let account_with_access_right: AccountId = AccountId::from_str(CONTRACT_ACC).unwrap();
+        let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
         // Init eth-connector
         let res = contract
             .init(
