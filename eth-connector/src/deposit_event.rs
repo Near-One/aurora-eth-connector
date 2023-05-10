@@ -237,7 +237,6 @@ pub struct DepositedEvent {
     pub sender: Address,
     pub token_message_data: TokenMessageData,
     pub amount: Balance,
-    pub fee: Fee,
 }
 
 impl DepositedEvent {
@@ -314,7 +313,6 @@ impl DepositedEvent {
             sender,
             token_message_data,
             amount,
-            fee,
         })
     }
 }

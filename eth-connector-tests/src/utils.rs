@@ -330,7 +330,6 @@ impl TestContract {
             sender: Address::new(H160([0u8; 20])),
             token_message_data,
             amount: deposit_amount,
-            fee,
         };
 
         let event_schema = ethabi::Event {
@@ -348,7 +347,7 @@ impl TestContract {
             data: ethabi::encode(&[
                 ethabi::Token::String(message),
                 ethabi::Token::Uint(U256::from(deposit_event.amount)),
-                ethabi::Token::Uint(U256::from(deposit_event.fee.as_u128())),
+                ethabi::Token::Uint(U256::from(fee.as_u128())),
             ]),
         };
         Proof {
