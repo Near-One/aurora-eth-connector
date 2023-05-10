@@ -258,8 +258,7 @@ impl DepositedEvent {
                 name: "amount".to_string(),
                 kind: ParamType::Uint(256),
                 indexed: false,
-            },
-            // NOTICE: fee field is currently unused
+            },§§
             EventParam {
                 name: "fee".to_string(),
                 kind: ParamType::Uint(256),
