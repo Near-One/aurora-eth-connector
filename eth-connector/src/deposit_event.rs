@@ -258,7 +258,7 @@ impl DepositedEvent {
                 name: "amount".to_string(),
                 kind: ParamType::Uint(256),
                 indexed: false,
-            },§§
+            },
             EventParam {
                 name: "fee".to_string(),
                 kind: ParamType::Uint(256),
