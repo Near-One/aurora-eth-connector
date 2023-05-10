@@ -510,7 +510,6 @@ async fn test_deposit_with_0x_prefix() -> anyhow::Result<()> {
         sender: Address::zero(),
         token_message_data,
         amount: deposit_amount,
-        fee,
     };
 
     let event_schema = ethabi::Event {
@@ -528,7 +527,7 @@ async fn test_deposit_with_0x_prefix() -> anyhow::Result<()> {
         data: ethabi::encode(&[
             ethabi::Token::String(message),
             ethabi::Token::Uint(U256::from(deposit_event.amount)),
-            ethabi::Token::Uint(U256::from(deposit_event.fee.as_u128())),
+            ethabi::Token::Uint(U256::from(fee.as_u128())),
         ]),
     };
     let proof = Proof {

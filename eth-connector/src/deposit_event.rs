@@ -237,7 +237,6 @@ pub struct DepositedEvent {
     pub sender: Address,
     pub token_message_data: TokenMessageData,
     pub amount: Balance,
-    pub fee: Fee,
 }
 
 impl DepositedEvent {
@@ -260,6 +259,7 @@ impl DepositedEvent {
                 kind: ParamType::Uint(256),
                 indexed: false,
             },
+            // NOTICE: fee field is currently unused
             EventParam {
                 name: "fee".to_string(),
                 kind: ParamType::Uint(256),
@@ -314,7 +314,6 @@ impl DepositedEvent {
             sender,
             token_message_data,
             amount,
-            fee,
         })
     }
 }

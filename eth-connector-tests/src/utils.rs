@@ -330,7 +330,6 @@ impl TestContract {
             sender: Address::new(H160([0u8; 20])),
             token_message_data,
             amount: deposit_amount,
-            fee,
         };
 
         let event_schema = ethabi::Event {
