@@ -310,7 +310,7 @@ version = "0.1.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine-migration-tool.git#3c3f7f771ff985d510bb1f051811767fdfbe911b"
 dependencies = [
  "anyhow",
- "aurora-engine-types",
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.9.0)",
  "base64 0.13.1",
  "clap 4.2.5",
  "libc",
@@ -339,10 +339,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "aurora-eth-connector"
-version = "0.4.1"
+name = "aurora-engine-types"
+version = "1.0.0"
+source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=d9763085157188055f62752fd499ac4c7db8331e#d9763085157188055f62752fd499ac4c7db8331e"
 dependencies = [
- "aurora-engine-types",
+ "borsh 0.9.3",
+ "hex 0.4.3",
+ "primitive-types 0.12.1",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "aurora-eth-connector"
+version = "0.5.1"
+dependencies = [
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.9.0)",
  "byte-slice-cast",
  "ethabi",
  "hex 0.4.3",
@@ -356,12 +368,14 @@ dependencies = [
 
 [[package]]
 name = "aurora-eth-connector-tests"
-version = "0.4.1"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "aurora-engine-migration-tool",
- "aurora-engine-types",
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.9.0)",
  "aurora-eth-connector",
+ "aurora-workspace-eth-connector",
+ "aurora-workspace-utils",
  "byte-slice-cast",
  "ethabi",
  "hex 0.4.3",
@@ -370,6 +384,52 @@ dependencies = [
  "near-sdk",
  "near-units",
  "rlp",
+ "tokio",
+ "workspaces",
+]
+
+[[package]]
+name = "aurora-workspace-eth-connector"
+version = "0.1.0"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git#8edac8d88edac594527ce15b1eff9f3ed223d328"
+dependencies = [
+ "anyhow",
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.9.0)",
+ "aurora-workspace-types",
+ "aurora-workspace-utils",
+ "borsh 0.9.3",
+ "near-contract-standards",
+ "near-sdk",
+ "serde",
+ "serde_json",
+ "workspaces",
+]
+
+[[package]]
+name = "aurora-workspace-types"
+version = "0.1.0"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git#8edac8d88edac594527ce15b1eff9f3ed223d328"
+dependencies = [
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=d9763085157188055f62752fd499ac4c7db8331e)",
+ "ethereum-types",
+ "near-account-id 0.15.0",
+ "near-sdk",
+ "rlp",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "aurora-workspace-utils"
+version = "0.1.0"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git#8edac8d88edac594527ce15b1eff9f3ed223d328"
+dependencies = [
+ "anyhow",
+ "aurora-workspace-types",
+ "borsh 0.9.3",
+ "near-sdk",
+ "near-units",
+ "serde",
  "tokio",
  "workspaces",
 ]

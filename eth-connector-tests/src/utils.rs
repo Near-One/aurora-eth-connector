@@ -1,10 +1,11 @@
 use aurora_engine_types::types::Address;
-use aurora_eth_connector::proof::Proof;
+use aurora_workspace_eth_connector::contract::EthConnectorContract;
+use aurora_workspace_eth_connector::types::Proof;
+use aurora_workspace_utils::results::ExecutionResult;
+use aurora_workspace_utils::Contract;
 use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
-use near_sdk::serde_json::json;
 use near_sdk::{json_types::U128, serde_json};
-use workspaces::network::NetworkClient;
-use workspaces::{result::ExecutionFinalResult, Account, AccountId, Contract, Worker};
+use workspaces::{result::ExecutionFinalResult, Account, AccountId};
 
 pub const PROOF_DATA_NEAR: &str = r#"{"log_index":0,"log_entry_data":[248,251,148,9,109,233,194,184,165,184,194,44,238,50,137,177,1,246,150,13,104,229,30,248,66,160,209,66,67,156,39,142,37,218,217,165,7,102,241,83,208,227,210,215,191,43,209,111,194,120,28,75,212,148,178,177,90,157,160,0,0,0,0,0,0,0,0,0,0,0,0,121,24,63,219,216,14,45,138,234,26,202,162,246,123,251,138,54,212,10,141,184,160,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,54,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,101,116,104,95,114,101,99,105,112,105,101,110,116,46,114,111,111,116,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"receipt_index":0,"receipt_data":[249,2,6,1,130,107,17,185,1,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,253,248,251,148,9,109,233,194,184,165,184,194,44,238,50,137,177,1,246,150,13,104,229,30,248,66,160,209,66,67,156,39,142,37,218,217,165,7,102,241,83,208,227,210,215,191,43,209,111,194,120,28,75,212,148,178,177,90,157,160,0,0,0,0,0,0,0,0,0,0,0,0,121,24,63,219,216,14,45,138,234,26,202,162,246,123,251,138,54,212,10,141,184,160,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,54,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,101,116,104,95,114,101,99,105,112,105,101,110,116,46,114,111,111,116,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"header_data":[249,2,10,160,177,33,112,26,26,176,12,12,163,2,249,133,245,12,51,201,55,50,148,156,122,67,27,26,101,178,36,153,54,100,53,137,160,29,204,77,232,222,199,93,122,171,133,181,103,182,204,212,26,211,18,69,27,148,138,116,19,240,161,66,253,64,212,147,71,148,124,28,230,160,8,239,64,193,62,78,177,68,166,204,116,240,224,174,172,126,160,197,65,5,202,188,134,5,164,246,19,133,35,57,28,114,241,186,81,123,163,166,161,24,32,157,168,170,13,108,58,61,46,160,6,199,163,13,91,119,225,39,168,255,213,10,107,252,143,246,138,241,108,139,59,35,187,185,162,223,53,108,222,73,181,109,160,27,154,49,63,26,170,15,177,97,255,6,204,84,221,234,197,159,172,114,47,148,126,32,199,241,127,101,120,182,51,52,100,185,1,0,0,0,8,0,0,0,0,0,0,0,32,0,0,0,0,0,2,0,8,0,0,0,0,0,0,0,0,0,0,2,0,0,0,0,0,0,0,0,8,32,0,32,0,0,128,0,2,0,0,0,1,0,32,0,0,0,2,0,0,0,0,32,0,0,0,0,0,4,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,128,64,0,0,0,0,1,32,0,0,0,0,0,0,96,32,0,64,0,0,0,128,1,0,0,0,0,1,0,0,0,8,0,0,0,18,32,0,0,64,145,1,8,0,4,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,33,16,0,128,0,0,0,0,0,0,128,0,2,0,0,0,0,0,0,0,0,0,0,2,0,80,0,0,0,0,0,0,0,0,1,128,0,8,0,0,0,0,4,0,0,0,128,2,0,32,0,128,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,16,0,8,0,0,0,0,0,0,0,0,0,0,128,0,64,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,132,25,1,227,23,131,157,85,14,131,122,18,0,131,75,91,132,132,96,174,58,224,140,115,112,105,100,101,114,49,48,1,2,8,230,160,188,212,199,183,154,22,223,85,103,215,24,122,240,235,79,129,44,93,184,88,161,218,79,5,44,226,106,100,50,40,163,97,136,155,158,202,3,149,91,200,78],"proof":[[248,113,160,46,156,31,85,241,226,241,13,5,56,73,146,176,67,195,109,6,189,172,104,44,103,44,88,32,15,181,152,136,29,121,252,160,191,48,87,174,71,151,208,114,164,150,51,200,171,90,90,106,46,200,79,77,222,145,95,89,141,137,138,149,67,73,8,87,128,128,128,128,128,128,160,175,9,219,77,174,13,247,133,55,172,92,185,202,7,160,10,204,112,44,133,36,96,30,234,235,134,30,209,205,166,212,255,128,128,128,128,128,128,128,128],[249,2,13,48,185,2,9,249,2,6,1,130,107,17,185,1,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,32,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,248,253,248,251,148,9,109,233,194,184,165,184,194,44,238,50,137,177,1,246,150,13,104,229,30,248,66,160,209,66,67,156,39,142,37,218,217,165,7,102,241,83,208,227,210,215,191,43,209,111,194,120,28,75,212,148,178,177,90,157,160,0,0,0,0,0,0,0,0,0,0,0,0,121,24,63,219,216,14,45,138,234,26,202,162,246,123,251,138,54,212,10,141,184,160,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,96,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,12,54,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,144,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,18,101,116,104,95,114,101,99,105,112,105,101,110,116,46,114,111,111,116,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]}"#;
 pub const DEPOSITED_RECIPIENT: &str = "eth_recipient.root";
@@ -19,7 +20,7 @@ pub const DEPOSITED_EVM_AMOUNT: u128 = 10200;
 pub const CONTRACT_ACC: &str = "eth_connector.root";
 
 pub struct TestContract {
-    pub contract: Contract,
+    pub contract: EthConnectorContract,
     pub root_account: Account,
 }
 
@@ -40,15 +41,13 @@ impl TestContract {
         let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
         // Init eth-connector
         let res = contract
-            .call("new")
-            .args_json(json!({
-                "prover_account": prover_account,
-                "account_with_access_right": account_with_access_right,
-                "owner_id": owner_id,
-                "eth_custodian_address": eth_custodian_address,
-                "metadata": metadata,
-            }))
-            .gas(DEFAULT_GAS)
+            .init(
+                prover_account,
+                eth_custodian_address.to_string(),
+                metadata,
+                &account_with_access_right,
+                owner_id,
+            )
             .transact()
             .await?;
         assert!(res.is_success());
@@ -59,46 +58,14 @@ impl TestContract {
         })
     }
 
-    pub async fn deploy_aurora_contract() -> anyhow::Result<(Contract, Account)> {
-        use workspaces::{
-            types::{KeyType, SecretKey},
-            AccessKey,
-        };
-
-        let worker = workspaces::sandbox()
-            .await
-            .map_err(|err| anyhow::anyhow!("Failed init sandbox: {:?}", err))?;
-        let testnet = workspaces::testnet()
-            .await
-            .map_err(|err| anyhow::anyhow!("Failed init testnet: {:?}", err))?;
-        let registrar: AccountId = "registrar".parse()?;
-        let registrar = worker
-            .import_contract(&registrar, &testnet)
-            .transact()
-            .await?;
-        Self::waiting_account_creation(&worker, registrar.id()).await?;
-
-        let sk = SecretKey::from_seed(KeyType::ED25519, "registrar");
-
-        let root: AccountId = "root".parse()?;
-        registrar
-            .as_account()
-            .batch(&root)
-            .create_account()
-            .add_key(sk.public_key(), AccessKey::full_access())
-            .transfer(near_units::parse_near!("200 N"))
-            .transact()
-            .await?
-            .into_result()?;
-
-        let root_account = Account::from_secret_key(root, sk, &worker);
+    pub async fn deploy_aurora_contract() -> anyhow::Result<(EthConnectorContract, Account)> {
+        let root_account = Contract::create_root_account("root").await?;
         let eth_connector = root_account
             .create_subaccount("eth_connector")
             .initial_balance(near_units::parse_near!("85 N"))
             .transact()
             .await?
             .into_result()?;
-
         // Explicitly read contract file
         let contract_data =
             std::fs::read("../bin/aurora-eth-connector-test.wasm").unwrap_or_else(|_| {
@@ -107,12 +74,14 @@ impl TestContract {
                     std::env::current_dir().unwrap()
                 )
             });
+        let contract = Contract::deploy(eth_connector, contract_data).await?;
+        Ok((EthConnectorContract::new(contract), root_account))
+    }
 
-        let contract = eth_connector
-            .deploy(&contract_data[..])
-            .await?
-            .into_result()?;
-        Ok((contract, root_account))
+    pub async fn contract_account(&self, name: &str) -> anyhow::Result<EthConnectorContract> {
+        let account = self.create_sub_account(name).await?;
+        let contract = Contract::new(self.contract.id().clone(), account);
+        Ok(EthConnectorContract::new(contract))
     }
 
     pub async fn create_sub_account(&self, name: &str) -> anyhow::Result<Account> {
@@ -125,108 +94,78 @@ impl TestContract {
             .into_result()?)
     }
 
-    /// Waiting for the account creation
-    async fn waiting_account_creation<T: NetworkClient + Sync + Send + ?Sized>(
-        worker: &Worker<T>,
-        account_id: &AccountId,
-    ) -> anyhow::Result<()> {
-        let timer = std::time::Instant::now();
-        // Try to get account within 30 secs
-        for _ in 0..60 {
-            if worker.view_account(account_id).await.is_err() {
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            } else {
-                return Ok(());
-            }
-        }
-
-        anyhow::bail!(
-            "Account `{}` was not created in {:?} sec",
-            account_id,
-            timer.elapsed()
-        )
-    }
-
-    pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionFinalResult> {
-        Ok(self
-            .contract
-            .call("deposit")
-            .args_borsh(proof)
-            .gas(DEFAULT_GAS)
+    pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionResult<()>> {
+        self.contract
+            .deposit(proof.clone())
+            .max_gas()
             .transact()
-            .await?)
+            .await
     }
 
     pub async fn user_deposit_with_proof(
         &self,
-        user: &Account,
+        user: &EthConnectorContract,
         proof: &Proof,
-    ) -> anyhow::Result<ExecutionFinalResult> {
-        Ok(user
-            .call(self.contract.id(), "deposit")
-            .args_borsh(proof)
-            .gas(DEFAULT_GAS)
-            .transact()
-            .await?)
+    ) -> anyhow::Result<ExecutionResult<()>> {
+        user.deposit(proof.clone()).max_gas().transact().await
     }
 
     #[must_use]
     pub fn get_proof(&self, proof: &str) -> Proof {
-        serde_json::from_str(proof).unwrap()
+        serde_json::from_str(proof).expect("get_proof")
     }
 
     #[must_use]
-    pub fn check_error_message(&self, res: &ExecutionFinalResult, error_msg: &str) -> bool {
-        format!("{res:?}").contains(error_msg)
+    pub fn check_error_message(&self, res: &anyhow::Error, error_msg: &str) -> bool {
+        format!("{:?}", res.to_string()).contains(error_msg)
     }
 
-    pub async fn call_is_used_proof(&self, proof: &str) -> anyhow::Result<bool> {
-        let proof: Proof = serde_json::from_str(proof).unwrap();
-        let res = self
+    pub async fn call_is_used_proof(&self, proof_str: &str) -> anyhow::Result<bool> {
+        let proof = self.get_proof(proof_str);
+        Ok(self
             .contract
-            .call("is_used_proof")
-            .args_borsh(proof)
-            .view()
-            .await?
-            .borsh::<bool>()
-            .expect("call_is_used_proof");
-        Ok(res)
+            .is_used_proof(proof)
+            .await
+            .transact()
+            .await
+            .expect("call_is_used_proof")
+            .result)
     }
 
     pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
-        let proof: Proof = serde_json::from_str(PROOF_DATA_ETH).unwrap();
+        let proof = self.get_proof(PROOF_DATA_ETH);
         let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_eth_to_aurora: {res:#?}");
         Ok(())
     }
 
     pub async fn call_deposit_eth_to_near(&self) -> anyhow::Result<()> {
-        let proof: Proof = self.get_proof(PROOF_DATA_NEAR);
+        let proof = self.get_proof(PROOF_DATA_NEAR);
         let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_eth_to_near: {res:#?}");
         Ok(())
     }
 
     pub async fn get_eth_on_near_balance(&self, account: &AccountId) -> anyhow::Result<U128> {
-        let res = self
+        Ok(self
             .contract
-            .call("ft_balance_of")
-            .args_json((account,))
-            .view()
-            .await?
-            .json::<U128>()
-            .expect("get_eth_on_near_balance");
-        Ok(res)
+            .ft_balance_of(account.clone())
+            .await
+            .transact()
+            .await
+            .expect("get_eth_on_near_balance")
+            .result)
     }
 
     pub async fn total_supply(&self) -> anyhow::Result<U128> {
         Ok(self
             .contract
-            .call("ft_total_supply")
-            .view()
-            .await?
-            .json::<U128>()
-            .expect("total_supply"))
+            .ft_total_supply()
+            .await
+            .transact()
+            .await
+            .expect("total_supply")
+            .result)
     }
 
     fn metadata_default() -> FungibleTokenMetadata {
@@ -242,34 +181,32 @@ impl TestContract {
     }
 
     pub async fn register_user(&self, user: &str) -> anyhow::Result<AccountId> {
-        use near_contract_standards::storage_management::StorageBalanceBounds;
-
+        let account_id = AccountId::try_from(user.to_string())?;
         let bounds = self
             .contract
-            .call("storage_balance_bounds")
-            .view()
+            .storage_balance_bounds()
+            .await
+            .transact()
             .await?
-            .json::<StorageBalanceBounds>()?;
+            .result;
 
         let res = self
             .contract
-            .call("storage_deposit")
-            .args_json(json!({ "account_id": &user }))
-            .gas(DEFAULT_GAS)
+            .storage_deposit(Some(account_id.clone()), None)
+            .max_gas()
             .deposit(bounds.min.into())
             .transact()
             .await?;
         assert!(res.is_success());
 
-        Ok(user.parse()?)
+        Ok(account_id)
     }
 
     pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
         let res = self
             .contract
-            .call("set_access_right")
-            .args_json((acc,))
-            .gas(DEFAULT_GAS)
+            .set_access_right(acc.clone())
+            .max_gas()
             .transact()
             .await?;
         if res.is_failure() {
@@ -278,22 +215,23 @@ impl TestContract {
 
         let res = self
             .contract
-            .call("get_access_right")
-            .view()
+            .get_access_right()
+            .await
+            .transact()
             .await?
-            .json::<AccountId>()?;
+            .result;
+
         if &res != acc {
-            anyhow::bail!("check access_right fail: {:?} != {:?}", &res, acc);
+            anyhow::bail!("check access_right fail: {res:?} != {acc:?}");
         }
         Ok(())
     }
 
-    pub async fn set_engine_account(&self, acc: &AccountId) -> anyhow::Result<()> {
+    pub async fn set_engine_account(&self, engine_account: &AccountId) -> anyhow::Result<()> {
         let res = self
             .contract
-            .call("set_engine_account")
-            .args_json((&acc,))
-            .gas(DEFAULT_GAS)
+            .set_engine_account(engine_account.clone())
+            .max_gas()
             .transact()
             .await
             .unwrap();
@@ -362,7 +300,7 @@ impl TestContract {
     }
 
     pub async fn call_deposit_contract(&self) -> anyhow::Result<()> {
-        let proof: Proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1);
+        let proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1);
         let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_contract: {res:#?}");
         Ok(())
@@ -370,7 +308,7 @@ impl TestContract {
 }
 
 pub fn print_logs(res: &ExecutionFinalResult) {
-    for log in res.logs() {
+    for log in &res.logs() {
         println!("\t[LOG] {log}");
     }
 }
