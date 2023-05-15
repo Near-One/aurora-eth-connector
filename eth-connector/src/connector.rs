@@ -99,9 +99,9 @@ pub trait EngineStorageManagement {
 
 #[ext_contract(ext_known_engine_accounts)]
 pub trait KnownEngineAccountsManagement {
-    fn set_engine_account(&mut self, engine_account: AccountId);
+    fn set_engine_account(&mut self, engine_account: &AccountId);
 
-    fn remove_engine_account(&mut self, engine_account: AccountId);
+    fn remove_engine_account(&mut self, engine_account: &AccountId);
 
-    fn get_engine_accounts(&self) -> Vec<AccountId>;
+    fn is_engine_account_exist(&self, engine_account: &AccountId) -> bool;
 }

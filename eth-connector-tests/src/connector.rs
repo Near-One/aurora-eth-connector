@@ -420,13 +420,14 @@ async fn test_ft_transfer_call_user_message() {
 
     let res = contract
         .contract
-        .call("get_engine_accounts")
+        .call("is_engine_account_exist")
+        .args_json((&receiver_id,))
         .view()
         .await
         .unwrap()
-        .json::<Vec<AccountId>>()
+        .json::<bool>()
         .unwrap();
-    assert!(res.contains(receiver_id));
+    assert!(res);
 
     // Send to engine contract with wrong message should failed
     let res = user_acc
@@ -449,7 +450,7 @@ async fn test_ft_transfer_call_user_message() {
 }
 
 #[tokio::test]
-async fn test_set_and_get_engine_account() {
+async fn test_set_and_check_engine_account() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
 
@@ -478,15 +479,16 @@ async fn test_set_and_get_engine_account() {
         .unwrap();
     assert!(res.is_success());
 
-    let res = contract
+    let is_exist = contract
         .contract
-        .call("get_engine_accounts")
+        .call("is_engine_account_exist")
+        .args_json((contract.contract.id(),))
         .view()
         .await
         .unwrap()
-        .json::<Vec<AccountId>>()
+        .json::<bool>()
         .unwrap();
-    assert!(res.contains(contract.contract.id()));
+    assert!(is_exist);
 }
 
 #[tokio::test]
@@ -1711,17 +1713,26 @@ async fn test_manage_engine_accounts() {
     let acc2 = "acc2.root".parse().unwrap();
     contract.set_engine_account(&acc1).await.unwrap();
     contract.set_engine_account(&acc2).await.unwrap();
-    let res = contract
+    let is_exist = contract
         .contract
-        .call("get_engine_accounts")
+        .call("is_engine_account_exist")
+        .args_json((&acc1,))
         .view()
         .await
         .unwrap()
-        .json::<Vec<AccountId>>()
+        .json::<bool>()
         .unwrap();
-    assert_eq!(res.len(), 2);
-    assert!(res.contains(&acc1));
-    assert!(res.contains(&acc2));
+    assert!(is_exist);
+    let is_exist = contract
+        .contract
+        .call("is_engine_account_exist")
+        .args_json((&acc2,))
+        .view()
+        .await
+        .unwrap()
+        .json::<bool>()
+        .unwrap();
+    assert!(is_exist);
 
     let res = contract
         .contract
@@ -1732,17 +1743,16 @@ async fn test_manage_engine_accounts() {
         .await
         .unwrap();
     assert!(res.is_success());
-    let res = contract
+    let is_exist = contract
         .contract
-        .call("get_engine_accounts")
+        .call("is_engine_account_exist")
+        .args_json((&acc1,))
         .view()
         .await
         .unwrap()
-        .json::<Vec<AccountId>>()
+        .json::<bool>()
         .unwrap();
-    assert_eq!(res.len(), 1);
-    assert!(!res.contains(&acc1));
-    assert!(res.contains(&acc2));
+    assert!(!is_exist);
 }
 
 #[tokio::test]
