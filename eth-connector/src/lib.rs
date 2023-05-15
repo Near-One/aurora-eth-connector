@@ -20,11 +20,10 @@ use near_contract_standards::fungible_token::receiver::ext_ft_receiver;
 use near_contract_standards::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use near_contract_standards::fungible_token::FungibleToken;
 use near_sdk::json_types::U64;
-use near_sdk::store::LookupMap;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
-    collections::LazyOption,
+    collections::{LazyOption, LookupSet},
     env,
     json_types::U128,
     near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
@@ -55,9 +54,9 @@ pub struct EthConnectorContract {
     connector: EthConnector,
     ft: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
-    used_proofs: LookupMap<String, bool>,
+    used_proofs: LookupSet<String>,
     accounts_counter: u64,
-    known_engine_accounts: Vec<AccountId>,
+    known_engine_accounts: LookupSet<AccountId>,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -65,30 +64,31 @@ enum StorageKey {
     FungibleToken = 0x1,
     Proof = 0x2,
     Metadata = 0x3,
+    EngineAccounts = 0x4,
 }
 
 impl EthConnectorContract {
     ///  Mint `nETH` tokens
     fn mint_eth_on_near(&mut self, owner_id: &AccountId, amount: Balance) {
-        crate::log!("Mint {} nETH tokens for: {}", amount, owner_id);
+        log!("Mint {} nETH tokens for: {}", amount, owner_id);
         // Create account to avoid panic with deposit
         self.register_if_not_exists(owner_id);
         self.ft.internal_deposit(owner_id, amount);
     }
 
     /// Record used proof as hash key
-    fn record_proof(&mut self, key: String) -> Result<(), errors::ProofUsed> {
-        crate::log!("Record proof: {}", key);
-        if self.is_used_event(&key) {
+    fn record_proof(&mut self, key: &String) -> Result<(), errors::ProofUsed> {
+        log!("Record proof: {}", key);
+        if self.is_used_event(key) {
             return Err(errors::ProofUsed);
         }
-        self.used_proofs.insert(key, true);
+        self.used_proofs.insert(key);
         Ok(())
     }
 
     /// Check is event of proof already used
-    fn is_used_event(&self, key: &str) -> bool {
-        self.used_proofs.contains_key(key)
+    fn is_used_event(&self, key: &String) -> bool {
+        self.used_proofs.contains(key)
     }
 
     // Register user and calculate counter
@@ -110,7 +110,7 @@ impl EthConnectorContract {
         self.register_if_not_exists(&receiver_id);
 
         let amount: Balance = amount.into();
-        crate::log!(
+        log!(
             "Transfer call from {} to {} amount {}",
             sender_id,
             receiver_id,
@@ -190,15 +190,16 @@ impl EthConnectorContract {
             },
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(metadata)),
-            used_proofs: LookupMap::new(StorageKey::Proof),
+            used_proofs: LookupSet::new(StorageKey::Proof),
             accounts_counter: 0,
-            known_engine_accounts: vec![],
+            known_engine_accounts: LookupSet::new(StorageKey::EngineAccounts),
         };
         this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(owner_id);
         this
     }
 
+    #[must_use]
     #[result_serializer(borsh)]
     pub fn is_used_proof(&self, #[serializer(borsh)] proof: &Proof) -> bool {
         self.is_used_event(&proof.get_key())
@@ -208,10 +209,11 @@ impl EthConnectorContract {
     #[result_serializer(borsh)]
     #[must_use]
     pub fn verify_log_entry() -> bool {
-        crate::log!("Call from verify_log_entry");
+        log!("Call from verify_log_entry");
         true
     }
 
+    #[must_use]
     pub fn get_bridge_prover(&self) -> AccountId {
         self.connector.prover_account.clone()
     }
@@ -296,19 +298,18 @@ impl EngineFungibleToken for EthConnectorContract {
 /// Management for a known Engine accounts
 #[near_bindgen]
 impl KnownEngineAccountsManagement for EthConnectorContract {
-    fn set_engine_account(&mut self, engine_account: AccountId) {
+    fn set_engine_account(&mut self, engine_account: &AccountId) {
         self.assert_access_right().sdk_unwrap();
-        self.known_engine_accounts.push(engine_account);
+        self.known_engine_accounts.insert(engine_account);
     }
 
-    fn remove_engine_account(&mut self, engine_account: AccountId) {
+    fn remove_engine_account(&mut self, engine_account: &AccountId) {
         self.assert_access_right().sdk_unwrap();
-        self.known_engine_accounts
-            .retain(|acc| *acc != engine_account);
+        self.known_engine_accounts.remove(engine_account);
     }
 
-    fn get_engine_accounts(&self) -> Vec<AccountId> {
-        self.known_engine_accounts.clone()
+    fn is_engine_account_exist(&self, engine_account: &AccountId) -> bool {
+        self.known_engine_accounts.contains(engine_account)
     }
 }
 
@@ -345,7 +346,7 @@ impl EthConnectorContract {
                 )
             }
         } else {
-            crate::log!("The account {} is not registered", &account_id);
+            log!("The account {} is not registered", &account_id);
             None
         }
     }
@@ -374,7 +375,7 @@ impl EngineStorageManagement for EthConnectorContract {
         let amount: Balance = env::attached_deposit();
         let account_id = account_id.unwrap_or_else(|| sender_id.clone());
         if self.ft.accounts.contains_key(&account_id) {
-            crate::log!("The account is already registered, refunding the deposit");
+            log!("The account is already registered, refunding the deposit");
             if amount > 0 {
                 Promise::new(sender_id).transfer(amount);
             }
@@ -565,12 +566,12 @@ impl FundsFinish for EthConnectorContract {
             panic_err(errors::ERR_VERIFY_PROOF);
         }
 
-        crate::log!("Finish deposit with the amount: {}", deposit_call.amount);
+        log!("Finish deposit with the amount: {}", deposit_call.amount);
 
         // Mint - calculate new balances
         self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
         // Store proof only after `mint` calculations
-        self.record_proof(deposit_call.proof_key).sdk_unwrap();
+        self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
         // Mint tokens to recipient minus fee
         deposit_call.msg.map_or_else(
@@ -608,12 +609,12 @@ impl Migration for EthConnectorContract {
         for (account, amount) in &data.accounts {
             self.ft.accounts.insert(account, amount);
         }
-        crate::log!("Inserted accounts_eth: {:?}", data.accounts.len());
+        log!("Inserted accounts_eth: {:?}", data.accounts.len());
 
         // Insert total_eth_supply_on_near
         if let Some(total_eth_supply_on_near) = data.total_supply {
             self.ft.total_supply = total_eth_supply_on_near;
-            crate::log!(
+            log!(
                 "Inserted total_eth_supply_on_near: {:?}",
                 total_eth_supply_on_near
             );
@@ -622,7 +623,7 @@ impl Migration for EthConnectorContract {
         // Insert account_storage_usage
         if let Some(account_storage_usage) = data.account_storage_usage {
             self.ft.account_storage_usage = account_storage_usage;
-            crate::log!(
+            log!(
                 "Inserted account_storage_usage: {:?}",
                 account_storage_usage
             );
@@ -631,7 +632,7 @@ impl Migration for EthConnectorContract {
         // Insert statistics_aurora_accounts_counter
         if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
             self.accounts_counter = statistics_aurora_accounts_counter;
-            crate::log!(
+            log!(
                 "Inserted statistics_aurora_accounts_counter: {:?}",
                 statistics_aurora_accounts_counter
             );
@@ -639,9 +640,9 @@ impl Migration for EthConnectorContract {
 
         // Insert Proof
         for proof_key in &data.used_proofs {
-            self.used_proofs.insert(proof_key.clone(), true);
+            self.used_proofs.insert(proof_key);
         }
-        crate::log!("Inserted used_proofs: {:?}", data.used_proofs.len());
+        log!("Inserted used_proofs: {:?}", data.used_proofs.len());
     }
 
     #[result_serializer(borsh)]
@@ -672,9 +673,8 @@ impl Migration for EthConnectorContract {
         // Check proofs
         let mut proofs_not_found: Vec<String> = vec![];
         for proof in &data.used_proofs {
-            match self.used_proofs.get(proof) {
-                Some(_) => (),
-                _ => proofs_not_found.push(proof.clone()),
+            if !self.used_proofs.contains(proof) {
+                proofs_not_found.push(proof.clone());
             }
         }
         if !proofs_not_found.is_empty() {

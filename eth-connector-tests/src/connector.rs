@@ -11,13 +11,6 @@ use aurora_workspace_eth_connector::types::{Proof, WithdrawResult};
 use byte_slice_cast::AsByteSlice;
 use near_sdk::{json_types::U128, ONE_YOCTO};
 use workspaces::AccountId;
-// use aurora_engine_types::{
-//     types::{Address, Fee, NEP141Wei},
-//     H256, U256,
-// };
-// use byte_slice_cast::AsByteSlice;
-// use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds};
-// use workspaces::AccountId;
 
 #[tokio::test]
 async fn test_ft_transfer() {
@@ -452,15 +445,14 @@ async fn test_ft_transfer_call_user_message() {
 
     contract.set_engine_account(receiver_id).await.unwrap();
 
-    let res = contract
+    let is_exist = contract
         .contract
-        .get_engine_accounts()
+        .is_engine_account_exist(receiver_id)
         .await
         .transact()
         .await
-        .unwrap()
-        .result;
-    assert!(res.contains(receiver_id));
+        .unwrap();
+    assert!(is_exist.result);
 
     // Send to engine contract with wrong message should failed
     let res = user_acc
@@ -487,13 +479,13 @@ async fn test_ft_transfer_call_user_message() {
 }
 
 #[tokio::test]
-async fn test_set_and_get_engine_account() {
+async fn test_set_and_check_engine_account() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
 
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     let res = user_acc
-        .set_engine_account(contract.contract.id().clone())
+        .set_engine_account(contract.contract.id())
         .max_gas()
         .transact()
         .await
@@ -506,22 +498,21 @@ async fn test_set_and_get_engine_account() {
         .unwrap();
 
     let res = user_acc
-        .set_engine_account(contract.contract.id().clone())
+        .set_engine_account(contract.contract.id())
         .max_gas()
         .transact()
         .await
         .unwrap();
     assert!(res.is_success());
 
-    let res = contract
+    let is_exist = contract
         .contract
-        .get_engine_accounts()
+        .is_engine_account_exist(contract.contract.id())
         .await
         .transact()
         .await
-        .unwrap()
-        .result;
-    assert!(res.contains(contract.contract.id()));
+        .unwrap();
+    assert!(is_exist.result);
 }
 
 #[tokio::test]
@@ -1777,37 +1768,39 @@ async fn test_manage_engine_accounts() {
     let acc2 = "acc2.root".parse().unwrap();
     contract.set_engine_account(&acc1).await.unwrap();
     contract.set_engine_account(&acc2).await.unwrap();
-    let res = contract
+    let is_exist = contract
         .contract
-        .get_engine_accounts()
+        .is_engine_account_exist(&acc1)
         .await
         .transact()
         .await
-        .unwrap()
-        .result;
-    assert_eq!(res.len(), 2);
-    assert!(res.contains(&acc1));
-    assert!(res.contains(&acc2));
+        .unwrap();
+    assert!(is_exist.result);
+    let is_exist = contract
+        .contract
+        .is_engine_account_exist(&acc2)
+        .await
+        .transact()
+        .await
+        .unwrap();
+    assert!(is_exist.result);
 
     let res = contract
         .contract
-        .remove_engine_account(acc1.clone())
+        .remove_engine_account(&acc1)
         .max_gas()
         .transact()
         .await
         .unwrap();
     assert!(res.is_success());
-    let res = contract
+    let is_exist = contract
         .contract
-        .get_engine_accounts()
+        .is_engine_account_exist(&acc1)
         .await
         .transact()
         .await
-        .unwrap()
-        .result;
-    assert_eq!(res.len(), 1);
-    assert!(!res.contains(&acc1));
-    assert!(res.contains(&acc2));
+        .unwrap();
+    assert!(!is_exist.result);
 }
 
 #[tokio::test]
