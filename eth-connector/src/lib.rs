@@ -510,8 +510,8 @@ impl Withdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
         WithdrawResult {
-            recipient_id: recipient_address,
             amount,
+            recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
     }
@@ -537,8 +537,8 @@ impl EngineConnectorWithdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
         WithdrawResult {
-            recipient_id: recipient_address,
             amount,
+            recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
     }
