@@ -234,6 +234,10 @@ impl FungibleTokenCore for EthConnectorContract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         assert_one_yocto();
+        require!(
+            env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
+            "More gas is required"
+        );
         let sender_id = env::predecessor_account_id();
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
@@ -280,6 +284,10 @@ impl EngineFungibleToken for EthConnectorContract {
         msg: String,
     ) -> PromiseOrValue<U128> {
         assert_one_yocto();
+        require!(
+            env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
+            "More gas is required"
+        );
         self.assert_access_right().sdk_unwrap();
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
