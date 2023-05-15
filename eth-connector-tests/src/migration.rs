@@ -1,33 +1,31 @@
-use crate::utils::{TestContract, DEFAULT_GAS};
+use crate::utils::TestContract;
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
-use aurora_eth_connector::migration::{CheckResult, InputData};
+use aurora_workspace_eth_connector::types::{MigrationCheckResult, MigrationInputData};
 use std::collections::HashMap;
 
 #[tokio::test]
-async fn test_migration_access_right() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
-    let data = InputData {
+async fn test_migration_access_right() {
+    let contract = TestContract::new().await.unwrap();
+    let data = MigrationInputData {
         accounts: HashMap::new(),
         total_supply: None,
         account_storage_usage: None,
         statistics_aurora_accounts_counter: None,
         used_proofs: vec![],
     };
-    let user_acc = contract.create_sub_account("any").await?;
+    let user_acc = contract.contract_account("any").await.unwrap();
     let res = user_acc
-        .call(contract.contract.id(), "migrate")
-        .args_borsh(data)
-        .gas(DEFAULT_GAS)
+        .migrate(data)
+        .max_gas()
         .transact()
-        .await?;
-    assert!(res.is_failure());
+        .await
+        .unwrap_err();
     assert!(contract.check_error_message(&res, "Method migrate is private"));
-    Ok(())
 }
 
 #[tokio::test]
-async fn test_migration() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
+async fn test_migration() {
+    let contract = TestContract::new().await.unwrap();
 
     let proof_keys: Vec<String> =
         ["148209196192531111581487824716711513123053186167982062461521682161284461208612290809";
@@ -35,7 +33,7 @@ async fn test_migration() -> anyhow::Result<()> {
             .iter()
             .map(|&s| s.into())
             .collect();
-    let data = InputData {
+    let data = MigrationInputData {
         accounts: HashMap::new(),
         total_supply: None,
         account_storage_usage: None,
@@ -44,22 +42,20 @@ async fn test_migration() -> anyhow::Result<()> {
     };
     let res = contract
         .contract
-        .call("migrate")
-        .args_borsh(data)
-        .gas(DEFAULT_GAS)
+        .migrate(data)
+        .max_gas()
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
-    assert!(to_tera(res.total_gas_burnt) < 95.6);
-    println!("Gas burnt: {:.1} TGas", to_tera(res.total_gas_burnt));
-
-    Ok(())
+    assert!(to_tera(res.total_gas_burnt()) < 95.6);
+    println!("Gas burnt: {:.1} TGas", to_tera(res.total_gas_burnt()));
 }
 
 #[allow(clippy::too_many_lines)]
 #[tokio::test]
-async fn test_migration_state() -> anyhow::Result<()> {
-    let contract = TestContract::new().await?;
+async fn test_migration_state() {
+    let contract = TestContract::new().await.unwrap();
     let data = std::fs::read("../contract_state.borsh").expect("Test state data not found");
     let data: StateData = StateData::try_from_slice(&data[..]).unwrap();
 
@@ -77,7 +73,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
             &data.proofs[i..i + limit]
         };
         proofs_count += proofs.len();
-        let args = InputData {
+        let args = MigrationInputData {
             accounts: HashMap::new(),
             total_supply: None,
             account_storage_usage: None,
@@ -86,16 +82,15 @@ async fn test_migration_state() -> anyhow::Result<()> {
         };
         let res = contract
             .contract
-            .call("migrate")
-            .args_borsh(args)
-            .gas(DEFAULT_GAS)
+            .migrate(args)
+            .max_gas()
             .transact()
-            .await?;
+            .await
+            .unwrap();
         assert!(res.is_success());
-        proofs_gas_burnt += res.total_gas_burnt;
+        proofs_gas_burnt += res.total_gas_burnt();
         println!(
-            "Proofs: {:?} [{:.1} TGas]",
-            proofs_count,
+            "Proofs: {proofs_count:?} [{:.1} TGas]",
             to_tera(proofs_gas_burnt)
         );
         if i + limit >= data.proofs.len() {
@@ -122,7 +117,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
         }
         accounts_count += &accounts.len();
 
-        let args = InputData {
+        let args = MigrationInputData {
             accounts,
             total_supply: None,
             account_storage_usage: None,
@@ -131,17 +126,16 @@ async fn test_migration_state() -> anyhow::Result<()> {
         };
         let res = contract
             .contract
-            .call("migrate")
-            .args_borsh(args)
-            .gas(DEFAULT_GAS)
+            .migrate(args)
+            .max_gas()
             .transact()
-            .await?;
+            .await
+            .unwrap();
         assert!(res.is_success());
-        accounts_gas_burnt += res.total_gas_burnt;
+        accounts_gas_burnt += res.total_gas_burnt();
 
         println!(
-            "Accounts: {:?} [{:.1} TGas]",
-            accounts_count,
+            "Accounts: {accounts_count:?} [{:.1} TGas]",
             to_tera(accounts_gas_burnt)
         );
         // Clear
@@ -162,7 +156,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     total_gas_burnt += accounts_gas_burnt;
 
     // Migrate Contract data
-    let args = InputData {
+    let args = MigrationInputData {
         accounts: HashMap::new(),
         total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
@@ -171,13 +165,13 @@ async fn test_migration_state() -> anyhow::Result<()> {
     };
     let res = contract
         .contract
-        .call("migrate")
-        .args_borsh(args)
-        .gas(DEFAULT_GAS)
+        .migrate(args)
+        .max_gas()
         .transact()
-        .await?;
+        .await
+        .unwrap();
     assert!(res.is_success());
-    total_gas_burnt += res.total_gas_burnt;
+    total_gas_burnt += res.total_gas_burnt();
     // INCREASED!
     //assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 6878.6);
     // INCREASED!
@@ -197,7 +191,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
     //============================
 
     // Check basic (NEP-141) contract data
-    let args = InputData {
+    let args = MigrationInputData {
         accounts: HashMap::new(),
         total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
@@ -206,13 +200,13 @@ async fn test_migration_state() -> anyhow::Result<()> {
     };
     let res = contract
         .contract
-        .call("check_migration_correctness")
-        .args_borsh(args)
-        .view()
-        .await?
-        .borsh::<CheckResult>()
-        .unwrap();
-    assert_eq!(res, CheckResult::Success);
+        .check_migration_correctness(args)
+        .await
+        .transact()
+        .await
+        .unwrap()
+        .result;
+    assert_eq!(res, MigrationCheckResult::Success);
 
     // Check proofs data
     proofs_count = 0;
@@ -224,7 +218,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
             &data.proofs[i..i + limit]
         };
         proofs_count += proofs.len();
-        let args = InputData {
+        let args = MigrationInputData {
             accounts: HashMap::new(),
             total_supply: None,
             account_storage_usage: None,
@@ -233,13 +227,13 @@ async fn test_migration_state() -> anyhow::Result<()> {
         };
         let res = contract
             .contract
-            .call("check_migration_correctness")
-            .args_borsh(args)
-            .view()
-            .await?
-            .borsh::<CheckResult>()
-            .unwrap();
-        assert_eq!(res, CheckResult::Success);
+            .check_migration_correctness(args)
+            .await
+            .transact()
+            .await
+            .unwrap()
+            .result;
+        assert_eq!(res, MigrationCheckResult::Success);
 
         println!("Proofs checked: [{proofs_count:?}]");
         if i + limit >= data.proofs.len() {
@@ -258,7 +252,7 @@ async fn test_migration_state() -> anyhow::Result<()> {
             continue;
         }
         accounts_count += accounts.len();
-        let args = InputData {
+        let args = MigrationInputData {
             accounts,
             total_supply: None,
             account_storage_usage: None,
@@ -267,18 +261,16 @@ async fn test_migration_state() -> anyhow::Result<()> {
         };
         let res = contract
             .contract
-            .call("check_migration_correctness")
-            .args_borsh(args)
-            .view()
-            .await?
-            .borsh::<CheckResult>()
-            .unwrap();
-        assert_eq!(res, CheckResult::Success);
+            .check_migration_correctness(args)
+            .await
+            .transact()
+            .await
+            .unwrap()
+            .result;
+        assert_eq!(res, MigrationCheckResult::Success);
         accounts = HashMap::new();
         println!("Accounts checked: [{accounts_count:?}]");
     }
-
-    Ok(())
 }
 
 #[allow(clippy::cast_precision_loss)]

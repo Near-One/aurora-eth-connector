@@ -380,7 +380,7 @@ impl EngineStorageManagement for EthConnectorContract {
             self.ft.internal_register_account(&account_id);
             let refund = amount - min_balance;
             if refund > 0 {
-                Promise::new(env::predecessor_account_id()).transfer(refund);
+                Promise::new(sender_id).transfer(refund);
             }
         }
         self.internal_storage_balance_of(&account_id).unwrap()
