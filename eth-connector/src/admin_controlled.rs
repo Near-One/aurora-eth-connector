@@ -41,7 +41,7 @@ pub trait AdminControlled {
     fn set_access_right(&mut self, account: &AccountId);
 
     /// Get account access right for contract
-    fn get_access_right(&self) -> AccountId;
+    fn get_account_with_access_right(&self) -> AccountId;
 
     /// Check access right for predecessor account
     ///
@@ -49,7 +49,9 @@ pub trait AdminControlled {
     ///
     /// Error is returned if the caller hasn't rights.
     fn assert_access_right(&self) -> Result<(), error::AdminControlledError> {
-        if self.get_access_right() == near_sdk::env::predecessor_account_id() || self.is_owner() {
+        if self.get_account_with_access_right() == near_sdk::env::predecessor_account_id()
+            || self.is_owner()
+        {
             Ok(())
         } else {
             Err(error::AdminControlledError::AccessRight)

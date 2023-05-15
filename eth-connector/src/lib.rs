@@ -481,8 +481,8 @@ impl AdminControlled for EthConnectorContract {
         self.connector.set_access_right(account);
     }
 
-    fn get_access_right(&self) -> AccountId {
-        self.connector.get_access_right()
+    fn get_account_with_access_right(&self) -> AccountId {
+        self.connector.get_account_with_access_right()
     }
 
     fn is_owner(&self) -> bool {
