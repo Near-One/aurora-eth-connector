@@ -49,10 +49,7 @@ pub trait AdminControlled {
     ///
     /// Error is returned if the caller hasn't rights.
     fn assert_access_right(&self) -> Result<(), error::AdminControlledError> {
-        if self.get_access_right() == near_sdk::env::predecessor_account_id()
-            || self.is_owner()
-            || near_sdk::env::predecessor_account_id() == near_sdk::env::current_account_id()
-        {
+        if self.get_access_right() == near_sdk::env::predecessor_account_id() || self.is_owner() {
             Ok(())
         } else {
             Err(error::AdminControlledError::AccessRight)
@@ -65,9 +62,7 @@ pub trait AdminControlled {
     ///
     /// Error is returned if the caller isn't owner.
     fn assert_owner_access_right(&self) -> Result<(), error::AdminControlledError> {
-        if self.is_owner()
-            || near_sdk::env::predecessor_account_id() == near_sdk::env::current_account_id()
-        {
+        if self.is_owner() {
             Ok(())
         } else {
             Err(error::AdminControlledError::AccessRight)
