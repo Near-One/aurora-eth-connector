@@ -14,10 +14,10 @@ use near_sdk::{
 };
 
 /// NEAR Gas for calling `finish_deposit` promise. Used in the `deposit` logic.
-pub const GAS_FOR_FINISH_DEPOSIT: Gas = Gas(50_000_000_000_000);
+pub const GAS_FOR_FINISH_DEPOSIT: Gas = Gas(50 * Gas::ONE_TERA.0);
 /// NEAR Gas for calling `verify_log_entry` promise. Used in the `deposit` logic.
 // Note: Is 40 TGas always enough?
-const GAS_FOR_VERIFY_LOG_ENTRY: Gas = Gas(40_000_000_000_000);
+const GAS_FOR_VERIFY_LOG_ENTRY: Gas = Gas(40 * Gas::ONE_TERA.0);
 
 /// transfer eth-connector call args
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
@@ -84,7 +84,7 @@ impl AdminControlled for EthConnector {
 }
 
 impl EthConnector {
-    pub(crate) fn deposit(&mut self, proof: &Proof) -> Promise {
+    pub(crate) fn deposit(&mut self, proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
 
         // Check is current flow paused. If it's owner account just skip it.
@@ -117,11 +117,6 @@ impl EthConnector {
             "Deposit verify_log_entry for prover: {}",
             self.prover_account,
         );
-
-        // Do not skip bridge call. This is only used for development and diagnostics.
-        let skip_bridge_call = false.try_to_vec().unwrap();
-        let mut proof_to_verify = proof.try_to_vec().unwrap();
-        proof_to_verify.extend(skip_bridge_call);
 
         // Finalize deposit
         let finish_deposit_data = match event.token_message_data {
@@ -161,7 +156,7 @@ impl EthConnector {
 
         ext_proof_verifier::ext(self.prover_account.clone())
             .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
-            .verify_log_entry(proof_to_verify.into())
+            .verify_log_entry(proof.into())
             .then(
                 ext_funds_finish::ext(current_account_id)
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)

@@ -1,11 +1,9 @@
-use crate::{connector_impl::FinishDepositCallArgs, Proof, WithdrawResult};
+use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, WithdrawResult};
 use aurora_engine_types::types::Address;
 use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::json_types::U64;
 use near_sdk::{
-    borsh, ext_contract,
-    json_types::{Base64VecU8, U128},
-    AccountId, Balance, Promise, PromiseOrValue,
+    borsh, ext_contract, json_types::U128, AccountId, Balance, Promise, PromiseOrValue,
 };
 
 #[ext_contract(ext_deposit)]
@@ -37,7 +35,7 @@ pub trait FundsFinish {
 #[ext_contract(ext_proof_verifier)]
 pub trait ProofVerifier {
     #[result_serializer(borsh)]
-    fn verify_log_entry(&self, #[serializer(borsh)] raw_proof: Base64VecU8) -> bool;
+    fn verify_log_entry(&self, #[serializer(borsh)] args: VerifyProofArgs) -> bool;
 }
 
 #[ext_contract(ext_ft_statistic)]

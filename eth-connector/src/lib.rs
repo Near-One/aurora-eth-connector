@@ -9,7 +9,7 @@ use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
 use crate::deposit_event::FtTransferMessageData;
-use crate::proof::Proof;
+use crate::proof::{Proof, VerifyProofArgs};
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
@@ -40,8 +40,8 @@ pub mod migration;
 pub mod proof;
 pub mod types;
 
-const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
-const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.0);
+const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
+const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25 * Gas::ONE_TERA.0 + GAS_FOR_RESOLVE_TRANSFER.0);
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -170,7 +170,6 @@ impl EthConnectorContract {
         account_with_access_right: AccountId,
         owner_id: &AccountId,
     ) -> Self {
-        require!(!env::state_exists(), "Already initialized");
         metadata.assert_valid();
 
         // Get initial Eth Connector arguments
@@ -208,7 +207,8 @@ impl EthConnectorContract {
     #[cfg(feature = "integration-test")]
     #[result_serializer(borsh)]
     #[must_use]
-    pub fn verify_log_entry() -> bool {
+    #[allow(unused_variables)]
+    pub fn verify_log_entry(#[serializer(borsh)] proof_args: &VerifyProofArgs) -> bool {
         log!("Call from verify_log_entry");
         true
     }
@@ -547,8 +547,8 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl Deposit for EthConnectorContract {
-    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise {
-        self.connector.deposit(&raw_proof)
+    fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
+        self.connector.deposit(proof)
     }
 }
 
@@ -577,15 +577,15 @@ impl FundsFinish for EthConnectorContract {
         deposit_call.msg.map_or_else(
             || PromiseOrValue::Value(None),
             |msg| {
-                let data: TransferCallCallArgs = TransferCallCallArgs::try_from_slice(&msg)
+                let args = TransferCallCallArgs::try_from_slice(&msg)
                     .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                     .sdk_unwrap();
                 let promise = self.internal_ft_transfer_call(
                     env::predecessor_account_id(),
-                    data.receiver_id,
-                    data.amount.into(),
-                    data.memo,
-                    data.msg,
+                    args.receiver_id,
+                    args.amount.into(),
+                    args.memo,
+                    args.msg,
                 );
                 match promise {
                     PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
