@@ -215,7 +215,7 @@ impl TestContract {
 
         let res = self
             .contract
-            .get_access_right()
+            .get_account_with_access_right()
             .await
             .transact()
             .await?
@@ -230,7 +230,7 @@ impl TestContract {
     pub async fn set_engine_account(&self, engine_account: &AccountId) -> anyhow::Result<()> {
         let res = self
             .contract
-            .set_engine_account(engine_account.clone())
+            .set_engine_account(engine_account)
             .max_gas()
             .transact()
             .await

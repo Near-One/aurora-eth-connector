@@ -493,7 +493,7 @@ async fn test_set_and_get_engine_account() {
 
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     let res = user_acc
-        .set_engine_account(contract.contract.id().clone())
+        .set_engine_account(contract.contract.id())
         .max_gas()
         .transact()
         .await
@@ -506,7 +506,7 @@ async fn test_set_and_get_engine_account() {
         .unwrap();
 
     let res = user_acc
-        .set_engine_account(contract.contract.id().clone())
+        .set_engine_account(contract.contract.id())
         .max_gas()
         .transact()
         .await
