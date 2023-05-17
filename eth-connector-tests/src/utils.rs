@@ -215,7 +215,7 @@ impl TestContract {
 
         let res = self
             .contract
-            .get_access_right()
+            .get_account_with_access_right()
             .await
             .transact()
             .await?

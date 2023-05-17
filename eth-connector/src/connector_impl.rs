@@ -73,7 +73,7 @@ impl AdminControlled for EthConnector {
         self.account_with_access_right = account.clone();
     }
 
-    fn get_access_right(&self) -> AccountId {
+    fn get_account_with_access_right(&self) -> AccountId {
         self.account_with_access_right.clone()
     }
 

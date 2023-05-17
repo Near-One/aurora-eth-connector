@@ -20,8 +20,8 @@ pub type EventParams = Vec<EventParam>;
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
 pub struct FtTransferMessageData {
     pub relayer: AccountId,
-    pub recipient: Address,
     pub fee: Fee,
+    pub recipient: Address,
 }
 
 impl FtTransferMessageData {

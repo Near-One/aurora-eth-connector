@@ -482,8 +482,8 @@ impl AdminControlled for EthConnectorContract {
         self.connector.set_access_right(account);
     }
 
-    fn get_access_right(&self) -> AccountId {
-        self.connector.get_access_right()
+    fn get_account_with_access_right(&self) -> AccountId {
+        self.connector.get_account_with_access_right()
     }
 
     fn is_owner(&self) -> bool {
@@ -511,8 +511,8 @@ impl Withdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
         WithdrawResult {
-            recipient_id: recipient_address,
             amount,
+            recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
     }
@@ -538,8 +538,8 @@ impl EngineConnectorWithdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
         WithdrawResult {
-            recipient_id: recipient_address,
             amount,
+            recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
     }
