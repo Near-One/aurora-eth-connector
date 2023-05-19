@@ -1,4 +1,7 @@
+use aurora_engine_types::str::from_utf8;
 use near_sdk::env::panic_str;
+
+const INVALID_UTF8_ERR_STRING: &str = "INVALID_UTF8_ERR_STRING";
 
 #[macro_export]
 macro_rules! log {
@@ -10,7 +13,7 @@ macro_rules! log {
 
 /// Panic with the message from the error argument.
 pub fn panic_err<E: AsRef<[u8]>>(err: E) -> ! {
-    panic_str(&String::from_utf8_lossy(err.as_ref()))
+    panic_str(err_to_str(&err))
 }
 
 pub trait SdkExpect<T> {
@@ -41,6 +44,10 @@ impl<T> SdkUnwrap<T> for Option<T> {
 
 impl<T, E: AsRef<[u8]>> SdkUnwrap<T> for Result<T, E> {
     fn sdk_unwrap(self) -> T {
-        self.unwrap_or_else(|e| panic_str(&String::from_utf8_lossy(e.as_ref())))
+        self.unwrap_or_else(|e| panic_str(err_to_str(&e)))
     }
+}
+
+fn err_to_str<E: AsRef<[u8]>>(err: &E) -> &str {
+    from_utf8(err.as_ref()).unwrap_or(INVALID_UTF8_ERR_STRING)
 }
