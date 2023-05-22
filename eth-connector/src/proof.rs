@@ -34,6 +34,31 @@ impl Proof {
     }
 }
 
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct VerifyProofArgs {
+    pub log_index: u64,
+    pub log_entry_data: Vec<u8>,
+    pub receipt_index: u64,
+    pub receipt_data: Vec<u8>,
+    pub header_data: Vec<u8>,
+    pub proof: Vec<Vec<u8>>,
+    pub skip_bridge_call: bool,
+}
+
+impl From<Proof> for VerifyProofArgs {
+    fn from(value: Proof) -> Self {
+        Self {
+            log_index: value.log_index,
+            log_entry_data: value.log_entry_data,
+            receipt_index: value.receipt_index,
+            receipt_data: value.receipt_data,
+            header_data: value.header_data,
+            proof: value.proof,
+            skip_bridge_call: false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Proof;
