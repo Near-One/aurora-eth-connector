@@ -7,7 +7,6 @@ pub struct InputData {
     pub accounts: HashMap<AccountId, Balance>,
     pub total_supply: Option<Balance>,
     pub account_storage_usage: Option<StorageUsage>,
-    pub statistics_aurora_accounts_counter: Option<u64>,
     pub used_proofs: Vec<String>,
 }
 

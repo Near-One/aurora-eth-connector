@@ -10,7 +10,6 @@ async fn test_migration_access_right() {
         accounts: HashMap::new(),
         total_supply: None,
         account_storage_usage: None,
-        statistics_aurora_accounts_counter: None,
         used_proofs: vec![],
     };
     let user_acc = contract.contract_account("any").await.unwrap();
@@ -37,7 +36,6 @@ async fn test_migration() {
         accounts: HashMap::new(),
         total_supply: None,
         account_storage_usage: None,
-        statistics_aurora_accounts_counter: None,
         used_proofs: proof_keys,
     };
     let res = contract
@@ -77,7 +75,6 @@ async fn test_migration_state() {
             accounts: HashMap::new(),
             total_supply: None,
             account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
             used_proofs: proofs.to_vec(),
         };
         let res = contract
@@ -121,7 +118,6 @@ async fn test_migration_state() {
             accounts,
             total_supply: None,
             account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
             used_proofs: vec![],
         };
         let res = contract
@@ -160,7 +156,6 @@ async fn test_migration_state() {
         accounts: HashMap::new(),
         total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
-        statistics_aurora_accounts_counter: Some(data.accounts_counter),
         used_proofs: vec![],
     };
     let res = contract
@@ -195,7 +190,6 @@ async fn test_migration_state() {
         accounts: HashMap::new(),
         total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(data.contract_data.account_storage_usage),
-        statistics_aurora_accounts_counter: Some(data.accounts_counter),
         used_proofs: vec![],
     };
     let res = contract
@@ -222,7 +216,6 @@ async fn test_migration_state() {
             accounts: HashMap::new(),
             total_supply: None,
             account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
             used_proofs: proofs.to_vec(),
         };
         let res = contract
@@ -256,7 +249,6 @@ async fn test_migration_state() {
             accounts,
             total_supply: None,
             account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
             used_proofs: vec![],
         };
         let res = contract
