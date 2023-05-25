@@ -1,18 +1,14 @@
 use crate::utils::TestContract;
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
+use aurora_engine_types::types::NEP141Wei;
 use aurora_workspace_eth_connector::types::{MigrationCheckResult, MigrationInputData};
+use near_sdk::{AccountId, Balance};
 use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_migration_access_right() {
     let contract = TestContract::new().await.unwrap();
-    let data = MigrationInputData {
-        accounts: HashMap::new(),
-        total_supply: None,
-        account_storage_usage: None,
-        statistics_aurora_accounts_counter: None,
-        used_proofs: vec![],
-    };
+    let data = MigrationInputData::default();
     let user_acc = contract.contract_account("any").await.unwrap();
     let res = user_acc
         .migrate(data)
@@ -26,19 +22,14 @@ async fn test_migration_access_right() {
 #[tokio::test]
 async fn test_migration() {
     let contract = TestContract::new().await.unwrap();
-
-    let proof_keys: Vec<String> =
-        ["148209196192531111581487824716711513123053186167982062461521682161284461208612290809";
-            1000]
-            .iter()
-            .map(|&s| s.into())
-            .collect();
+    let proof_keys = vec![
+            "148209196192531111581487824716711513123053186167982062461521682161284461208612290809"
+                .to_string();
+            1000
+        ];
     let data = MigrationInputData {
-        accounts: HashMap::new(),
-        total_supply: None,
-        account_storage_usage: None,
-        statistics_aurora_accounts_counter: None,
         used_proofs: proof_keys,
+        ..Default::default()
     };
     let res = contract
         .contract
@@ -57,28 +48,20 @@ async fn test_migration() {
 async fn test_migration_state() {
     let contract = TestContract::new().await.unwrap();
     let data = std::fs::read("../contract_state.borsh").expect("Test state data not found");
-    let data: StateData = StateData::try_from_slice(&data[..]).unwrap();
+    let state = StateData::try_from_slice(&data).unwrap();
 
     let limit = 1000;
-    let mut i = 0;
     let mut total_gas_burnt = 0;
 
     // Proofs migration
     let mut proofs_gas_burnt = 0;
     let mut proofs_count = 0;
-    loop {
-        let proofs = if i + limit >= data.proofs.len() {
-            &data.proofs[i..]
-        } else {
-            &data.proofs[i..i + limit]
-        };
+
+    for proofs in state.proofs.chunks(limit) {
         proofs_count += proofs.len();
         let args = MigrationInputData {
-            accounts: HashMap::new(),
-            total_supply: None,
-            account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
             used_proofs: proofs.to_vec(),
+            ..Default::default()
         };
         let res = contract
             .contract
@@ -93,13 +76,9 @@ async fn test_migration_state() {
             "Proofs: {proofs_count:?} [{:.1} TGas]",
             to_tera(proofs_gas_burnt)
         );
-        if i + limit >= data.proofs.len() {
-            break;
-        }
-
-        i += limit;
     }
-    assert_eq!(proofs_count, data.proofs.len());
+
+    assert_eq!(proofs_count, state.proofs.len());
     // INCREASED!
     //assert!(proofs_gas_burnt as f64 / 1_000_000_000_000. < 5416.1);
     assert!(to_tera(proofs_gas_burnt) < 10326.0);
@@ -107,22 +86,16 @@ async fn test_migration_state() {
     println!();
 
     // Accounts migration
+    let accounts_vec = state.accounts.iter().collect::<Vec<_>>();
     let mut accounts_gas_burnt = 0;
-    let mut accounts = HashMap::new();
     let mut accounts_count = 0;
-    for (i, (account, amount)) in data.accounts.iter().enumerate() {
-        accounts.insert(account.clone(), amount.as_u128());
-        if accounts.len() < limit && i < data.accounts.len() - 1 {
-            continue;
-        }
-        accounts_count += &accounts.len();
+
+    for chunk in accounts_vec.chunks(limit) {
+        accounts_count += chunk.len();
 
         let args = MigrationInputData {
-            accounts,
-            total_supply: None,
-            account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
-            used_proofs: vec![],
+            accounts: vec_to_map(chunk),
+            ..Default::default()
         };
         let res = contract
             .contract
@@ -138,10 +111,8 @@ async fn test_migration_state() {
             "Accounts: {accounts_count:?} [{:.1} TGas]",
             to_tera(accounts_gas_burnt)
         );
-        // Clear
-        accounts = HashMap::new();
     }
-    assert_eq!(data.accounts.len(), accounts_count);
+    assert_eq!(state.accounts.len(), accounts_count);
     // INCREASED!
     //assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1457.);
     // println!("\n{:?}", accounts_gas_burnt);
@@ -157,11 +128,10 @@ async fn test_migration_state() {
 
     // Migrate Contract data
     let args = MigrationInputData {
-        accounts: HashMap::new(),
-        total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
-        account_storage_usage: Some(data.contract_data.account_storage_usage),
-        statistics_aurora_accounts_counter: Some(data.accounts_counter),
-        used_proofs: vec![],
+        total_supply: Some(state.contract_data.total_eth_supply_on_near.as_u128()),
+        account_storage_usage: Some(state.contract_data.account_storage_usage),
+        statistics_aurora_accounts_counter: Some(state.accounts_counter),
+        ..Default::default()
     };
     let res = contract
         .contract
@@ -192,11 +162,10 @@ async fn test_migration_state() {
 
     // Check basic (NEP-141) contract data
     let args = MigrationInputData {
-        accounts: HashMap::new(),
-        total_supply: Some(data.contract_data.total_eth_supply_on_near.as_u128()),
-        account_storage_usage: Some(data.contract_data.account_storage_usage),
-        statistics_aurora_accounts_counter: Some(data.accounts_counter),
-        used_proofs: vec![],
+        total_supply: Some(state.contract_data.total_eth_supply_on_near.as_u128()),
+        account_storage_usage: Some(state.contract_data.account_storage_usage),
+        statistics_aurora_accounts_counter: Some(state.accounts_counter),
+        ..Default::default()
     };
     let res = contract
         .contract
@@ -210,20 +179,11 @@ async fn test_migration_state() {
 
     // Check proofs data
     proofs_count = 0;
-    i = 0;
-    loop {
-        let proofs = if i + limit >= data.proofs.len() {
-            &data.proofs[i..]
-        } else {
-            &data.proofs[i..i + limit]
-        };
+    for proofs in state.proofs.chunks(limit) {
         proofs_count += proofs.len();
         let args = MigrationInputData {
-            accounts: HashMap::new(),
-            total_supply: None,
-            account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
             used_proofs: proofs.to_vec(),
+            ..Default::default()
         };
         let res = contract
             .contract
@@ -236,28 +196,16 @@ async fn test_migration_state() {
         assert_eq!(res, MigrationCheckResult::Success);
 
         println!("Proofs checked: [{proofs_count:?}]");
-        if i + limit >= data.proofs.len() {
-            break;
-        }
-
-        i += limit;
     }
 
     // Check accounts data
-    accounts = HashMap::new();
     accounts_count = 0;
-    for (i, (account, amount)) in data.accounts.iter().enumerate() {
-        accounts.insert(account.clone(), amount.as_u128());
-        if accounts.len() < limit && i < data.accounts.len() - 1 {
-            continue;
-        }
-        accounts_count += accounts.len();
+    for chunk in accounts_vec.chunks(limit) {
+        accounts_count += chunk.len();
+
         let args = MigrationInputData {
-            accounts,
-            total_supply: None,
-            account_storage_usage: None,
-            statistics_aurora_accounts_counter: None,
-            used_proofs: vec![],
+            accounts: vec_to_map(chunk),
+            ..Default::default()
         };
         let res = contract
             .contract
@@ -268,7 +216,6 @@ async fn test_migration_state() {
             .unwrap()
             .result;
         assert_eq!(res, MigrationCheckResult::Success);
-        accounts = HashMap::new();
         println!("Accounts checked: [{accounts_count:?}]");
     }
 }
@@ -276,4 +223,10 @@ async fn test_migration_state() {
 #[allow(clippy::cast_precision_loss)]
 fn to_tera(gas: u64) -> f64 {
     gas as f64 / 1_000_000_000_000.
+}
+
+fn vec_to_map(vec: &[(&AccountId, &NEP141Wei)]) -> HashMap<AccountId, Balance> {
+    vec.iter()
+        .map(|(a, b)| ((*a).clone(), b.as_u128()))
+        .collect()
 }
