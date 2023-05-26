@@ -33,12 +33,12 @@ impl TestContract {
         eth_custodian_address: &str,
         owner_id: &str,
     ) -> anyhow::Result<Self> {
-        let (contract, root_account) = Self::deploy_aurora_contract().await?;
-        let owner_id: AccountId = owner_id.parse().unwrap();
+        let (contract, root_account) = Self::deploy_eth_connector().await?;
+        let owner_id = owner_id.parse().unwrap();
 
-        let prover_account: AccountId = contract.id().clone();
+        let prover_account = contract.id().clone();
         let metadata = Self::metadata_default();
-        let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
+        let account_with_access_right = CONTRACT_ACC.parse().unwrap();
         // Init eth-connector
         let res = contract
             .init(
@@ -58,7 +58,7 @@ impl TestContract {
         })
     }
 
-    pub async fn deploy_aurora_contract() -> anyhow::Result<(EthConnectorContract, Account)> {
+    pub async fn deploy_eth_connector() -> anyhow::Result<(EthConnectorContract, Account)> {
         let root_account = Contract::create_root_account("root").await?;
         let eth_connector = root_account
             .create_subaccount("eth_connector")
@@ -105,9 +105,9 @@ impl TestContract {
     pub async fn user_deposit_with_proof(
         &self,
         user: &EthConnectorContract,
-        proof: &Proof,
+        proof: Proof,
     ) -> anyhow::Result<ExecutionResult<()>> {
-        user.deposit(proof.clone()).max_gas().transact().await
+        user.deposit(proof).max_gas().transact().await
     }
 
     #[must_use]
@@ -256,7 +256,7 @@ impl TestContract {
         };
         use aurora_eth_connector::log_entry;
 
-        let eth_custodian_address = validate_eth_address(CUSTODIAN_ADDRESS);
+        let eth_custodian_address = str_to_address(CUSTODIAN_ADDRESS);
         let fee = Fee::new(NEP141Wei::new(0));
         let message = recipient_id.to_string();
         let token_message_data: TokenMessageData =
@@ -293,9 +293,7 @@ impl TestContract {
             // Only this field matters for the purpose of this test
             log_entry_data: rlp::encode(&log_entry).to_vec(),
             receipt_index: 1,
-            receipt_data: Vec::new(),
-            header_data: Vec::new(),
-            proof: Vec::new(),
+            ..Default::default()
         }
     }
 
@@ -314,6 +312,6 @@ pub fn print_logs(res: &ExecutionFinalResult) {
 }
 
 #[must_use]
-pub fn validate_eth_address(address: &str) -> Address {
+pub fn str_to_address(address: &str) -> Address {
     Address::decode(address).unwrap()
 }
