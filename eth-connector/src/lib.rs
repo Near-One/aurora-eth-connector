@@ -2,8 +2,8 @@
 #![allow(clippy::module_name_repetitions)]
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
-    Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
-    FungibleTokenStatistic, KnownEngineAccountsManagement, Withdraw,
+    Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FeeManagement,
+    FundsFinish, FungibleTokenStatistic, KnownEngineAccountsManagement, Withdraw,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -29,6 +29,7 @@ use near_sdk::{
     near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
+use serde::{Deserialize, Serialize};
 
 pub mod admin_controlled;
 pub mod connector;
@@ -42,6 +43,7 @@ pub mod types;
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
 const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25 * Gas::ONE_TERA.0 + GAS_FOR_RESOLVE_TRANSFER.0);
+const FEE_DECIMAL_PRECISION: u128 = 1_000_000; // Fee can be set in 6 decimal precision (10% -> 0.1 * 10e6)
 
 /// Eth-connector contract data. It's stored in the storage.
 /// Contains:
@@ -57,6 +59,34 @@ pub struct EthConnectorContract {
     used_proofs: LookupSet<String>,
     accounts_counter: u64,
     known_engine_accounts: LookupSet<AccountId>,
+    deposit_fee_percentage: DepositFeePercentage, //stores percentage of fee in 6 decimals
+    withdraw_fee_percentage: WithdrawFeePercentage,
+    deposit_fee_bound: FeeBounds,
+    withdraw_fee_bound: FeeBounds,
+}
+
+#[derive(
+    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq,
+)]
+pub struct FeeBounds {
+    lower_bound: u128,
+    upper_bound: u128,
+}
+
+#[derive(
+    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq,
+)]
+pub struct DepositFeePercentage {
+    eth_to_near: u128,
+    eth_to_aurora: u128,
+}
+
+#[derive(
+    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq,
+)]
+pub struct WithdrawFeePercentage {
+    near_to_eth: u128,
+    aurora_to_eth: u128,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -192,6 +222,22 @@ impl EthConnectorContract {
             used_proofs: LookupSet::new(StorageKey::Proof),
             accounts_counter: 0,
             known_engine_accounts: LookupSet::new(StorageKey::EngineAccounts),
+            deposit_fee_percentage: DepositFeePercentage {
+                eth_to_near: 0,
+                eth_to_aurora: 0,
+            },
+            withdraw_fee_percentage: WithdrawFeePercentage {
+                near_to_eth: 0,
+                aurora_to_eth: 0,
+            },
+            deposit_fee_bound: FeeBounds {
+                lower_bound: 0,
+                upper_bound: 0,
+            },
+            withdraw_fee_bound: FeeBounds {
+                lower_bound: 0,
+                upper_bound: 0,
+            },
         };
         this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(owner_id);
@@ -510,8 +556,13 @@ impl Withdraw for EthConnectorContract {
         let sender_id = env::predecessor_account_id();
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
+
+        let withdraw_fee_percent = self.get_withdraw_fee_percentage();
+        let mut fee_amount = (amount * withdraw_fee_percent.near_to_eth) / FEE_DECIMAL_PRECISION;
+        fee_amount = self.check_fee_bounds(fee_amount, false);
+
         WithdrawResult {
-            amount,
+            amount: (amount - fee_amount),
             recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
@@ -537,8 +588,13 @@ impl EngineConnectorWithdraw for EthConnectorContract {
             .sdk_unwrap();
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
+
+        let withdraw_fee_percent = self.get_withdraw_fee_percentage();
+        let mut fee_amount = (amount * withdraw_fee_percent.aurora_to_eth) / FEE_DECIMAL_PRECISION;
+        fee_amount = self.check_fee_bounds(fee_amount, false);
+
         WithdrawResult {
-            amount,
+            amount: (amount - fee_amount),
             recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
@@ -549,6 +605,76 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 impl Deposit for EthConnectorContract {
     fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
         self.connector.deposit(proof)
+    }
+}
+
+#[near_bindgen]
+impl FeeManagement for EthConnectorContract {
+    fn get_deposit_fee_percentage(&self) -> DepositFeePercentage {
+        self.deposit_fee_percentage.clone()
+    }
+
+    fn get_withdraw_fee_percentage(&self) -> WithdrawFeePercentage {
+        self.withdraw_fee_percentage.clone()
+    }
+
+    fn get_deposit_fee_bounds(&self) -> FeeBounds {
+        self.deposit_fee_bound.clone()
+    }
+
+    fn get_withdraw_fee_bounds(&self) -> FeeBounds {
+        self.withdraw_fee_bound.clone()
+    }
+
+    fn check_fee_bounds(&self, amount: u128, is_deposit: bool) -> u128 {
+        let mut fee_bounds = self.get_deposit_fee_bounds();
+        if !is_deposit {
+            fee_bounds = self.get_withdraw_fee_bounds();
+        }
+
+        if amount < fee_bounds.lower_bound {
+            return fee_bounds.lower_bound;
+        } else if amount > fee_bounds.upper_bound && fee_bounds.upper_bound != 0 {
+            return fee_bounds.upper_bound;
+        }
+        amount
+    }
+
+    fn set_deposit_fee_percentage(&mut self, eth_to_aurora: u128, eth_to_near: u128) {
+        assert!(self.is_owner(), "fee can be set by only owner");
+        self.deposit_fee_percentage = DepositFeePercentage {
+            eth_to_aurora,
+            eth_to_near,
+        };
+    }
+
+    fn set_withdraw_fee_percentage(&mut self, aurora_to_eth: u128, near_to_eth: u128) {
+        assert!(self.is_owner(), "fee can be set by only owner");
+        self.withdraw_fee_percentage = WithdrawFeePercentage {
+            aurora_to_eth,
+            near_to_eth,
+        }
+    }
+
+    fn set_deposit_fee_bounds(&mut self, lower_bound: u128, upper_bound: u128) {
+        assert!(self.is_owner(), "fee can be set by only owner");
+        self.deposit_fee_bound = FeeBounds {
+            lower_bound,
+            upper_bound,
+        }
+    }
+
+    fn set_withdraw_fee_bounds(&mut self, lower_bound: u128, upper_bound: u128) {
+        assert!(self.is_owner(), "fee can be set by only owner");
+        self.withdraw_fee_bound = FeeBounds {
+            lower_bound,
+            upper_bound,
+        }
+    }
+
+    fn claim_fee(&mut self, amount: u128) {
+        assert!(self.is_owner(), "fee can be set by only owner");
+        self.ft_transfer(env::predecessor_account_id(), amount.into(), None);
     }
 }
 
@@ -568,22 +694,28 @@ impl FundsFinish for EthConnectorContract {
 
         log!("Finish deposit with the amount: {}", deposit_call.amount);
 
+        let deposit_fee_percent = self.get_deposit_fee_percentage();
+
         // Mint - calculate new balances
-        self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
+        self.mint_eth_on_near(&env::current_account_id(), deposit_call.amount);
         // Store proof only after `mint` calculations
         self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
-        // Mint tokens to recipient minus fee
-        deposit_call.msg.map_or_else(
-            || PromiseOrValue::Value(None),
-            |msg| {
+        match deposit_call.msg {
+            Some(msg) => {
+                let mut fee_amount = (deposit_call.amount * deposit_fee_percent.eth_to_aurora)
+                    / FEE_DECIMAL_PRECISION;
+                fee_amount = self.check_fee_bounds(fee_amount, true);
+                let amount_to_transfer = deposit_call.amount - fee_amount;
+
+                // Mint tokens to recipient minus fee
                 let args = TransferCallCallArgs::try_from_slice(&msg)
                     .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                     .sdk_unwrap();
                 let promise = self.internal_ft_transfer_call(
                     env::predecessor_account_id(),
                     args.receiver_id,
-                    args.amount.into(),
+                    amount_to_transfer.into(),
                     args.memo,
                     args.msg,
                 );
@@ -591,8 +723,17 @@ impl FundsFinish for EthConnectorContract {
                     PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
                     PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
                 }
-            },
-        )
+            }
+            None => {
+                let mut fee_amount =
+                    (deposit_call.amount * deposit_fee_percent.eth_to_near) / FEE_DECIMAL_PRECISION;
+                fee_amount = self.check_fee_bounds(fee_amount, true);
+                let amount_to_transfer = deposit_call.amount - fee_amount;
+
+                self.ft_transfer(deposit_call.new_owner_id, amount_to_transfer.into(), None);
+                PromiseOrValue::Value(None)
+            }
+        }
     }
 }
 
@@ -720,7 +861,65 @@ impl FungibleTokenReceiver for EthConnectorContract {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
+
+    use near_sdk::test_utils::VMContextBuilder;
+    use near_sdk::testing_env;
+
+    macro_rules! inner_set_env {
+        ($builder:ident) => {
+            $builder
+        };
+
+        ($builder:ident, $key:ident:$value:expr $(,$key_tail:ident:$value_tail:expr)*) => {
+            {
+               $builder.$key($value.try_into().unwrap());
+               inner_set_env!($builder $(,$key_tail:$value_tail)*)
+            }
+        };
+    }
+
+    macro_rules! set_env {
+        ($($key:ident:$value:expr),* $(,)?) => {
+            let mut builder = VMContextBuilder::new();
+            let mut builder = &mut builder;
+            builder = inner_set_env!(builder, $($key: $value),*);
+            testing_env!(builder.build());
+        };
+    }
+
+    fn owner() -> AccountId {
+        "owner.near".parse().unwrap()
+    }
+
+    fn engine() -> AccountId {
+        "engine.near".parse().unwrap()
+    }
+
+    fn prover() -> AccountId {
+        "prover.near".parse().unwrap()
+    }
+
+    fn get_token_metadata() -> FungibleTokenMetadata {
+        let metadata = FungibleTokenMetadata {
+            spec: FT_METADATA_SPEC.to_string(),
+            name: "Ether".to_string(),
+            symbol: "ETH".to_string(),
+            icon: None,
+            reference: None,
+            reference_hash: None,
+            decimals: 18,
+        };
+        metadata
+    }
+
+    fn eth_custodian() -> Address {
+        Address::from_array([0xab; 20])
+    }
+    fn recipient_address() -> Address {
+        Address::from_array([0xef; 20])
+    }
 
     /// In the original implementation of the eth-connector contract the storage balance
     /// was always 0. This test confirms this is true for the new implementation.
@@ -732,6 +931,155 @@ mod tests {
             .unwrap();
         assert_eq!(storage_balance.total.0, 0);
         assert_eq!(storage_balance.available.0, 0);
+    }
+
+    #[test]
+    fn test_set_deposit_fee_percentage() {
+        set_env!(predecessor_account_id: owner(), current_account_id: owner());
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+        contract.set_deposit_fee_percentage(100000u128, 200000u128);
+        let deposit_fee = contract.get_deposit_fee_percentage();
+        assert_eq!(
+            deposit_fee.eth_to_aurora, 100000u128,
+            "eth_to_aurora deposit fee percentage doesn't match"
+        );
+        assert_eq!(
+            deposit_fee.eth_to_near, 200000u128,
+            "eth_to_near deposit fee precentage doesn't match"
+        );
+    }
+
+    #[test]
+    fn test_set_withdraw_fee_percentage() {
+        set_env!(predecessor_account_id: owner(), current_account_id: owner());
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+        contract.set_withdraw_fee_percentage(200000u128, 100000u128);
+        let withdraw_fee = contract.get_withdraw_fee_percentage();
+        assert_eq!(
+            withdraw_fee.near_to_eth, 100000u128,
+            "near_to_eth withdraw fee doesn't match"
+        );
+        assert_eq!(
+            withdraw_fee.aurora_to_eth, 200000u128,
+            "aurora_to_eth withdraw fee doesn't match"
+        );
+    }
+
+    #[test]
+    fn test_set_deposit_fee_bound() {
+        set_env!(predecessor_account_id: owner(), current_account_id: owner());
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+        contract.set_deposit_fee_bounds(100u128, 200u128);
+        let deposit_fee_bounds = contract.get_deposit_fee_bounds();
+        assert_eq!(
+            deposit_fee_bounds.upper_bound, 200u128,
+            "deposit fee upper bound doesn't matched"
+        );
+        assert_eq!(
+            deposit_fee_bounds.lower_bound, 100u128,
+            "deposit fee lower bound doesn't matched"
+        );
+    }
+
+    #[test]
+    fn test_set_withdraw_fee_bound() {
+        set_env!(predecessor_account_id: owner(), current_account_id: owner());
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+        contract.set_withdraw_fee_bounds(200u128, 350u128);
+
+        let withdraw_fee_bounds = contract.get_withdraw_fee_bounds();
+        assert_eq!(
+            withdraw_fee_bounds.lower_bound, 200u128,
+            "withdraw fee lower bound doesn't matched"
+        );
+        assert_eq!(
+            withdraw_fee_bounds.upper_bound, 350u128,
+            "withdraw fee upper bound doesn't matched"
+        );
+    }
+
+    #[test]
+    fn test_withdraw() {
+        set_env!(predecessor_account_id: owner(), current_account_id: owner(), attached_deposit: 1);
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+
+        // Setting fee-percentage and fee-bounds
+        contract.set_withdraw_fee_bounds(200u128, 350u128);
+        contract.set_withdraw_fee_percentage(200000u128, 100000u128);
+
+        contract.mint_eth_on_near(&owner(), 1000_000_000_000_000_000_000);
+        let eth_balance_of_owner_before_withdraw = contract.ft_balance_of(owner()).0;
+        assert_eq!(
+            eth_balance_of_owner_before_withdraw, 1000_000_000_000_000_000_000u128,
+            "eth balance of owner in near before withdraw doesn't matched"
+        );
+        let result = contract.withdraw(recipient_address(), 100000u128);
+        let withdraw_amount_after_fee_deductions = 100000u128 - 350u128;
+        assert_eq!(
+            result,
+            WithdrawResult {
+                amount: withdraw_amount_after_fee_deductions,
+                recipient_id: recipient_address(),
+                eth_custodian_address: eth_custodian()
+            },
+            "withdraw result doesn't matched as expected"
+        );
+        let eth_balance_of_owner_after_withdraw = contract.ft_balance_of(owner()).0;
+        assert_eq!(
+            eth_balance_of_owner_after_withdraw,
+            1000_000_000_000_000_000_000u128 - 100000u128,
+            "eth balance of owner in near after withdraw doesn't matched"
+        );
+    }
+
+    #[test]
+    fn test_engine_withdraw() {
+        set_env!(predecessor_account_id: owner(), current_account_id: owner());
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+
+        // Setting fee-percentage and fee-bounds
+        contract.set_withdraw_fee_bounds(80u128, 200u128);
+        contract.set_withdraw_fee_percentage(100000u128, 200000u128);
+
+        contract.mint_eth_on_near(&owner(), 1000_000_000_000_000_000_000);
+        let eth_balance_of_owner_before_withdraw = contract.ft_balance_of(owner()).0;
+        assert_eq!(
+            eth_balance_of_owner_before_withdraw, 1000_000_000_000_000_000_000u128,
+            "eth balance of owner in near before withdraw doesn't matched"
+        );
+        // engine or owner has the access to withdraw
+        set_env!(predecessor_account_id: engine(), attached_deposit: 1);
+        let result = contract.engine_withdraw(owner(), recipient_address(), 1000u128);
+        
+        // fee amount is in withdraw_bound range ie. 100
+        let withdraw_amount_after_fee_deductions = 1000u128 - 100u128;
+        assert_eq!(
+            result,
+            WithdrawResult {
+                amount: withdraw_amount_after_fee_deductions,
+                recipient_id: recipient_address(),
+                eth_custodian_address: eth_custodian()
+            },
+            "withdraw result doesn't matched as expected"
+        );
+        let eth_balance_of_owner_after_withdraw = contract.ft_balance_of(owner()).0;
+        assert_eq!(
+            eth_balance_of_owner_after_withdraw,
+            1000_000_000_000_000_000_000u128 - 1000u128,
+            "eth balance of owner in near after withdraw doesn't matched"
+        );
     }
 
     fn create_contract() -> EthConnectorContract {
