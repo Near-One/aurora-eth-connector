@@ -901,6 +901,10 @@ mod tests {
         "prover.near".parse().unwrap()
     }
 
+    fn eth_connector() -> AccountId {
+        "eth_connector".parse().unwrap()
+    }
+
     fn get_token_metadata() -> FungibleTokenMetadata {
         let metadata = FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
@@ -912,6 +916,19 @@ mod tests {
             decimals: 18,
         };
         metadata
+    }
+
+    fn get_finish_deposit_call_args(
+        new_owner_id: AccountId,
+        amount: u128,
+        proof_key: String,
+    ) -> FinishDepositCallArgs {
+        FinishDepositCallArgs {
+            new_owner_id,
+            amount,
+            proof_key,
+            msg: None,
+        }
     }
 
     fn eth_custodian() -> Address {
@@ -1062,7 +1079,7 @@ mod tests {
         // engine or owner has the access to withdraw
         set_env!(predecessor_account_id: engine(), attached_deposit: 1);
         let result = contract.engine_withdraw(owner(), recipient_address(), 1000u128);
-        
+
         // fee amount is in withdraw_bound range ie. 100
         let withdraw_amount_after_fee_deductions = 1000u128 - 100u128;
         assert_eq!(
@@ -1079,6 +1096,33 @@ mod tests {
             eth_balance_of_owner_after_withdraw,
             1000_000_000_000_000_000_000u128 - 1000u128,
             "eth balance of owner in near after withdraw doesn't matched"
+        );
+    }
+
+    #[test]
+    fn test_finish_deposit() {
+        set_env!(predecessor_account_id: eth_connector(), current_account_id: eth_connector(), attached_deposit: 1);
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+
+        //set token deposit fee percentage {eth -> aurora = 10%, eth -> near = 20%}
+        contract.set_deposit_fee_percentage(100000u128, 200000u128);
+
+        let new_owner_id: AccountId = "new.owner".parse().unwrap();
+        let proof_key = String::from(
+            "802298938109391379364782362347023517020015374823090151126200144662201181825340111",
+        );
+        let deposit_call =
+            get_finish_deposit_call_args(new_owner_id.to_owned(), 100u128, proof_key);
+
+        contract.finish_deposit(deposit_call, true);
+        let eth_balance_of_new_owner_after_finish_deposit =
+            contract.ft_balance_of(new_owner_id.to_owned()).0;
+        // (100 - 20% of 100) ie. 80 to be deposited {20% fee for eth -> near}
+        assert_eq!(
+            eth_balance_of_new_owner_after_finish_deposit, 80u128,
+            "eth_balance_of_new_owner_after_finish_deposit doesn't matched"
         );
     }
 
