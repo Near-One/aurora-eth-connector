@@ -1,5 +1,5 @@
 use crate::utils::{
-    validate_eth_address, TestContract, CONTRACT_ACC, CUSTODIAN_ADDRESS, DEPOSITED_AMOUNT,
+    str_to_address, TestContract, CONTRACT_ACC, CUSTODIAN_ADDRESS, DEPOSITED_AMOUNT,
     DEPOSITED_CONTRACT, DEPOSITED_EVM_AMOUNT, DEPOSITED_RECIPIENT, PROOF_DATA_ETH, PROOF_DATA_NEAR,
     RECIPIENT_ETH_ADDRESS,
 };
@@ -96,7 +96,7 @@ async fn test_withdraw_eth_from_near() {
     contract.call_deposit_contract().await.unwrap();
 
     let withdraw_amount = 100;
-    let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
     let res = contract
         .contract
         .withdraw(recipient_addr, withdraw_amount)
@@ -108,7 +108,7 @@ async fn test_withdraw_eth_from_near() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -130,7 +130,7 @@ async fn test_withdraw_eth_from_near_user() {
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let withdraw_amount = 100;
-    let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
 
     let res = user_acc
         .withdraw(recipient_addr, withdraw_amount)
@@ -142,7 +142,7 @@ async fn test_withdraw_eth_from_near_user() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -167,7 +167,7 @@ async fn test_withdraw_eth_from_near_engine() {
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let withdraw_amount = 100;
-    let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
 
     // Only approved accounts can call this function
     let res = user_acc
@@ -192,7 +192,7 @@ async fn test_withdraw_eth_from_near_engine() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -280,14 +280,7 @@ async fn test_ft_transfer_call_eth() {
 
     let transfer_amount: U128 = 50.into();
     let fee: u128 = 30;
-    let mut msg = U256::from(fee).as_byte_slice().to_vec();
-    msg.append(
-        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
-            .as_bytes()
-            .to_vec(),
-    );
-
-    let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
+    let message = create_message(CONTRACT_ACC, RECIPIENT_ETH_ADDRESS, fee);
     let memo: Option<String> = None;
     let res = contract
         .contract
@@ -629,15 +622,7 @@ async fn test_ft_transfer_call_without_relayer() {
 
     let transfer_amount: U128 = 50.into();
     let fee: u128 = 30;
-    let mut msg = U256::from(fee).as_byte_slice().to_vec();
-    msg.append(
-        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
-            .as_bytes()
-            .to_vec(),
-    );
-    let relayer_id = "relayer.root";
-    let message = [relayer_id, hex::encode(msg).as_str()].join(":");
-
+    let message = create_message("relayer.root", RECIPIENT_ETH_ADDRESS, fee);
     let memo: Option<String> = None;
     let res = contract
         .contract
@@ -710,7 +695,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let sender_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
-    let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let recipient_addr: Address = str_to_address(RECIPIENT_ETH_ADDRESS);
     let withdraw_amount = 100;
 
     // 1st withdraw call when unpaused  - should succeed
@@ -725,7 +710,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -771,7 +756,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -795,7 +780,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -820,7 +805,7 @@ async fn test_deposit_pausability() {
     // 1st deposit call - should succeed
     let proof1 = contract.mock_proof(user_acc.id(), 10, 1);
     let res = contract
-        .user_deposit_with_proof(&user_acc, &proof1)
+        .user_deposit_with_proof(&user_acc, proof1)
         .await
         .unwrap();
     assert!(res.is_success());
@@ -838,14 +823,14 @@ async fn test_deposit_pausability() {
     // 2nd deposit call - should fail for `user_acc`
     let proof2 = contract.mock_proof(user_acc.id(), 20, 2);
     let res = contract
-        .user_deposit_with_proof(&user_acc, &proof2)
+        .user_deposit_with_proof(&user_acc, proof2)
         .await
         .unwrap_err();
     assert!(contract.check_error_message(&res, "ERR_PAUSED"));
 
     let proof3 = contract.mock_proof(user_acc.id(), 30, 3);
     let res = contract
-        .user_deposit_with_proof(&owner_acc, &proof3)
+        .user_deposit_with_proof(&owner_acc, proof3)
         .await
         .unwrap();
     assert!(res.is_success());
@@ -863,7 +848,7 @@ async fn test_deposit_pausability() {
     // 3rd deposit call - should succeed
     let proof4 = contract.mock_proof(user_acc.id(), 40, 4);
     let res = contract
-        .user_deposit_with_proof(&user_acc, &proof4)
+        .user_deposit_with_proof(&user_acc, proof4)
         .await
         .unwrap();
     assert!(res.is_success());
@@ -883,7 +868,7 @@ async fn test_withdraw_from_near_pausability() {
         .await
         .unwrap();
 
-    let recipient_addr: Address = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let recipient_addr: Address = str_to_address(RECIPIENT_ETH_ADDRESS);
     let withdraw_amount = 100;
     // 1st withdraw - should succeed
     let res = user_acc
@@ -896,7 +881,7 @@ async fn test_withdraw_from_near_pausability() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -941,7 +926,7 @@ async fn test_withdraw_from_near_pausability() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -1215,7 +1200,7 @@ async fn test_access_rights() {
     );
 
     let withdraw_amount = 100;
-    let recipient_addr = validate_eth_address(RECIPIENT_ETH_ADDRESS);
+    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
     let res = user_acc
         .engine_withdraw(
             contract.contract.id().clone(),
@@ -1274,7 +1259,7 @@ async fn test_access_rights() {
     assert!(res.is_success());
 
     let data: WithdrawResult = res.into_value();
-    let custodian_addr = validate_eth_address(CUSTODIAN_ADDRESS);
+    let custodian_addr = str_to_address(CUSTODIAN_ADDRESS);
     assert_eq!(data.recipient_id, recipient_addr);
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
@@ -1428,13 +1413,7 @@ async fn test_engine_ft_transfer_call() {
     let receiver_id = contract.contract.id();
     let transfer_amount: U128 = 50.into();
     let fee: u128 = 30;
-    let mut msg = U256::from(fee).as_byte_slice().to_vec();
-    msg.append(
-        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
-            .as_bytes()
-            .to_vec(),
-    );
-    let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
+    let message = create_message(CONTRACT_ACC, RECIPIENT_ETH_ADDRESS, fee);
     let memo: Option<String> = Some("some memo".to_string());
 
     let res = user_acc
@@ -1751,13 +1730,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
     assert_eq!(balance.0, 0);
 
     let fee: u128 = 0;
-    let mut msg = U256::from(fee).as_byte_slice().to_vec();
-    msg.append(
-        &mut validate_eth_address(RECIPIENT_ETH_ADDRESS)
-            .as_bytes()
-            .to_vec(),
-    );
-    let message = [CONTRACT_ACC, hex::encode(msg).as_str()].join(":");
+    let message = create_message(CONTRACT_ACC, RECIPIENT_ETH_ADDRESS, fee);
     let memo: Option<String> = Some("some memp".to_string());
 
     let transfer_amount: U128 = 1.into();
@@ -1805,4 +1778,14 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
         .await
         .unwrap();
     assert_eq!(balance.0, 0);
+}
+
+fn create_message(account_id: &str, address: &str, fee: u128) -> String {
+    let msg = [
+        U256::from(fee).as_byte_slice(),
+        str_to_address(address).as_bytes(),
+    ]
+    .concat();
+
+    [account_id, hex::encode(msg).as_str()].join(":")
 }
