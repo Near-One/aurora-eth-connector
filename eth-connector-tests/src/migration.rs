@@ -1,6 +1,5 @@
 use crate::utils::TestContract;
-use aurora_engine_migration_tool::{BorshDeserialize, StateData};
-use aurora_engine_types::types::NEP141Wei;
+use aurora_engine_migration_tool::{BorshDeserialize, NEP141Wei, StateData};
 use aurora_workspace_eth_connector::types::{MigrationCheckResult, MigrationInputData};
 use near_sdk::{AccountId, Balance};
 use std::collections::HashMap;
