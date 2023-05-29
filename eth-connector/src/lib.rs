@@ -3,7 +3,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
-    FungibleTokenStatistic, KnownEngineAccountsManagement, Withdraw,
+    KnownEngineAccountsManagement, Withdraw,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -19,7 +19,6 @@ use near_contract_standards::fungible_token::metadata::{
 use near_contract_standards::fungible_token::receiver::ext_ft_receiver;
 use near_contract_standards::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use near_contract_standards::fungible_token::FungibleToken;
-use near_sdk::json_types::U64;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -55,7 +54,6 @@ pub struct EthConnectorContract {
     ft: FungibleToken,
     metadata: LazyOption<FungibleTokenMetadata>,
     used_proofs: LookupSet<String>,
-    accounts_counter: u64,
     known_engine_accounts: LookupSet<AccountId>,
 }
 
@@ -94,7 +92,6 @@ impl EthConnectorContract {
     // Register user and calculate counter
     fn register_if_not_exists(&mut self, account: &AccountId) {
         if !self.ft.accounts.contains_key(account) {
-            self.accounts_counter += 1;
             self.ft.internal_register_account(account);
         }
     }
@@ -190,7 +187,6 @@ impl EthConnectorContract {
             connector: connector_data,
             metadata: LazyOption::new(StorageKey::Metadata, Some(metadata)),
             used_proofs: LookupSet::new(StorageKey::Proof),
-            accounts_counter: 0,
             known_engine_accounts: LookupSet::new(StorageKey::EngineAccounts),
         };
         this.register_if_not_exists(&env::current_account_id());
@@ -458,14 +454,6 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 }
 
 #[near_bindgen]
-impl FungibleTokenStatistic for EthConnectorContract {
-    #[result_serializer(borsh)]
-    fn get_accounts_counter(&self) -> U64 {
-        self.accounts_counter.into()
-    }
-}
-
-#[near_bindgen]
 impl AdminControlled for EthConnectorContract {
     #[result_serializer(borsh)]
     fn get_paused_flags(&self) -> PausedMask {
@@ -629,15 +617,6 @@ impl Migration for EthConnectorContract {
             );
         }
 
-        // Insert statistics_aurora_accounts_counter
-        if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
-            self.accounts_counter = statistics_aurora_accounts_counter;
-            log!(
-                "Inserted statistics_aurora_accounts_counter: {:?}",
-                statistics_aurora_accounts_counter
-            );
-        }
-
         // Insert Proof
         for proof_key in &data.used_proofs {
             self.used_proofs.insert(proof_key);
@@ -689,12 +668,6 @@ impl Migration for EthConnectorContract {
         if let Some(total_supply) = data.total_supply {
             if self.ft.total_supply != total_supply {
                 return CheckResult::TotalSupply(self.ft.total_supply);
-            }
-        }
-
-        if let Some(statistics_aurora_accounts_counter) = data.statistics_aurora_accounts_counter {
-            if self.accounts_counter != statistics_aurora_accounts_counter {
-                return CheckResult::StatisticsCounter(self.accounts_counter);
             }
         }
         CheckResult::Success

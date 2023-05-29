@@ -1,6 +1,5 @@
 use crate::utils::TestContract;
-use aurora_engine_migration_tool::{BorshDeserialize, StateData};
-use aurora_engine_types::types::NEP141Wei;
+use aurora_engine_migration_tool::{BorshDeserialize, NEP141Wei, StateData};
 use aurora_workspace_eth_connector::types::{MigrationCheckResult, MigrationInputData};
 use near_sdk::{AccountId, Balance};
 use std::collections::HashMap;
@@ -130,7 +129,6 @@ async fn test_migration_state() {
     let args = MigrationInputData {
         total_supply: Some(state.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(state.contract_data.account_storage_usage),
-        statistics_aurora_accounts_counter: Some(state.accounts_counter),
         ..Default::default()
     };
     let res = contract
@@ -164,7 +162,6 @@ async fn test_migration_state() {
     let args = MigrationInputData {
         total_supply: Some(state.contract_data.total_eth_supply_on_near.as_u128()),
         account_storage_usage: Some(state.contract_data.account_storage_usage),
-        statistics_aurora_accounts_counter: Some(state.accounts_counter),
         ..Default::default()
     };
     let res = contract
