@@ -28,7 +28,7 @@ use near_sdk::{
     near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
-use serde::{Deserialize, Serialize};
+use crate::fee_management::{DepositFeePercentage, WithdrawFeePercentage, FeeBounds};
 
 pub mod admin_controlled;
 pub mod connector;
@@ -39,6 +39,7 @@ pub mod log_entry;
 pub mod migration;
 pub mod proof;
 pub mod types;
+pub mod fee_management;
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
 const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25 * Gas::ONE_TERA.0 + GAS_FOR_RESOLVE_TRANSFER.0);
@@ -61,30 +62,6 @@ pub struct EthConnectorContract {
     withdraw_fee_percentage: WithdrawFeePercentage,
     deposit_fee_bound: FeeBounds,
     withdraw_fee_bound: FeeBounds,
-}
-
-#[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
-)]
-pub struct FeeBounds {
-    lower_bound: u128,
-    upper_bound: u128,
-}
-
-#[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
-)]
-pub struct DepositFeePercentage {
-    eth_to_near: u128,
-    eth_to_aurora: u128,
-}
-
-#[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
-)]
-pub struct WithdrawFeePercentage {
-    near_to_eth: u128,
-    aurora_to_eth: u128,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]

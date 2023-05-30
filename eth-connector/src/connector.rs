@@ -1,5 +1,5 @@
 use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, WithdrawResult};
-use crate::{DepositFeePercentage, FeeBounds, WithdrawFeePercentage};
+use crate::fee_management::{DepositFeePercentage, WithdrawFeePercentage, FeeBounds};
 use aurora_engine_types::types::Address;
 use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::{
