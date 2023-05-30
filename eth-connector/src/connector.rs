@@ -1,5 +1,5 @@
-use crate::{DepositFeePercentage, WithdrawFeePercentage, FeeBounds};
 use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, WithdrawResult};
+use crate::{DepositFeePercentage, FeeBounds, WithdrawFeePercentage};
 use aurora_engine_types::types::Address;
 use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::json_types::U64;
@@ -25,7 +25,6 @@ pub trait FeeManagement {
     fn set_withdraw_fee_bounds(&mut self, lower_bound: u128, upper_bound: u128);
     fn claim_fee(&mut self, amount: u128);
 }
-
 
 #[ext_contract(ext_withdraw)]
 pub trait Withdraw {
