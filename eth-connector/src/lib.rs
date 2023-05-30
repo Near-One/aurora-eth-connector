@@ -64,7 +64,7 @@ pub struct EthConnectorContract {
 }
 
 #[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq,
+    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
 )]
 pub struct FeeBounds {
     lower_bound: u128,
@@ -72,7 +72,7 @@ pub struct FeeBounds {
 }
 
 #[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq,
+    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
 )]
 pub struct DepositFeePercentage {
     eth_to_near: u128,
@@ -80,7 +80,7 @@ pub struct DepositFeePercentage {
 }
 
 #[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq,
+    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
 )]
 pub struct WithdrawFeePercentage {
     near_to_eth: u128,
@@ -615,10 +615,11 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn check_fee_bounds(&self, amount: u128, is_deposit: bool) -> u128 {
-        let mut fee_bounds = self.get_deposit_fee_bounds();
-        if !is_deposit {
-            fee_bounds = self.get_withdraw_fee_bounds();
-        }
+        let fee_bounds = if !is_deposit {
+            self.get_withdraw_fee_bounds()
+        } else {
+            self.get_deposit_fee_bounds()
+        };
 
         if amount < fee_bounds.lower_bound {
             return fee_bounds.lower_bound;
@@ -631,16 +632,16 @@ impl FeeManagement for EthConnectorContract {
     fn set_deposit_fee_percentage(&mut self, eth_to_aurora: u128, eth_to_near: u128) {
         assert!(self.is_owner(), "fee can be set by only owner");
         self.deposit_fee_percentage = DepositFeePercentage {
-            eth_to_aurora,
             eth_to_near,
+            eth_to_aurora,
         };
     }
 
     fn set_withdraw_fee_percentage(&mut self, aurora_to_eth: u128, near_to_eth: u128) {
         assert!(self.is_owner(), "fee can be set by only owner");
         self.withdraw_fee_percentage = WithdrawFeePercentage {
-            aurora_to_eth,
             near_to_eth,
+            aurora_to_eth,
         }
     }
 
@@ -689,38 +690,35 @@ impl FundsFinish for EthConnectorContract {
         // Store proof only after `mint` calculations
         self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
-        match deposit_call.msg {
-            Some(msg) => {
-                let mut fee_amount = (deposit_call.amount * deposit_fee_percent.eth_to_aurora)
-                    / FEE_DECIMAL_PRECISION;
-                fee_amount = self.check_fee_bounds(fee_amount, true);
-                let amount_to_transfer = deposit_call.amount - fee_amount;
+        if let Some(msg) = deposit_call.msg {
+            let mut fee_amount =
+                (deposit_call.amount * deposit_fee_percent.eth_to_aurora) / FEE_DECIMAL_PRECISION;
+            fee_amount = self.check_fee_bounds(fee_amount, true);
+            let amount_to_transfer = deposit_call.amount - fee_amount;
 
-                // Mint tokens to recipient minus fee
-                let args = TransferCallCallArgs::try_from_slice(&msg)
-                    .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
-                    .sdk_unwrap();
-                let promise = self.internal_ft_transfer_call(
-                    env::predecessor_account_id(),
-                    args.receiver_id,
-                    amount_to_transfer.into(),
-                    args.memo,
-                    args.msg,
-                );
-                match promise {
-                    PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
-                    PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
-                }
+            // Mint tokens to recipient minus fee
+            let args = TransferCallCallArgs::try_from_slice(&msg)
+                .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
+                .sdk_unwrap();
+            let promise = self.internal_ft_transfer_call(
+                env::predecessor_account_id(),
+                args.receiver_id,
+                amount_to_transfer.into(),
+                args.memo,
+                args.msg,
+            );
+            match promise {
+                PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
+                PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
             }
-            None => {
-                let mut fee_amount =
-                    (deposit_call.amount * deposit_fee_percent.eth_to_near) / FEE_DECIMAL_PRECISION;
-                fee_amount = self.check_fee_bounds(fee_amount, true);
-                let amount_to_transfer = deposit_call.amount - fee_amount;
+        } else {
+            let mut fee_amount =
+                (deposit_call.amount * deposit_fee_percent.eth_to_near) / FEE_DECIMAL_PRECISION;
+            fee_amount = self.check_fee_bounds(fee_amount, true);
+            let amount_to_transfer = deposit_call.amount - fee_amount;
 
-                self.ft_transfer(deposit_call.new_owner_id, amount_to_transfer.into(), None);
-                PromiseOrValue::Value(None)
-            }
+            self.ft_transfer(deposit_call.new_owner_id, amount_to_transfer.into(), None);
+            PromiseOrValue::Value(None)
         }
     }
 }
