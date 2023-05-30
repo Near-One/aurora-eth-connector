@@ -1084,8 +1084,7 @@ mod tests {
         let proof_key = String::from(
             "802298938109391379364782362347023517020015374823090151126200144662201181825340111",
         );
-        let deposit_call =
-            get_finish_deposit_call_args(new_owner_id.clone(), 100u128, proof_key);
+        let deposit_call = get_finish_deposit_call_args(new_owner_id.clone(), 100u128, proof_key);
 
         contract.finish_deposit(deposit_call, true);
         let eth_balance_of_new_owner_after_finish_deposit =
