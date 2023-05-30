@@ -10,7 +10,16 @@ pub struct FeeBounds {
 }
 
 #[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy
+    Default,
+    BorshDeserialize,
+    BorshSerialize,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Copy,
 )]
 pub struct DepositFeePercentage {
     pub eth_to_near: u128,
@@ -18,7 +27,16 @@ pub struct DepositFeePercentage {
 }
 
 #[derive(
-    Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy
+    Default,
+    BorshDeserialize,
+    BorshSerialize,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Copy,
 )]
 pub struct WithdrawFeePercentage {
     pub near_to_eth: u128,

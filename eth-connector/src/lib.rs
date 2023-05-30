@@ -9,6 +9,7 @@ use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
 use crate::deposit_event::FtTransferMessageData;
+use crate::fee_management::{DepositFeePercentage, FeeBounds, WithdrawFeePercentage};
 use crate::proof::{Proof, VerifyProofArgs};
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
@@ -28,18 +29,17 @@ use near_sdk::{
     near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
-use crate::fee_management::{DepositFeePercentage, WithdrawFeePercentage, FeeBounds};
 
 pub mod admin_controlled;
 pub mod connector;
 pub mod connector_impl;
 pub mod deposit_event;
 pub mod errors;
+pub mod fee_management;
 pub mod log_entry;
 pub mod migration;
 pub mod proof;
 pub mod types;
-pub mod fee_management;
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
 const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25 * Gas::ONE_TERA.0 + GAS_FOR_RESOLVE_TRANSFER.0);
