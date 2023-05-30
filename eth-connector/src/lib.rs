@@ -877,7 +877,7 @@ mod tests {
     }
 
     fn get_token_metadata() -> FungibleTokenMetadata {
-        let metadata = FungibleTokenMetadata {
+        FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
             name: "Ether".to_string(),
             symbol: "ETH".to_string(),
@@ -885,8 +885,7 @@ mod tests {
             reference: None,
             reference_hash: None,
             decimals: 18,
-        };
-        metadata
+        }
     }
 
     const fn get_finish_deposit_call_args(
@@ -1005,7 +1004,7 @@ mod tests {
         contract.set_withdraw_fee_bounds(200u128, 350u128);
         contract.set_withdraw_fee_percentage(200_000_u128, 100_000_u128);
 
-        contract.mint_eth_on_near(&owner(), 1000_000_000_000_000_000_000);
+        contract.mint_eth_on_near(&owner(), 1_000_000_000_000_000_000_000);
         let eth_balance_of_owner_before_withdraw = contract.ft_balance_of(owner()).0;
         assert_eq!(
             eth_balance_of_owner_before_withdraw, 1_000_000_000_000_000_000_000u128,
@@ -1087,8 +1086,7 @@ mod tests {
         let deposit_call = get_finish_deposit_call_args(new_owner_id.clone(), 100u128, proof_key);
 
         contract.finish_deposit(deposit_call, true);
-        let eth_balance_of_new_owner_after_finish_deposit =
-            contract.ft_balance_of(new_owner_id.clone()).0;
+        let eth_balance_of_new_owner_after_finish_deposit = contract.ft_balance_of(new_owner_id).0;
         // (100 - 20% of 100) ie. 80 to be deposited {20% fee for eth -> near}
         assert_eq!(
             eth_balance_of_new_owner_after_finish_deposit, 80u128,
