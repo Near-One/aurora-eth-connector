@@ -889,7 +889,7 @@ mod tests {
         metadata
     }
 
-    fn get_finish_deposit_call_args(
+    const fn get_finish_deposit_call_args(
         new_owner_id: AccountId,
         amount: u128,
         proof_key: String,
@@ -902,10 +902,10 @@ mod tests {
         }
     }
 
-    fn eth_custodian() -> Address {
+    const fn eth_custodian() -> Address {
         Address::from_array([0xab; 20])
     }
-    fn recipient_address() -> Address {
+    const fn recipient_address() -> Address {
         Address::from_array([0xef; 20])
     }
 
@@ -927,14 +927,14 @@ mod tests {
         let metadata = &get_token_metadata();
         let mut contract =
             EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
-        contract.set_deposit_fee_percentage(100000u128, 200000u128);
+        contract.set_deposit_fee_percentage(100_000_u128, 200_000_u128);
         let deposit_fee = contract.get_deposit_fee_percentage();
         assert_eq!(
-            deposit_fee.eth_to_aurora, 100000u128,
+            deposit_fee.eth_to_aurora, 100_000_u128,
             "eth_to_aurora deposit fee percentage doesn't match"
         );
         assert_eq!(
-            deposit_fee.eth_to_near, 200000u128,
+            deposit_fee.eth_to_near, 200_000_u128,
             "eth_to_near deposit fee precentage doesn't match"
         );
     }
@@ -945,14 +945,14 @@ mod tests {
         let metadata = &get_token_metadata();
         let mut contract =
             EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
-        contract.set_withdraw_fee_percentage(200000u128, 100000u128);
+        contract.set_withdraw_fee_percentage(200_000_u128, 100_000_u128);
         let withdraw_fee = contract.get_withdraw_fee_percentage();
         assert_eq!(
-            withdraw_fee.near_to_eth, 100000u128,
+            withdraw_fee.near_to_eth, 100_000_u128,
             "near_to_eth withdraw fee doesn't match"
         );
         assert_eq!(
-            withdraw_fee.aurora_to_eth, 200000u128,
+            withdraw_fee.aurora_to_eth, 200_000_u128,
             "aurora_to_eth withdraw fee doesn't match"
         );
     }
@@ -1003,16 +1003,16 @@ mod tests {
 
         // Setting fee-percentage and fee-bounds
         contract.set_withdraw_fee_bounds(200u128, 350u128);
-        contract.set_withdraw_fee_percentage(200000u128, 100000u128);
+        contract.set_withdraw_fee_percentage(200_000_u128, 100_000_u128);
 
         contract.mint_eth_on_near(&owner(), 1000_000_000_000_000_000_000);
         let eth_balance_of_owner_before_withdraw = contract.ft_balance_of(owner()).0;
         assert_eq!(
-            eth_balance_of_owner_before_withdraw, 1000_000_000_000_000_000_000u128,
+            eth_balance_of_owner_before_withdraw, 1_000_000_000_000_000_000_000u128,
             "eth balance of owner in near before withdraw doesn't matched"
         );
-        let result = contract.withdraw(recipient_address(), 100000u128);
-        let withdraw_amount_after_fee_deductions = 100000u128 - 350u128;
+        let result = contract.withdraw(recipient_address(), 100_000_u128);
+        let withdraw_amount_after_fee_deductions = 100_000_u128 - 350u128;
         assert_eq!(
             result,
             WithdrawResult {
@@ -1025,7 +1025,7 @@ mod tests {
         let eth_balance_of_owner_after_withdraw = contract.ft_balance_of(owner()).0;
         assert_eq!(
             eth_balance_of_owner_after_withdraw,
-            1000_000_000_000_000_000_000u128 - 100000u128,
+            1_000_000_000_000_000_000_000u128 - 100_000_u128,
             "eth balance of owner in near after withdraw doesn't matched"
         );
     }
@@ -1039,12 +1039,12 @@ mod tests {
 
         // Setting fee-percentage and fee-bounds
         contract.set_withdraw_fee_bounds(80u128, 200u128);
-        contract.set_withdraw_fee_percentage(100000u128, 200000u128);
+        contract.set_withdraw_fee_percentage(100_000_u128, 200_000_u128);
 
-        contract.mint_eth_on_near(&owner(), 1000_000_000_000_000_000_000);
+        contract.mint_eth_on_near(&owner(), 1_000_000_000_000_000_000_000);
         let eth_balance_of_owner_before_withdraw = contract.ft_balance_of(owner()).0;
         assert_eq!(
-            eth_balance_of_owner_before_withdraw, 1000_000_000_000_000_000_000u128,
+            eth_balance_of_owner_before_withdraw, 1_000_000_000_000_000_000_000u128,
             "eth balance of owner in near before withdraw doesn't matched"
         );
         // engine or owner has the access to withdraw
@@ -1065,7 +1065,7 @@ mod tests {
         let eth_balance_of_owner_after_withdraw = contract.ft_balance_of(owner()).0;
         assert_eq!(
             eth_balance_of_owner_after_withdraw,
-            1000_000_000_000_000_000_000u128 - 1000u128,
+            1_000_000_000_000_000_000_000u128 - 1000u128,
             "eth balance of owner in near after withdraw doesn't matched"
         );
     }
@@ -1078,18 +1078,18 @@ mod tests {
             EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
 
         //set token deposit fee percentage {eth -> aurora = 10%, eth -> near = 20%}
-        contract.set_deposit_fee_percentage(100000u128, 200000u128);
+        contract.set_deposit_fee_percentage(100_000_u128, 200_000_u128);
 
         let new_owner_id: AccountId = "new.owner".parse().unwrap();
         let proof_key = String::from(
             "802298938109391379364782362347023517020015374823090151126200144662201181825340111",
         );
         let deposit_call =
-            get_finish_deposit_call_args(new_owner_id.to_owned(), 100u128, proof_key);
+            get_finish_deposit_call_args(new_owner_id.clone(), 100u128, proof_key);
 
         contract.finish_deposit(deposit_call, true);
         let eth_balance_of_new_owner_after_finish_deposit =
-            contract.ft_balance_of(new_owner_id.to_owned()).0;
+            contract.ft_balance_of(new_owner_id.clone()).0;
         // (100 - 20% of 100) ie. 80 to be deposited {20% fee for eth -> near}
         assert_eq!(
             eth_balance_of_new_owner_after_finish_deposit, 80u128,
