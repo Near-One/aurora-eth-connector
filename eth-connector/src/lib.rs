@@ -3,7 +3,7 @@
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FeeManagement,
-    FundsFinish, FungibleTokenStatistic, KnownEngineAccountsManagement, Withdraw,
+    FundsFinish, KnownEngineAccountsManagement, Withdraw,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
