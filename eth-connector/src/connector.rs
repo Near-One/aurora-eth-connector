@@ -2,7 +2,6 @@ use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, Withd
 use crate::{DepositFeePercentage, FeeBounds, WithdrawFeePercentage};
 use aurora_engine_types::types::Address;
 use near_contract_standards::storage_management::StorageBalance;
-use near_sdk::json_types::U64;
 use near_sdk::{
     borsh, ext_contract, json_types::U128, AccountId, Balance, Promise, PromiseOrValue,
 };
@@ -51,11 +50,6 @@ pub trait FundsFinish {
 pub trait ProofVerifier {
     #[result_serializer(borsh)]
     fn verify_log_entry(&self, #[serializer(borsh)] args: VerifyProofArgs) -> bool;
-}
-
-#[ext_contract(ext_ft_statistic)]
-pub trait FungibleTokenStatistic {
-    fn get_accounts_counter(&self) -> U64;
 }
 
 /// Withdraw method for legacy implementation in Engine
