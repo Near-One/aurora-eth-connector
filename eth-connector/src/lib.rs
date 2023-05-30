@@ -615,10 +615,10 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn check_fee_bounds(&self, amount: u128, is_deposit: bool) -> u128 {
-        let fee_bounds = if !is_deposit {
-            self.get_withdraw_fee_bounds()
-        } else {
+        let fee_bounds = if is_deposit {
             self.get_deposit_fee_bounds()
+        } else {
+            self.get_withdraw_fee_bounds()
         };
 
         if amount < fee_bounds.lower_bound {
