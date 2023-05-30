@@ -576,11 +576,11 @@ impl Deposit for EthConnectorContract {
 #[near_bindgen]
 impl FeeManagement for EthConnectorContract {
     fn get_deposit_fee_percentage(&self) -> DepositFeePercentage {
-        self.deposit_fee_percentage.clone()
+        self.deposit_fee_percentage
     }
 
     fn get_withdraw_fee_percentage(&self) -> WithdrawFeePercentage {
-        self.withdraw_fee_percentage.clone()
+        self.withdraw_fee_percentage
     }
 
     fn get_deposit_fee_bounds(&self) -> FeeBounds {
