@@ -13,6 +13,7 @@ use crate::fee_management::{DepositFeePercentage, FeeBounds, WithdrawFeePercenta
 use crate::proof::{Proof, VerifyProofArgs};
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
+use fee_management::FeeType;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
@@ -524,7 +525,7 @@ impl Withdraw for EthConnectorContract {
 
         let withdraw_fee_percent = self.get_withdraw_fee_percentage();
         let mut fee_amount = (amount * withdraw_fee_percent.near_to_eth) / FEE_DECIMAL_PRECISION;
-        fee_amount = self.check_fee_bounds(fee_amount, false);
+        fee_amount = self.check_fee_bounds(fee_amount, FeeType::Withdraw);
 
         WithdrawResult {
             amount: (amount - fee_amount),
@@ -556,7 +557,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
         let withdraw_fee_percent = self.get_withdraw_fee_percentage();
         let mut fee_amount = (amount * withdraw_fee_percent.aurora_to_eth) / FEE_DECIMAL_PRECISION;
-        fee_amount = self.check_fee_bounds(fee_amount, false);
+        fee_amount = self.check_fee_bounds(fee_amount, FeeType::Withdraw);
 
         WithdrawResult {
             amount: (amount - fee_amount),
@@ -591,8 +592,8 @@ impl FeeManagement for EthConnectorContract {
         self.withdraw_fee_bound.clone()
     }
 
-    fn check_fee_bounds(&self, amount: u128, is_deposit: bool) -> u128 {
-        let fee_bounds = if is_deposit {
+    fn check_fee_bounds(&self, amount: u128, fee_type: FeeType) -> u128 {
+        let fee_bounds = if fee_type == FeeType::Deposit {
             self.get_deposit_fee_bounds()
         } else {
             self.get_withdraw_fee_bounds()
@@ -670,7 +671,7 @@ impl FundsFinish for EthConnectorContract {
         if let Some(msg) = deposit_call.msg {
             let mut fee_amount =
                 (deposit_call.amount * deposit_fee_percent.eth_to_aurora) / FEE_DECIMAL_PRECISION;
-            fee_amount = self.check_fee_bounds(fee_amount, true);
+            fee_amount = self.check_fee_bounds(fee_amount, FeeType::Deposit);
             let amount_to_transfer = deposit_call.amount - fee_amount;
 
             // Mint tokens to recipient minus fee
@@ -691,7 +692,7 @@ impl FundsFinish for EthConnectorContract {
         } else {
             let mut fee_amount =
                 (deposit_call.amount * deposit_fee_percent.eth_to_near) / FEE_DECIMAL_PRECISION;
-            fee_amount = self.check_fee_bounds(fee_amount, true);
+            fee_amount = self.check_fee_bounds(fee_amount, FeeType::Deposit);
             let amount_to_transfer = deposit_call.amount - fee_amount;
 
             self.ft_transfer(deposit_call.new_owner_id, amount_to_transfer.into(), None);
