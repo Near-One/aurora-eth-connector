@@ -1,8 +1,9 @@
+use anyhow::Ok;
 use aurora_engine_types::types::Address;
-use aurora_workspace_eth_connector::contract::EthConnectorContract;
-use aurora_workspace_eth_connector::types::Proof;
-use aurora_workspace_utils::results::ExecutionResult;
+use aurora_workspace_eth_connector::contract::{self, EthConnectorContract};
+use aurora_workspace_eth_connector::types::{DepositFeePercentage, Proof, WithdrawFeePercentage, FeeBounds};
 use aurora_workspace_utils::Contract;
+use aurora_workspace_utils::{results::ExecutionResult, ContractId};
 use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
 use near_sdk::{json_types::U128, serde_json};
 use workspaces::{result::ExecutionFinalResult, Account, AccountId};
@@ -237,6 +238,111 @@ impl TestContract {
             .unwrap();
         assert!(res.is_success());
         Ok(())
+    }
+
+    pub async fn set_deposit_fee_percentage(
+        &self,
+        eth_to_aurora: u128,
+        eth_to_near: u128,
+    ) -> anyhow::Result<()> {
+        let res = self
+            .contract
+            .set_deposit_fee_percentage(eth_to_aurora, eth_to_near)
+            .max_gas()
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+        Ok(())
+    }
+
+    pub async fn set_withdraw_fee_percentage(
+        &self,
+        aurora_to_eth: u128,
+        near_to_eth: u128,
+    ) -> anyhow::Result<()> {
+        let res = self
+            .contract
+            .set_withdraw_fee_percentage(aurora_to_eth, near_to_eth)
+            .max_gas()
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+        Ok(())
+    }
+    pub async fn set_deposit_fee_bound(
+        &self,
+        lower_bound: u128,
+        upper_bound: u128,
+    ) -> anyhow::Result<()> {
+        let res = self
+            .contract
+            .set_deposit_fee_bounds(lower_bound, upper_bound)
+            .max_gas()
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+        Ok(())
+    }
+
+    pub async fn set_withdraw_fee_bound(
+        &self,
+        lower_bound: u128,
+        upper_bound: u128,
+    ) -> anyhow::Result<()> {
+        let res = self
+            .contract
+            .set_withdraw_fee_bounds(lower_bound, upper_bound)
+            .max_gas()
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+        Ok(())
+    }
+
+    pub async fn get_deposit_fee_percentage(&self) -> anyhow::Result<DepositFeePercentage> {
+        Ok(self
+            .contract
+            .get_deposit_fee_percentage()
+            .await
+            .transact()
+            .await
+            .expect("get_deposit_fee_percentage")
+            .result)
+    }
+    pub async fn get_withdraw_fee_percentage(&self) -> anyhow::Result<WithdrawFeePercentage> {
+        Ok(self
+            .contract
+            .get_withdraw_fee_percentage()
+            .await
+            .transact()
+            .await
+            .expect("get_withdraw_fee_percentage")
+            .result)
+    }
+    pub async fn get_deposit_fee_bound(&self) -> anyhow::Result<FeeBounds> {
+        Ok(self
+            .contract
+            .get_deposit_fee_bounds()
+            .await
+            .transact()
+            .await
+            .expect("get_deposit_fee_bound")
+            .result)
+    }
+
+    pub async fn get_withdraw_fee_bound(&self) -> anyhow::Result<FeeBounds> {
+        Ok(self
+            .contract
+            .get_withdraw_fee_bounds()
+            .await
+            .transact()
+            .await
+            .expect("get_withdraw_fee_bound")
+            .result)
     }
 
     #[must_use]
