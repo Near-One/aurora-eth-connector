@@ -7,6 +7,7 @@ pub enum FeeType {
     Withdraw,
 }
 
+// Fee value bound for transfer amount
 #[derive(
     Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
 )]
@@ -15,6 +16,7 @@ pub struct FeeBounds {
     pub upper_bound: u128,
 }
 
+// Storage of fee-percentage for deposits
 #[derive(
     Default,
     BorshDeserialize,
@@ -32,6 +34,7 @@ pub struct DepositFeePercentage {
     pub eth_to_aurora: u128,
 }
 
+/// Storage of fee-percentage for withdraw 
 #[derive(
     Default,
     BorshDeserialize,
