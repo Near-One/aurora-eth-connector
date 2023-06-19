@@ -34,7 +34,7 @@ pub struct DepositFeePercentage {
     pub eth_to_aurora: u128,
 }
 
-/// Storage of fee-percentage for withdraw 
+/// Storage of fee-percentage for withdraw
 #[derive(
     Default,
     BorshDeserialize,
