@@ -1,7 +1,9 @@
 use anyhow::Ok;
 use aurora_engine_types::types::Address;
-use aurora_workspace_eth_connector::contract::{self, EthConnectorContract};
-use aurora_workspace_eth_connector::types::{DepositFeePercentage, Proof, WithdrawFeePercentage, FeeBounds};
+use aurora_workspace_eth_connector::contract::EthConnectorContract;
+use aurora_workspace_eth_connector::types::{
+    DepositFeePercentage, FeeBounds, Proof, WithdrawFeePercentage,
+};
 use aurora_workspace_utils::Contract;
 use aurora_workspace_utils::{results::ExecutionResult, ContractId};
 use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};

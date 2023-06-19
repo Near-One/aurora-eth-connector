@@ -1,18 +1,4 @@
-use crate::utils::{
-    str_to_address, TestContract, CONTRACT_ACC, CUSTODIAN_ADDRESS, DEPOSITED_AMOUNT,
-    DEPOSITED_CONTRACT, DEPOSITED_EVM_AMOUNT, DEPOSITED_RECIPIENT, PROOF_DATA_ETH, PROOF_DATA_NEAR,
-    RECIPIENT_ETH_ADDRESS,
-};
-use aurora_engine_types::types::{Address, Fee, NEP141Wei};
-use aurora_engine_types::{H256, U256};
-use aurora_eth_connector::deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT};
-use aurora_eth_connector::log_entry;
-use aurora_workspace_eth_connector::contract;
-use aurora_workspace_eth_connector::types::{Proof, WithdrawResult};
-use aurora_workspace_utils::ContractId;
-use byte_slice_cast::AsByteSlice;
-use near_sdk::{json_types::U128, ONE_YOCTO};
-use workspaces::AccountId;
+use crate::utils::{TestContract, CUSTODIAN_ADDRESS};
 
 #[tokio::test]
 async fn test_set_deposit_fee_perentage() {
@@ -89,7 +75,7 @@ async fn test_set_withdraw_fee_bounds() {
         .await
         .unwrap();
 
-    let expected_withdraw_fee_bound = contract.get_deposit_fee_bound().await.unwrap();
+    let expected_withdraw_fee_bound = contract.get_withdraw_fee_bound().await.unwrap();
 
     assert_eq!(
         expected_withdraw_fee_bound.lower_bound, 100u128,

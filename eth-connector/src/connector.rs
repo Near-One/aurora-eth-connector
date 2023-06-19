@@ -1,4 +1,4 @@
-use crate::fee_management::{DepositFeePercentage, FeeBounds, WithdrawFeePercentage, FeeType};
+use crate::fee_management::{DepositFeePercentage, FeeBounds, FeeType, WithdrawFeePercentage};
 use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, WithdrawResult};
 use aurora_engine_types::types::Address;
 use near_contract_standards::storage_management::StorageBalance;
