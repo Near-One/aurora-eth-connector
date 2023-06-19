@@ -663,8 +663,6 @@ impl FundsFinish for EthConnectorContract {
 
         let deposit_fee_percent = self.get_deposit_fee_percentage();
 
-        // Mint - calculate new balances
-        self.mint_eth_on_near(&env::current_account_id(), deposit_call.amount);
         // Store proof only after `mint` calculations
         self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
@@ -673,6 +671,9 @@ impl FundsFinish for EthConnectorContract {
                 (deposit_call.amount * deposit_fee_percent.eth_to_aurora) / FEE_DECIMAL_PRECISION;
             fee_amount = self.check_fee_bounds(fee_amount, FeeType::Deposit);
             let amount_to_transfer = deposit_call.amount - fee_amount;
+        
+            // Mint - calculate new balances
+            self.mint_eth_on_near(&env::current_account_id(), deposit_call.amount);
 
             // Mint tokens to recipient minus fee
             let args = TransferCallCallArgs::try_from_slice(&msg)
@@ -695,7 +696,11 @@ impl FundsFinish for EthConnectorContract {
             fee_amount = self.check_fee_bounds(fee_amount, FeeType::Deposit);
             let amount_to_transfer = deposit_call.amount - fee_amount;
 
-            self.ft_transfer(deposit_call.new_owner_id, amount_to_transfer.into(), None);
+            // Mint - calculate new balances
+            self.mint_eth_on_near(&env::current_account_id(), fee_amount);
+
+            self.mint_eth_on_near(&deposit_call.new_owner_id, amount_to_transfer.into());
+            
             PromiseOrValue::Value(None)
         }
     }
