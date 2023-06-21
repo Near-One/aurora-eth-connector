@@ -8,6 +8,7 @@ use aurora_engine_types::{H256, U256};
 use aurora_eth_connector::deposit_event::{DepositedEvent, TokenMessageData, DEPOSITED_EVENT};
 use aurora_eth_connector::log_entry;
 use aurora_workspace_eth_connector::types::{Proof, WithdrawResult};
+use aurora_workspace_utils::ContractId;
 use byte_slice_cast::AsByteSlice;
 use near_sdk::{json_types::U128, ONE_YOCTO};
 use workspaces::AccountId;

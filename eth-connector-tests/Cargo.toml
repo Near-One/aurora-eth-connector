@@ -14,10 +14,10 @@ autobenches = false
 
 [dev-dependencies]
 aurora-eth-connector = { path = "../eth-connector" }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.9.0", default-features = false, features = ["impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false, features = ["impl-serde"] }
 anyhow = "1.0"
-near-sdk = "4.0"
-near-primitives = "0.16"
+near-sdk = "4.1"
+near-primitives = "0.17"
 near-units = "0.2"
 near-contract-standards = "4.1"
 tokio = { version = "1", features = ["full"] }
@@ -27,8 +27,8 @@ hex = "0.4.3"
 ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }
 aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git" }
-aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.2.1" }
-aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.2.1" }
+aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace.git", ref = "e9ddcc0bc4634509299695d3df6ebcc2e4f86c94" }
+aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace.git", ref = "e9ddcc0bc4634509299695d3df6ebcc2e4f86c94" }
 
 [features]
 migration-tests = []
