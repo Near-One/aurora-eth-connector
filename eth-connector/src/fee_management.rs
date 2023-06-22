@@ -13,7 +13,7 @@ pub enum FeeType {
 )]
 pub struct FeeBounds {
     pub lower_bound: u128,
-    pub upper_bound: u128,
+    pub upper_bound: Option<u128>,
 }
 
 // Storage of fee-percentage for deposits

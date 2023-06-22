@@ -206,11 +206,11 @@ impl EthConnectorContract {
             },
             deposit_fee_bound: FeeBounds {
                 lower_bound: 0,
-                upper_bound: 0,
+                upper_bound: None,
             },
             withdraw_fee_bound: FeeBounds {
                 lower_bound: 0,
-                upper_bound: 0,
+                upper_bound: None,
             },
         };
         this.register_if_not_exists(&env::current_account_id());
@@ -600,8 +600,8 @@ impl FeeManagement for EthConnectorContract {
 
         if amount < fee_bounds.lower_bound {
             return fee_bounds.lower_bound;
-        } else if amount > fee_bounds.upper_bound && fee_bounds.upper_bound != 0 {
-            return fee_bounds.upper_bound;
+        } else if fee_bounds.upper_bound.map_or(false, |bound| amount > bound) {
+            return fee_bounds.upper_bound.unwrap();
         }
         amount
     }
@@ -635,7 +635,7 @@ impl FeeManagement for EthConnectorContract {
         );
         self.deposit_fee_bound = FeeBounds {
             lower_bound,
-            upper_bound,
+            upper_bound: Some(upper_bound),
         }
     }
 
@@ -646,7 +646,7 @@ impl FeeManagement for EthConnectorContract {
         );
         self.withdraw_fee_bound = FeeBounds {
             lower_bound,
-            upper_bound,
+            upper_bound: Some(upper_bound),
         }
     }
 
@@ -959,7 +959,8 @@ mod tests {
         contract.set_deposit_fee_bounds(100u128, 200u128);
         let deposit_fee_bounds = contract.get_deposit_fee_bounds();
         assert_eq!(
-            deposit_fee_bounds.upper_bound, 200u128,
+            deposit_fee_bounds.upper_bound,
+            Some(200u128),
             "deposit fee upper bound doesn't matched"
         );
         assert_eq!(
@@ -982,7 +983,8 @@ mod tests {
             "withdraw fee lower bound doesn't matched"
         );
         assert_eq!(
-            withdraw_fee_bounds.upper_bound, 350u128,
+            withdraw_fee_bounds.upper_bound,
+            Some(350u128),
             "withdraw fee upper bound doesn't matched"
         );
     }
