@@ -205,11 +205,11 @@ impl EthConnectorContract {
                 aurora_to_eth: 0,
             },
             deposit_fee_bound: FeeBounds {
-                lower_bound: 0,
+                lower_bound: None,
                 upper_bound: None,
             },
             withdraw_fee_bound: FeeBounds {
-                lower_bound: 0,
+                lower_bound: None,
                 upper_bound: None,
             },
         };
@@ -598,8 +598,8 @@ impl FeeManagement for EthConnectorContract {
             FeeType::Withdraw => self.get_withdraw_fee_bounds(),
         };
 
-        if amount < fee_bounds.lower_bound {
-            return fee_bounds.lower_bound;
+        if fee_bounds.lower_bound.map_or(false, |bound| amount < bound) {
+            return fee_bounds.lower_bound.unwrap();
         } else if fee_bounds.upper_bound.map_or(false, |bound| amount > bound) {
             return fee_bounds.upper_bound.unwrap();
         }
@@ -634,7 +634,7 @@ impl FeeManagement for EthConnectorContract {
             "Only the owner can set the deposit fee bounds"
         );
         self.deposit_fee_bound = FeeBounds {
-            lower_bound,
+            lower_bound: Some(lower_bound),
             upper_bound: Some(upper_bound),
         }
     }
@@ -645,7 +645,7 @@ impl FeeManagement for EthConnectorContract {
             "Only the owner can set the withdraw fee bounds"
         );
         self.withdraw_fee_bound = FeeBounds {
-            lower_bound,
+            lower_bound: Some(lower_bound),
             upper_bound: Some(upper_bound),
         }
     }
@@ -964,7 +964,8 @@ mod tests {
             "deposit fee upper bound doesn't matched"
         );
         assert_eq!(
-            deposit_fee_bounds.lower_bound, 100u128,
+            deposit_fee_bounds.lower_bound,
+            Some(100u128),
             "deposit fee lower bound doesn't matched"
         );
     }
@@ -979,7 +980,8 @@ mod tests {
 
         let withdraw_fee_bounds = contract.get_withdraw_fee_bounds();
         assert_eq!(
-            withdraw_fee_bounds.lower_bound, 200u128,
+            withdraw_fee_bounds.lower_bound,
+            Some(200u128),
             "withdraw fee lower bound doesn't matched"
         );
         assert_eq!(

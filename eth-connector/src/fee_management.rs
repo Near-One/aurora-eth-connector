@@ -12,7 +12,7 @@ pub enum FeeType {
     Default, BorshDeserialize, BorshSerialize, Serialize, Deserialize, Debug, Clone, PartialEq, Eq,
 )]
 pub struct FeeBounds {
-    pub lower_bound: u128,
+    pub lower_bound: Option<u128>,
     pub upper_bound: Option<u128>,
 }
 
