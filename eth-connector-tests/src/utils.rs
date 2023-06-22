@@ -252,8 +252,8 @@ impl TestContract {
             .set_deposit_fee_percentage(eth_to_aurora, eth_to_near)
             .max_gas()
             .transact()
-            .await
-            .unwrap();
+            .await?;
+            
         assert!(res.is_success());
         Ok(())
     }
@@ -268,8 +268,8 @@ impl TestContract {
             .set_withdraw_fee_percentage(aurora_to_eth, near_to_eth)
             .max_gas()
             .transact()
-            .await
-            .unwrap();
+            .await?;
+            
         assert!(res.is_success());
         Ok(())
     }
@@ -283,8 +283,8 @@ impl TestContract {
             .set_deposit_fee_bounds(lower_bound, upper_bound)
             .max_gas()
             .transact()
-            .await
-            .unwrap();
+            .await?;
+            
         assert!(res.is_success());
         Ok(())
     }
@@ -299,8 +299,8 @@ impl TestContract {
             .set_withdraw_fee_bounds(lower_bound, upper_bound)
             .max_gas()
             .transact()
-            .await
-            .unwrap();
+            .await?;
+           
         assert!(res.is_success());
         Ok(())
     }

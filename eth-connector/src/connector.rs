@@ -17,7 +17,7 @@ pub trait FeeManagement {
     fn get_withdraw_fee_percentage(&self) -> WithdrawFeePercentage;
     fn get_deposit_fee_bounds(&self) -> FeeBounds;
     fn get_withdraw_fee_bounds(&self) -> FeeBounds;
-    fn check_fee_bounds(&self, amount: u128, fee_type: FeeType) -> u128;
+    fn get_final_fee_amount(&self, amount: u128, fee_type: FeeType) -> u128;
     fn set_deposit_fee_percentage(&mut self, eth_to_aurora: u128, eth_to_near: u128);
     fn set_withdraw_fee_percentage(&mut self, aurora_to_eth: u128, near_to_eth: u128);
     fn set_deposit_fee_bounds(&mut self, lower_bound: u128, upper_bound: u128);

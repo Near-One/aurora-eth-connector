@@ -525,7 +525,7 @@ impl Withdraw for EthConnectorContract {
 
         let withdraw_fee_percent = self.get_withdraw_fee_percentage();
         let mut fee_amount = (amount * withdraw_fee_percent.near_to_eth) / FEE_DECIMAL_PRECISION;
-        fee_amount = self.check_fee_bounds(fee_amount, FeeType::Withdraw);
+        fee_amount = self.get_final_fee_amount(fee_amount, FeeType::Withdraw);
 
         WithdrawResult {
             amount: (amount - fee_amount),
@@ -557,7 +557,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
         let withdraw_fee_percent = self.get_withdraw_fee_percentage();
         let mut fee_amount = (amount * withdraw_fee_percent.aurora_to_eth) / FEE_DECIMAL_PRECISION;
-        fee_amount = self.check_fee_bounds(fee_amount, FeeType::Withdraw);
+        fee_amount = self.get_final_fee_amount(fee_amount, FeeType::Withdraw);
 
         WithdrawResult {
             amount: (amount - fee_amount),
@@ -592,11 +592,10 @@ impl FeeManagement for EthConnectorContract {
         self.withdraw_fee_bound.clone()
     }
 
-    fn check_fee_bounds(&self, amount: u128, fee_type: FeeType) -> u128 {
-        let fee_bounds = if fee_type == FeeType::Deposit {
-            self.get_deposit_fee_bounds()
-        } else {
-            self.get_withdraw_fee_bounds()
+    fn get_final_fee_amount(&self, amount: u128, fee_type: FeeType) -> u128 {
+        let fee_bounds = match fee_type {
+            FeeType::Deposit => self.get_deposit_fee_bounds(),
+            FeeType::Withdraw => self.get_withdraw_fee_bounds(),
         };
 
         if amount < fee_bounds.lower_bound {
@@ -608,7 +607,10 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn set_deposit_fee_percentage(&mut self, eth_to_aurora: u128, eth_to_near: u128) {
-        assert!(self.is_owner(), "fee can be set by only owner");
+        assert!(
+            self.is_owner(),
+            "Only the owner can set the deposit fee percentage"
+        );
         self.deposit_fee_percentage = DepositFeePercentage {
             eth_to_near,
             eth_to_aurora,
@@ -616,7 +618,10 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn set_withdraw_fee_percentage(&mut self, aurora_to_eth: u128, near_to_eth: u128) {
-        assert!(self.is_owner(), "fee can be set by only owner");
+        assert!(
+            self.is_owner(),
+            "Only the owner can set the withdraw fee percentage"
+        );
         self.withdraw_fee_percentage = WithdrawFeePercentage {
             near_to_eth,
             aurora_to_eth,
@@ -624,7 +629,10 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn set_deposit_fee_bounds(&mut self, lower_bound: u128, upper_bound: u128) {
-        assert!(self.is_owner(), "fee can be set by only owner");
+        assert!(
+            self.is_owner(),
+            "Only the owner can set the deposit fee bounds"
+        );
         self.deposit_fee_bound = FeeBounds {
             lower_bound,
             upper_bound,
@@ -632,7 +640,10 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn set_withdraw_fee_bounds(&mut self, lower_bound: u128, upper_bound: u128) {
-        assert!(self.is_owner(), "fee can be set by only owner");
+        assert!(
+            self.is_owner(),
+            "Only the owner can set the withdraw fee bounds"
+        );
         self.withdraw_fee_bound = FeeBounds {
             lower_bound,
             upper_bound,
@@ -640,7 +651,7 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn claim_fee(&mut self, amount: u128) {
-        assert!(self.is_owner(), "fee can be set by only owner");
+        assert!(self.is_owner(), "Only the owner can claim the fee");
         self.ft_transfer(env::predecessor_account_id(), amount.into(), None);
     }
 }
@@ -669,7 +680,7 @@ impl FundsFinish for EthConnectorContract {
         if let Some(msg) = deposit_call.msg {
             let mut fee_amount =
                 (deposit_call.amount * deposit_fee_percent.eth_to_aurora) / FEE_DECIMAL_PRECISION;
-            fee_amount = self.check_fee_bounds(fee_amount, FeeType::Deposit);
+            fee_amount = self.get_final_fee_amount(fee_amount, FeeType::Deposit);
             let amount_to_transfer = deposit_call.amount - fee_amount;
 
             // Mint - calculate new balances
@@ -693,7 +704,7 @@ impl FundsFinish for EthConnectorContract {
         } else {
             let mut fee_amount =
                 (deposit_call.amount * deposit_fee_percent.eth_to_near) / FEE_DECIMAL_PRECISION;
-            fee_amount = self.check_fee_bounds(fee_amount, FeeType::Deposit);
+            fee_amount = self.get_final_fee_amount(fee_amount, FeeType::Deposit);
             let amount_to_transfer = deposit_call.amount - fee_amount;
 
             // Mint - calculate new balances
@@ -1074,6 +1085,46 @@ mod tests {
         assert_eq!(
             eth_balance_of_new_owner_after_finish_deposit, 80u128,
             "eth_balance_of_new_owner_after_finish_deposit doesn't matched"
+        );
+    }
+
+    #[test]
+    fn test_get_final_fee_amount() {
+        const DEPOSIT_AMOUNT: u128 = 1000;
+        const WITHDRAW_AMOUNT: u128 = 1000;
+        set_env!(predecessor_account_id: eth_connector(), current_account_id: eth_connector(), attached_deposit: 1);
+        let metadata = &get_token_metadata();
+        let mut contract =
+            EthConnectorContract::new(prover(), eth_custodian(), metadata, engine(), &owner());
+
+        // Setting fee-percentage and fee-bounds
+        contract.set_withdraw_fee_bounds(50u128, 1250u128);
+        contract.set_deposit_fee_bounds(300u128, 2000u128);
+        contract.set_withdraw_fee_percentage(200_000_u128, 100_000_u128);
+        contract.set_deposit_fee_percentage(100_000_u128, 200_000_u128);
+
+        let deposit_fee_percentage = contract.get_deposit_fee_percentage();
+        let withdraw_fee_percentage = contract.get_withdraw_fee_percentage();
+
+        // fee amount calculation from deposited amount
+        let deposit_fee_amount_for_eth_to_near =
+            (DEPOSIT_AMOUNT * deposit_fee_percentage.eth_to_near) / FEE_DECIMAL_PRECISION;
+        let withdraw_fee_amount_for_near_to_eth =
+            (WITHDRAW_AMOUNT * withdraw_fee_percentage.near_to_eth) / FEE_DECIMAL_PRECISION;
+
+        // calcualtion of actual fee amount within the fee-bounds
+        let actual_final_deposit_fee_amount =
+            contract.get_final_fee_amount(deposit_fee_amount_for_eth_to_near, FeeType::Deposit);
+        let actual_final_withdraw_fee_amount =
+            contract.get_final_fee_amount(withdraw_fee_amount_for_near_to_eth, FeeType::Withdraw);
+
+        assert_eq!(
+            actual_final_deposit_fee_amount, 300u128,
+            "Final deposit fee amount didn't matched as expected"
+        );
+        assert_eq!(
+            actual_final_withdraw_fee_amount, 100u128,
+            "Final withdraw fee amount didn't matched as expected"
         );
     }
 
