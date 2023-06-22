@@ -2,7 +2,7 @@ use aurora_engine_types::types::Address;
 use aurora_workspace_eth_connector::contract::EthConnectorContract;
 use aurora_workspace_eth_connector::types::Proof;
 use aurora_workspace_utils::results::ExecutionResult;
-use aurora_workspace_utils::Contract;
+use aurora_workspace_utils::{Contract, ContractId};
 use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
 use near_sdk::{json_types::U128, serde_json};
 use workspaces::{result::ExecutionFinalResult, Account, AccountId};
@@ -59,7 +59,8 @@ impl TestContract {
     }
 
     pub async fn deploy_eth_connector() -> anyhow::Result<(EthConnectorContract, Account)> {
-        let root_account = Contract::create_root_account("root").await?;
+        let root_account =
+            Contract::create_root_account("root", near_units::parse_near!("200 N")).await?;
         let eth_connector = root_account
             .create_subaccount("eth_connector")
             .initial_balance(near_units::parse_near!("85 N"))
@@ -74,7 +75,7 @@ impl TestContract {
                     std::env::current_dir().unwrap()
                 )
             });
-        let contract = Contract::deploy(eth_connector, contract_data).await?;
+        let contract = Contract::deploy(&eth_connector, contract_data).await?;
         Ok((EthConnectorContract::new(contract), root_account))
     }
 
