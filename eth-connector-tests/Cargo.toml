@@ -14,10 +14,10 @@ autobenches = false
 
 [dev-dependencies]
 aurora-eth-connector = { path = "../eth-connector" }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.9.0", default-features = false, features = ["impl-serde"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false, features = ["impl-serde"] }
 anyhow = "1.0"
-near-sdk = "4.0"
-near-primitives = "0.16"
+near-sdk = "4.1"
+near-primitives = "0.17"
 near-units = "0.2"
 near-contract-standards = "4.1"
 tokio = { version = "1", features = ["full"] }

@@ -16,7 +16,7 @@ autobenches = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "2.9.0", default-features = false, features = ["impl-serde", "borsh-compat"] }
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false, features = ["impl-serde", "borsh-compat"] }
 byte-slice-cast = "1"
 ethabi = { version = "18", default-features = false }
 hex = "0.4"

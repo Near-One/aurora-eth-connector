@@ -62,7 +62,8 @@ impl TestContract {
     }
 
     pub async fn deploy_eth_connector() -> anyhow::Result<(EthConnectorContract, Account)> {
-        let root_account = Contract::create_root_account("root").await?;
+        let root_account =
+            Contract::create_root_account("root", near_units::parse_near!("200 N")).await?;
         let eth_connector = root_account
             .create_subaccount("eth_connector")
             .initial_balance(near_units::parse_near!("85 N"))
@@ -77,7 +78,7 @@ impl TestContract {
                     std::env::current_dir().unwrap()
                 )
             });
-        let contract = Contract::deploy(eth_connector, contract_data).await?;
+        let contract = Contract::deploy(&eth_connector, contract_data).await?;
         Ok((EthConnectorContract::new(contract), root_account))
     }
 
