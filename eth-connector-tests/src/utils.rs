@@ -42,11 +42,11 @@ impl TestContract {
         // Init eth-connector
         let res = contract
             .init(
-                prover_account,
+                &prover_account,
                 eth_custodian_address.to_string(),
                 metadata,
                 &account_with_access_right,
-                owner_id,
+                &owner_id,
             )
             .transact()
             .await?;
@@ -148,7 +148,7 @@ impl TestContract {
     pub async fn get_eth_on_near_balance(&self, account: &AccountId) -> anyhow::Result<U128> {
         Ok(self
             .contract
-            .ft_balance_of(account.clone())
+            .ft_balance_of(&account)
             .await
             .expect("get_eth_on_near_balance")
             .result)
@@ -194,7 +194,7 @@ impl TestContract {
     pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
         let res = self
             .contract
-            .set_access_right(acc.clone())
+            .set_access_right(&acc)
             .max_gas()
             .transact()
             .await?;

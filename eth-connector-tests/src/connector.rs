@@ -23,7 +23,7 @@ async fn test_ft_transfer() {
     let memo = Some(String::from("transfer memo"));
     let res = contract
         .contract
-        .ft_transfer(receiver_id.clone(), transfer_amount, memo)
+        .ft_transfer(&receiver_id, transfer_amount, memo)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -64,7 +64,7 @@ async fn test_ft_transfer_user() {
 
     let memo = Some(String::from("transfer memo"));
     let res = user_acc
-        .ft_transfer(contract.contract.id().clone(), transfer_amount, memo)
+        .ft_transfer(&contract.contract.id(), transfer_amount, memo)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -172,7 +172,7 @@ async fn test_withdraw_eth_from_near_engine() {
 
     // Only approved accounts can call this function
     let res = user_acc
-        .engine_withdraw(user_acc.id().clone(), recipient_addr, withdraw_amount)
+        .engine_withdraw(&user_acc.id(), recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -184,7 +184,7 @@ async fn test_withdraw_eth_from_near_engine() {
     // In this example the contract itself withdraws on behalf of the user
     let res = contract
         .contract
-        .engine_withdraw(user_acc.id().clone(), recipient_addr, withdraw_amount)
+        .engine_withdraw(&user_acc.id(), recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -285,7 +285,7 @@ async fn test_ft_transfer_call_eth() {
     let memo: Option<String> = None;
     let res = contract
         .contract
-        .ft_transfer_call(receiver_id.clone(), transfer_amount, memo, message)
+        .ft_transfer_call(&receiver_id, transfer_amount, memo, message)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -335,7 +335,7 @@ async fn test_ft_transfer_call_without_message() {
     let res = contract
         .contract
         .ft_transfer_call(
-            contract.contract.id().clone(),
+            &contract.contract.id(),
             transfer_amount,
             memo.clone(),
             message.to_string(),
@@ -362,7 +362,7 @@ async fn test_ft_transfer_call_without_message() {
     let some_acc: AccountId = "some-test-acc".parse().unwrap();
     let res = contract
         .contract
-        .ft_transfer_call(some_acc.clone(), transfer_amount, memo, message.to_string())
+        .ft_transfer_call(&some_acc, transfer_amount, memo, message.to_string())
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -412,7 +412,7 @@ async fn test_ft_transfer_call_user_message() {
     // Send to non-engine contract with wrong message should failed
     let res = user_acc
         .ft_transfer_call(
-            receiver_id.clone(),
+            &receiver_id,
             transfer_amount,
             memo.clone(),
             message.to_string(),
@@ -448,12 +448,7 @@ async fn test_ft_transfer_call_user_message() {
 
     // Send to engine contract with wrong message should failed
     let res = user_acc
-        .ft_transfer_call(
-            receiver_id.clone(),
-            transfer_amount,
-            memo,
-            message.to_string(),
-        )
+        .ft_transfer_call(&receiver_id, transfer_amount, memo, message.to_string())
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -623,12 +618,7 @@ async fn test_ft_transfer_call_without_relayer() {
     let memo: Option<String> = None;
     let res = contract
         .contract
-        .ft_transfer_call(
-            contract.contract.id().clone(),
-            transfer_amount,
-            memo,
-            message,
-        )
+        .ft_transfer_call(&contract.contract.id(), transfer_amount, memo, message)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -698,7 +688,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     // 1st withdraw call when unpaused  - should succeed
     let res = contract
         .contract
-        .engine_withdraw(sender_id.clone(), recipient_addr, withdraw_amount)
+        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -744,7 +734,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     // 2nd withdraw call when paused, but the admin is calling it - should succeed
     let res = contract
         .contract
-        .engine_withdraw(sender_id.clone(), recipient_addr, withdraw_amount)
+        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -759,7 +749,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert_eq!(data.eth_custodian_address, custodian_addr);
 
     let res = user_acc
-        .engine_withdraw(sender_id.clone(), recipient_addr, withdraw_amount)
+        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -768,7 +758,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
 
     let res = owner_acc
-        .engine_withdraw(sender_id, recipient_addr, withdraw_amount)
+        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1089,7 +1079,7 @@ async fn test_ft_transfer_max_value() {
     let memo = Some("transfer memo".to_string());
     let res = contract
         .contract
-        .ft_transfer(receiver_id, transfer_amount, memo)
+        .ft_transfer(&receiver_id, transfer_amount, memo)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1163,7 +1153,7 @@ async fn test_access_rights() {
     let memo = Some("transfer memo".to_string());
     let res = contract
         .contract
-        .ft_transfer(user_acc.id().clone(), transfer_amount1, memo)
+        .ft_transfer(&user_acc.id(), transfer_amount1, memo)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1199,11 +1189,7 @@ async fn test_access_rights() {
     let withdraw_amount = 100;
     let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
     let res = user_acc
-        .engine_withdraw(
-            contract.contract.id().clone(),
-            recipient_addr,
-            withdraw_amount,
-        )
+        .engine_withdraw(&contract.contract.id(), recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1243,11 +1229,7 @@ async fn test_access_rights() {
 
     let res = contract
         .contract
-        .engine_withdraw(
-            contract.contract.id().clone(),
-            recipient_addr,
-            withdraw_amount,
-        )
+        .engine_withdraw(&contract.contract.id(), recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1289,7 +1271,7 @@ async fn test_storage_deposit() {
 
     let balance = contract
         .contract
-        .storage_balance_of(contract.contract.id().clone())
+        .storage_balance_of(&contract.contract.id())
         .await
         .unwrap()
         .result;
@@ -1328,12 +1310,7 @@ async fn test_engine_ft_transfer() {
     let memo = Some("transfer memo".to_string());
 
     let res = user_acc
-        .engine_ft_transfer(
-            user_acc.id().clone(),
-            receiver_id.clone(),
-            transfer_amount,
-            memo.clone(),
-        )
+        .engine_ft_transfer(&user_acc.id(), &&receiver_id, transfer_amount, memo.clone())
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1365,12 +1342,7 @@ async fn test_engine_ft_transfer() {
         .unwrap();
 
     let res = user_acc
-        .engine_ft_transfer(
-            user_acc.id().clone(),
-            receiver_id.clone(),
-            transfer_amount,
-            memo,
-        )
+        .engine_ft_transfer(&user_acc.id(), &&receiver_id, transfer_amount, memo)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1411,8 +1383,8 @@ async fn test_engine_ft_transfer_call() {
 
     let res = user_acc
         .engine_ft_transfer_call(
-            user_acc.id().clone(),
-            receiver_id.clone(),
+            &user_acc.id(),
+            &receiver_id,
             transfer_amount,
             memo.clone(),
             message.clone(),
@@ -1441,13 +1413,7 @@ async fn test_engine_ft_transfer_call() {
         .unwrap();
 
     let res = user_acc
-        .engine_ft_transfer_call(
-            user_acc.id().clone(),
-            receiver_id.clone(),
-            transfer_amount,
-            memo,
-            message,
-        )
+        .engine_ft_transfer_call(&user_acc.id(), &receiver_id, transfer_amount, memo, message)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1487,7 +1453,7 @@ async fn test_engine_storage_deposit() {
         .result;
 
     let res = user_acc
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
+        .engine_storage_deposit(&user_acc.id(), Some(&user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1503,7 +1469,7 @@ async fn test_engine_storage_deposit() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
+        .engine_storage_deposit(&user_acc.id(), Some(&user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1516,7 +1482,7 @@ async fn test_engine_storage_deposit() {
 
     let balance = contract
         .contract
-        .storage_balance_of(contract.contract.id().clone())
+        .storage_balance_of(&contract.contract.id())
         .await
         .unwrap()
         .result;
@@ -1538,7 +1504,7 @@ async fn test_engine_storage_withdraw() {
 
     let amount: U128 = 10.into();
     let res = user_acc
-        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
+        .engine_storage_withdraw(&user_acc.id(), Some(amount))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1554,7 +1520,7 @@ async fn test_engine_storage_withdraw() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
+        .engine_storage_deposit(&user_acc.id(), Some(&user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1564,7 +1530,7 @@ async fn test_engine_storage_withdraw() {
 
     let amount: U128 = 1.into();
     let res = user_acc
-        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
+        .engine_storage_withdraw(&user_acc.id(), Some(amount))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1590,7 +1556,7 @@ async fn test_engine_storage_unregister() {
         .result;
 
     let res = user_acc
-        .engine_storage_unregister(user_acc.id().clone(), None)
+        .engine_storage_unregister(&user_acc.id(), None)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1605,7 +1571,7 @@ async fn test_engine_storage_unregister() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
+        .engine_storage_deposit(&user_acc.id(), Some(&user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1615,7 +1581,7 @@ async fn test_engine_storage_unregister() {
 
     let amount: U128 = 1.into();
     let res = user_acc
-        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
+        .engine_storage_withdraw(&user_acc.id(), Some(amount))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1628,7 +1594,7 @@ async fn test_engine_storage_unregister() {
     }
 
     let res = user_acc
-        .engine_storage_unregister(user_acc.id().clone(), None)
+        .engine_storage_unregister(&user_acc.id(), None)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1637,7 +1603,7 @@ async fn test_engine_storage_unregister() {
     assert!(res.is_success());
 
     let res = user_acc
-        .engine_storage_withdraw(user_acc.id().clone(), Some(amount))
+        .engine_storage_withdraw(&user_acc.id(), Some(amount))
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1716,7 +1682,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
     let res = contract
         .contract
         .ft_transfer_call(
-            contract.contract.id().clone(),
+            &contract.contract.id(),
             transfer_amount,
             memo.clone(),
             message.clone(),
@@ -1737,12 +1703,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
     let transfer_amount: U128 = 0.into();
     let res = contract
         .contract
-        .ft_transfer_call(
-            contract.contract.id().clone(),
-            transfer_amount,
-            memo,
-            message,
-        )
+        .ft_transfer_call(&contract.contract.id(), transfer_amount, memo, message)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
