@@ -1276,7 +1276,7 @@ async fn test_storage_deposit() {
 
     let res = contract
         .contract
-        .storage_deposit(Some(&user_acc.id().clone()), None)
+        .storage_deposit(Some(&user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1487,7 +1487,7 @@ async fn test_engine_storage_deposit() {
         .result;
 
     let res = user_acc
-        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1503,7 +1503,7 @@ async fn test_engine_storage_deposit() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1554,7 +1554,7 @@ async fn test_engine_storage_withdraw() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1605,7 +1605,7 @@ async fn test_engine_storage_unregister() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
