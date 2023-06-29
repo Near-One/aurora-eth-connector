@@ -17,7 +17,6 @@ pub enum CheckResult {
     AccountAmount(HashMap<AccountId, Balance>),
     TotalSupply(Balance),
     StorageUsage(StorageUsage),
-    StatisticsCounter(u64),
     Proof(Vec<String>),
 }
 
