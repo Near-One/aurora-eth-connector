@@ -443,8 +443,6 @@ async fn test_ft_transfer_call_user_message() {
         .contract
         .is_engine_account_exist(receiver_id)
         .await
-        .transact()
-        .await
         .unwrap();
     assert!(is_exist.result);
 
@@ -502,8 +500,6 @@ async fn test_set_and_check_engine_account() {
     let is_exist = contract
         .contract
         .is_engine_account_exist(contract.contract.id())
-        .await
-        .transact()
         .await
         .unwrap();
     assert!(is_exist.result);
@@ -1275,14 +1271,12 @@ async fn test_storage_deposit() {
         .contract
         .storage_balance_bounds()
         .await
-        .transact()
-        .await
         .unwrap()
         .result;
 
     let res = contract
         .contract
-        .storage_deposit(Some(user_acc.id().clone()), None)
+        .storage_deposit(Some(&user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1296,8 +1290,6 @@ async fn test_storage_deposit() {
     let balance = contract
         .contract
         .storage_balance_of(contract.contract.id().clone())
-        .await
-        .transact()
         .await
         .unwrap()
         .result;
@@ -1491,13 +1483,11 @@ async fn test_engine_storage_deposit() {
         .contract
         .storage_balance_bounds()
         .await
-        .transact()
-        .await
         .unwrap()
         .result;
 
     let res = user_acc
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1513,7 +1503,7 @@ async fn test_engine_storage_deposit() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1527,8 +1517,6 @@ async fn test_engine_storage_deposit() {
     let balance = contract
         .contract
         .storage_balance_of(contract.contract.id().clone())
-        .await
-        .transact()
         .await
         .unwrap()
         .result;
@@ -1544,8 +1532,6 @@ async fn test_engine_storage_withdraw() {
     let bounds = contract
         .contract
         .storage_balance_bounds()
-        .await
-        .transact()
         .await
         .unwrap()
         .result;
@@ -1568,7 +1554,7 @@ async fn test_engine_storage_withdraw() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1600,8 +1586,6 @@ async fn test_engine_storage_unregister() {
         .contract
         .storage_balance_bounds()
         .await
-        .transact()
-        .await
         .unwrap()
         .result;
 
@@ -1621,7 +1605,7 @@ async fn test_engine_storage_unregister() {
 
     let res = contract
         .contract
-        .engine_storage_deposit(user_acc.id().clone(), Some(user_acc.id().clone()), None)
+        .engine_storage_deposit(user_acc.id().clone(), Some(&user_acc.id().clone()), None)
         .max_gas()
         .deposit(bounds.min.0)
         .transact()
@@ -1681,15 +1665,11 @@ async fn test_manage_engine_accounts() {
         .contract
         .is_engine_account_exist(&acc1)
         .await
-        .transact()
-        .await
         .unwrap();
     assert!(is_exist.result);
     let is_exist = contract
         .contract
         .is_engine_account_exist(&acc2)
-        .await
-        .transact()
         .await
         .unwrap();
     assert!(is_exist.result);
@@ -1705,8 +1685,6 @@ async fn test_manage_engine_accounts() {
     let is_exist = contract
         .contract
         .is_engine_account_exist(&acc1)
-        .await
-        .transact()
         .await
         .unwrap();
     assert!(!is_exist.result);

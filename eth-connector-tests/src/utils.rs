@@ -127,8 +127,6 @@ impl TestContract {
             .contract
             .is_used_proof(proof)
             .await
-            .transact()
-            .await
             .expect("call_is_used_proof")
             .result)
     }
@@ -152,8 +150,6 @@ impl TestContract {
             .contract
             .ft_balance_of(account.clone())
             .await
-            .transact()
-            .await
             .expect("get_eth_on_near_balance")
             .result)
     }
@@ -162,8 +158,6 @@ impl TestContract {
         Ok(self
             .contract
             .ft_total_supply()
-            .await
-            .transact()
             .await
             .expect("total_supply")
             .result)
@@ -183,17 +177,11 @@ impl TestContract {
 
     pub async fn register_user(&self, user: &str) -> anyhow::Result<AccountId> {
         let account_id = AccountId::try_from(user.to_string())?;
-        let bounds = self
-            .contract
-            .storage_balance_bounds()
-            .await
-            .transact()
-            .await?
-            .result;
+        let bounds = self.contract.storage_balance_bounds().await?.result;
 
         let res = self
             .contract
-            .storage_deposit(Some(account_id.clone()), None)
+            .storage_deposit(Some(&account_id.clone()), None)
             .max_gas()
             .deposit(bounds.min.into())
             .transact()
@@ -214,15 +202,15 @@ impl TestContract {
             anyhow::bail!("set_access_right failed");
         }
 
-        let res = self
+        let res: String = self
             .contract
             .get_account_with_access_right()
-            .await
-            .transact()
             .await?
-            .result;
+            .result
+            .into();
+        let acc_id = AccountId::try_from(res.clone())?;
 
-        if &res != acc {
+        if &acc_id != acc {
             anyhow::bail!("check access_right fail: {res:?} != {acc:?}");
         }
         Ok(())

@@ -400,13 +400,11 @@ dependencies = [
 [[package]]
 name = "aurora-workspace-eth-connector"
 version = "0.3.0"
-source = "git+https://github.com/aurora-is-near/aurora-workspace.git#bed983f46213920aa5bd581dbc19ee760810ae51"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git?rev=7510af1bfd0c70713c7a48891e4a448ce0571cca#7510af1bfd0c70713c7a48891e4a448ce0571cca"
 dependencies = [
  "anyhow",
  "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
- "aurora-workspace-types",
  "aurora-workspace-utils",
- "borsh 0.9.3",
  "near-contract-standards",
  "near-sdk",
  "near-units",
@@ -416,28 +414,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "aurora-workspace-types"
-version = "0.3.0"
-source = "git+https://github.com/aurora-is-near/aurora-workspace.git#bed983f46213920aa5bd581dbc19ee760810ae51"
-dependencies = [
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
- "ethereum-types",
- "near-account-id 0.15.0",
- "near-sdk",
- "rlp",
- "serde",
- "thiserror",
- "workspaces",
-]
-
-[[package]]
 name = "aurora-workspace-utils"
 version = "0.3.0"
-source = "git+https://github.com/aurora-is-near/aurora-workspace.git#bed983f46213920aa5bd581dbc19ee760810ae51"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git?rev=7510af1bfd0c70713c7a48891e4a448ce0571cca#7510af1bfd0c70713c7a48891e4a448ce0571cca"
 dependencies = [
  "anyhow",
- "aurora-workspace-types",
- "borsh 0.9.3",
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
  "near-sdk",
  "near-units",
  "serde",
