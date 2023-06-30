@@ -34,15 +34,15 @@ impl TestContract {
         owner_id: &str,
     ) -> anyhow::Result<Self> {
         let (contract, root_account) = Self::deploy_eth_connector().await?;
-        let owner_id = owner_id.parse().unwrap();
+        let owner_id: AccountId = owner_id.parse().unwrap();
 
-        let prover_account = contract.id().clone();
+        let prover_account = contract.id();
         let metadata = Self::metadata_default();
-        let account_with_access_right = CONTRACT_ACC.parse().unwrap();
+        let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
         // Init eth-connector
         let res = contract
             .init(
-                &prover_account,
+                prover_account,
                 eth_custodian_address.to_string(),
                 metadata,
                 &account_with_access_right,
