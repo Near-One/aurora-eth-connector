@@ -599,9 +599,13 @@ impl FeeManagement for EthConnectorContract {
         self.withdraw_fee = fee;
     }
 
-    fn claim_fee(&mut self, amount: u128) {
+    fn claim_fee(&mut self, amount: U128, receiver_id: Option<AccountId>) {
         assert!(self.is_owner(), "Only the owner can claim the fee");
-        self.ft_transfer(env::predecessor_account_id(), amount.into(), None);
+        self.ft_transfer(
+            receiver_id.unwrap_or(env::predecessor_account_id()),
+            amount,
+            None,
+        );
     }
 }
 

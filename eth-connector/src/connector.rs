@@ -18,7 +18,7 @@ pub trait FeeManagement {
     fn calculate_fee_amount(&self, amount: U128, fee_type: FeeType) -> U128;
     fn set_deposit_fee(&mut self, fee: Option<Fee>);
     fn set_withdraw_fee(&mut self, fee: Option<Fee>);
-    fn claim_fee(&mut self, amount: u128);
+    fn claim_fee(&mut self, amount: U128, receiver_id: Option<AccountId>);
 }
 
 #[ext_contract(ext_withdraw)]
