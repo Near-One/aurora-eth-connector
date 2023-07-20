@@ -254,7 +254,7 @@ impl TestContract {
             .max_gas()
             .transact()
             .await?;
-            
+
         assert!(res.is_success());
         Ok(())
     }
@@ -270,7 +270,7 @@ impl TestContract {
             .max_gas()
             .transact()
             .await?;
-            
+
         assert!(res.is_success());
         Ok(())
     }
@@ -285,7 +285,7 @@ impl TestContract {
             .max_gas()
             .transact()
             .await?;
-            
+
         assert!(res.is_success());
         Ok(())
     }
@@ -301,7 +301,7 @@ impl TestContract {
             .max_gas()
             .transact()
             .await?;
-           
+
         assert!(res.is_success());
         Ok(())
     }
