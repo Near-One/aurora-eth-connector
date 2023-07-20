@@ -168,8 +168,6 @@ async fn test_migration_state() {
         .contract
         .check_migration_correctness(args)
         .await
-        .transact()
-        .await
         .unwrap()
         .result;
     assert_eq!(res, MigrationCheckResult::Success);
@@ -185,8 +183,6 @@ async fn test_migration_state() {
         let res = contract
             .contract
             .check_migration_correctness(args)
-            .await
-            .transact()
             .await
             .unwrap()
             .result;
@@ -207,8 +203,6 @@ async fn test_migration_state() {
         let res = contract
             .contract
             .check_migration_correctness(args)
-            .await
-            .transact()
             .await
             .unwrap()
             .result;

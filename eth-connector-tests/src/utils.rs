@@ -37,11 +37,11 @@ impl TestContract {
         owner_id: &str,
     ) -> anyhow::Result<Self> {
         let (contract, root_account) = Self::deploy_eth_connector().await?;
-        let owner_id = owner_id.parse().unwrap();
+        let owner_id: AccountId = owner_id.parse().unwrap();
 
-        let prover_account = contract.id().clone();
+        let prover_account = contract.id();
         let metadata = Self::metadata_default();
-        let account_with_access_right = CONTRACT_ACC.parse().unwrap();
+        let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
         // Init eth-connector
         let res = contract
             .init(
@@ -49,7 +49,7 @@ impl TestContract {
                 eth_custodian_address.to_string(),
                 metadata,
                 &account_with_access_right,
-                owner_id,
+                &owner_id,
             )
             .transact()
             .await?;
@@ -130,8 +130,6 @@ impl TestContract {
             .contract
             .is_used_proof(proof)
             .await
-            .transact()
-            .await
             .expect("call_is_used_proof")
             .result)
     }
@@ -153,9 +151,7 @@ impl TestContract {
     pub async fn get_eth_on_near_balance(&self, account: &AccountId) -> anyhow::Result<U128> {
         Ok(self
             .contract
-            .ft_balance_of(account.clone())
-            .await
-            .transact()
+            .ft_balance_of(&account)
             .await
             .expect("get_eth_on_near_balance")
             .result)
@@ -165,8 +161,6 @@ impl TestContract {
         Ok(self
             .contract
             .ft_total_supply()
-            .await
-            .transact()
             .await
             .expect("total_supply")
             .result)
@@ -186,17 +180,11 @@ impl TestContract {
 
     pub async fn register_user(&self, user: &str) -> anyhow::Result<AccountId> {
         let account_id = AccountId::try_from(user.to_string())?;
-        let bounds = self
-            .contract
-            .storage_balance_bounds()
-            .await
-            .transact()
-            .await?
-            .result;
+        let bounds = self.contract.storage_balance_bounds().await?.result;
 
         let res = self
             .contract
-            .storage_deposit(Some(account_id.clone()), None)
+            .storage_deposit(Some(&account_id.clone()), None)
             .max_gas()
             .deposit(bounds.min.into())
             .transact()
@@ -209,7 +197,7 @@ impl TestContract {
     pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
         let res = self
             .contract
-            .set_access_right(acc.clone())
+            .set_access_right(&acc)
             .max_gas()
             .transact()
             .await?;
@@ -217,15 +205,15 @@ impl TestContract {
             anyhow::bail!("set_access_right failed");
         }
 
-        let res = self
+        let res: String = self
             .contract
             .get_account_with_access_right()
-            .await
-            .transact()
             .await?
-            .result;
+            .result
+            .into();
+        let acc_id = AccountId::try_from(res.clone())?;
 
-        if &res != acc {
+        if &acc_id != acc {
             anyhow::bail!("check access_right fail: {res:?} != {acc:?}");
         }
         Ok(())
