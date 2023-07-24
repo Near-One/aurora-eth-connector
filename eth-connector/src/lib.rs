@@ -39,6 +39,7 @@ pub mod fee;
 pub mod log_entry;
 pub mod migration;
 pub mod proof;
+pub mod storage_migration;
 pub mod types;
 
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
@@ -217,6 +218,15 @@ impl EthConnectorContract {
     #[must_use]
     pub fn get_bridge_prover(&self) -> AccountId {
         self.connector.prover_account.clone()
+    }
+
+    #[private]
+    #[init(ignore_state)]
+    #[must_use]
+    pub fn migrate_fee_storage() -> Self {
+        let old_state: storage_migration::EthConnectorContractV0 =
+            env::state_read().expect("Failed to read the storage");
+        old_state.into()
     }
 }
 
