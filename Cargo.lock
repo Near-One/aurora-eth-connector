@@ -334,19 +334,6 @@ dependencies = [
 [[package]]
 name = "aurora-engine-types"
 version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.9.0#5b0054859b779b2aed2c819d12751cebd00be42d"
-dependencies = [
- "borsh 0.10.3",
- "borsh 0.9.3",
- "hex 0.4.3",
- "primitive-types 0.12.1",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aurora-engine-types"
-version = "1.0.0"
 source = "git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.9.1#733b1a2562fc4416f7d05d76d939ada144a56456"
 dependencies = [
  "borsh 0.10.3",
@@ -368,19 +355,6 @@ dependencies = [
  "hex 0.4.3",
  "primitive-types 0.12.1",
  "rlp",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "aurora-engine-types"
-version = "1.0.0"
-source = "git+https://github.com/aurora-is-near/aurora-engine.git?rev=0742e5f#0742e5f056aff7a0ae5f3f438a365319d6ee8bda"
-dependencies = [
- "borsh 0.10.3",
- "borsh 0.9.3",
- "hex 0.4.3",
- "primitive-types 0.12.1",
  "serde",
  "serde_json",
 ]
@@ -426,13 +400,11 @@ dependencies = [
 [[package]]
 name = "aurora-workspace-eth-connector"
 version = "0.3.0"
-source = "git+https://github.com/UrAvgDeveloper/aurora-workspace.git?branch=fee-integration#295aa246bbb4d0af6806c35eea027e18a2dad8b6"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git?tag=0.3.1#478465b9a46bcd2ec049929785e8263ea3e5b9c8"
 dependencies = [
  "anyhow",
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=2.9.0)",
- "aurora-workspace-types",
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
  "aurora-workspace-utils",
- "borsh 0.9.3",
  "near-contract-standards",
  "near-sdk",
  "near-units",
@@ -442,28 +414,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "aurora-workspace-types"
-version = "0.3.0"
-source = "git+https://github.com/UrAvgDeveloper/aurora-workspace.git?branch=fee-integration#295aa246bbb4d0af6806c35eea027e18a2dad8b6"
-dependencies = [
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?rev=0742e5f)",
- "ethereum-types",
- "near-account-id 0.15.0",
- "near-sdk",
- "rlp",
- "serde",
- "thiserror",
- "workspaces",
-]
-
-[[package]]
 name = "aurora-workspace-utils"
 version = "0.3.0"
-source = "git+https://github.com/UrAvgDeveloper/aurora-workspace.git?branch=fee-integration#295aa246bbb4d0af6806c35eea027e18a2dad8b6"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git?tag=0.3.1#478465b9a46bcd2ec049929785e8263ea3e5b9c8"
 dependencies = [
  "anyhow",
- "aurora-workspace-types",
- "borsh 0.9.3",
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
  "near-sdk",
  "near-units",
  "serde",

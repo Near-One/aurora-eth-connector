@@ -4,7 +4,7 @@ use near_sdk::{
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Copy, Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum FeeType {
     Deposit,
     Withdraw,

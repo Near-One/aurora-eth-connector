@@ -7,6 +7,3 @@ mod connector;
 mod migration;
 #[cfg(test)]
 pub mod utils;
-
-#[cfg(test)]
-pub mod fee_management;
