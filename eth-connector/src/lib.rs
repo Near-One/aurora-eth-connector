@@ -224,12 +224,17 @@ impl EthConnectorContract {
         self.connector.prover_account.clone()
     }
 
-    #[private]
     #[init(ignore_state)]
     #[must_use]
     pub fn migrate_fee_storage() -> Self {
         let old_state: storage_migration::EthConnectorContractV0 =
             env::state_read().expect("Failed to read the storage");
+
+        assert!(
+            old_state.connector.is_owner(),
+            "Only the owner can apply the migration"
+        );
+
         old_state.into()
     }
 }
