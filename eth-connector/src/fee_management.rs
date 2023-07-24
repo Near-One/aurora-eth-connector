@@ -4,15 +4,13 @@ use near_sdk::{
     serde::{Deserialize, Serialize},
 };
 
-#[derive(Copy, Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Copy, Debug, Serialize, Deserialize, Clone)]
 pub enum FeeType {
     Deposit,
     Withdraw,
 }
 
-#[derive(
-    BorshDeserialize, BorshSerialize, Debug, Clone, Serialize, Deserialize, PartialEq, Copy,
-)]
+#[derive(BorshDeserialize, BorshSerialize, Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct Fee {
     pub fee_percentage: U128,
     pub lower_bound: Option<U128>,

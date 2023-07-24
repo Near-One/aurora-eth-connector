@@ -605,7 +605,7 @@ impl FeeManagement for EthConnectorContract {
     fn claim_fee(&mut self, amount: U128, receiver_id: Option<AccountId>) {
         assert!(self.is_owner(), "Only the owner can claim the fee");
         self.ft_transfer(
-            receiver_id.unwrap_or(env::predecessor_account_id()),
+            receiver_id.unwrap_or_else(env::predecessor_account_id),
             amount,
             None,
         );
@@ -631,11 +631,10 @@ impl FundsFinish for EthConnectorContract {
         // Store proof only after `mint` calculations
         self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
-        if let Some(msg) = deposit_call.msg {
-            let fee_amount =
-                self.calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit);
-            let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
+        let fee_amount = self.calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit);
+        let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
 
+        if let Some(msg) = deposit_call.msg {
             // Mint - calculate new balances
             self.mint_eth_on_near(&env::current_account_id(), deposit_call.amount);
 
@@ -660,10 +659,6 @@ impl FundsFinish for EthConnectorContract {
                 PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
             }
         } else {
-            let fee_amount =
-                self.calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit);
-            let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
-
             // Mint - calculate new balances
             self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
