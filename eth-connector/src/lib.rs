@@ -73,6 +73,10 @@ enum StorageKey {
 impl EthConnectorContract {
     ///  Mint `nETH` tokens
     fn mint_eth_on_near(&mut self, owner_id: &AccountId, amount: Balance) {
+        if amount == 0 {
+            return;
+        }
+
         log!("Mint {} nETH tokens for: {}", amount, owner_id);
         // Create account to avoid panic with deposit
         self.register_if_not_exists(owner_id);
