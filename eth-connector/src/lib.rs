@@ -656,7 +656,7 @@ impl FundsFinish for EthConnectorContract {
             self.mint_eth_on_near(&env::current_account_id(), deposit_call.amount);
 
             // Early return if the fee is higher than the transferred amount
-            if amount_to_transfer == 0 {
+            if amount_to_transfer == 0 && fee_amount.0 != 0 {
                 return PromiseOrValue::Value(Some(U128(0)));
             }
 
