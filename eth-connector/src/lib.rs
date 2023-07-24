@@ -9,7 +9,7 @@ use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
 };
 use crate::deposit_event::FtTransferMessageData;
-use crate::fee_management::{Fee, FeeType};
+use crate::fee::{Fee, FeeStorage, FeeType};
 use crate::proof::{Proof, VerifyProofArgs};
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
@@ -35,7 +35,7 @@ pub mod connector;
 pub mod connector_impl;
 pub mod deposit_event;
 pub mod errors;
-pub mod fee_management;
+pub mod fee;
 pub mod log_entry;
 pub mod migration;
 pub mod proof;
@@ -58,8 +58,7 @@ pub struct EthConnectorContract {
     metadata: LazyOption<FungibleTokenMetadata>,
     used_proofs: LookupSet<String>,
     known_engine_accounts: LookupSet<AccountId>,
-    deposit_fee: Option<Fee>,
-    withdraw_fee: Option<Fee>,
+    fee: FeeStorage,
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
@@ -193,8 +192,7 @@ impl EthConnectorContract {
             metadata: LazyOption::new(StorageKey::Metadata, Some(metadata)),
             used_proofs: LookupSet::new(StorageKey::Proof),
             known_engine_accounts: LookupSet::new(StorageKey::EngineAccounts),
-            deposit_fee: None,
-            withdraw_fee: None,
+            fee: FeeStorage::default(),
         };
         this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(owner_id);
@@ -560,17 +558,17 @@ impl Deposit for EthConnectorContract {
 #[near_bindgen]
 impl FeeManagement for EthConnectorContract {
     fn get_deposit_fee(&self) -> Option<Fee> {
-        self.deposit_fee
+        self.fee.deposit_fee
     }
 
     fn get_withdraw_fee(&self) -> Option<Fee> {
-        self.withdraw_fee
+        self.fee.withdraw_fee
     }
 
     fn calculate_fee_amount(&self, amount: U128, fee_type: FeeType) -> U128 {
         let Some(fee) = (match fee_type {
-            FeeType::Deposit => self.deposit_fee,
-            FeeType::Withdraw => self.withdraw_fee,
+            FeeType::Deposit => self.fee.deposit_fee,
+            FeeType::Withdraw => self.fee.withdraw_fee,
         }) else { return 0.into() };
 
         let fee_amount = (amount.0 * fee.fee_percentage.0) / FEE_DECIMAL_PRECISION;
@@ -591,7 +589,7 @@ impl FeeManagement for EthConnectorContract {
             self.is_owner(),
             "Only the owner can set the deposit fee percentage"
         );
-        self.deposit_fee = fee;
+        self.fee.deposit_fee = fee;
     }
 
     fn set_withdraw_fee(&mut self, fee: Option<Fee>) {
@@ -599,7 +597,7 @@ impl FeeManagement for EthConnectorContract {
             self.is_owner(),
             "Only the owner can set the withdraw fee percentage"
         );
-        self.withdraw_fee = fee;
+        self.fee.withdraw_fee = fee;
     }
 
     fn claim_fee(&mut self, amount: U128, receiver_id: Option<AccountId>) {

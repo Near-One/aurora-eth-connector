@@ -16,3 +16,9 @@ pub struct Fee {
     pub lower_bound: Option<U128>,
     pub upper_bound: Option<U128>,
 }
+
+#[derive(Default, BorshDeserialize, BorshSerialize)]
+pub struct FeeStorage {
+    pub deposit_fee: Option<Fee>,
+    pub withdraw_fee: Option<Fee>,
+}
