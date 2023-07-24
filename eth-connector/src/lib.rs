@@ -230,11 +230,7 @@ impl EthConnectorContract {
         let old_state: storage_migration::EthConnectorContractV0 =
             env::state_read().expect("Failed to read the storage");
 
-        assert!(
-            old_state.connector.is_owner(),
-            "Only the owner can apply the migration"
-        );
-
+        old_state.connector.assert_owner_access_right().sdk_unwrap();
         old_state.into()
     }
 }
@@ -604,23 +600,17 @@ impl FeeManagement for EthConnectorContract {
     }
 
     fn set_deposit_fee(&mut self, fee: Option<Fee>) {
-        assert!(
-            self.is_owner(),
-            "Only the owner can set the deposit fee percentage"
-        );
+        self.connector.assert_owner_access_right().sdk_unwrap();
         self.fee.deposit_fee = fee;
     }
 
     fn set_withdraw_fee(&mut self, fee: Option<Fee>) {
-        assert!(
-            self.is_owner(),
-            "Only the owner can set the withdraw fee percentage"
-        );
+        self.connector.assert_owner_access_right().sdk_unwrap();
         self.fee.withdraw_fee = fee;
     }
 
     fn claim_fee(&mut self, amount: U128, receiver_id: Option<AccountId>) {
-        assert!(self.is_owner(), "Only the owner can claim the fee");
+        self.connector.assert_owner_access_right().sdk_unwrap();
         self.ft_transfer(
             receiver_id.unwrap_or_else(env::predecessor_account_id),
             amount,
