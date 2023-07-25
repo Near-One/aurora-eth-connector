@@ -1,7 +1,9 @@
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
+    collections::UnorderedMap,
     json_types::U128,
     serde::{Deserialize, Serialize},
+    AccountId,
 };
 
 #[derive(Copy, Debug, Serialize, Deserialize, Clone)]
@@ -17,8 +19,10 @@ pub struct Fee {
     pub upper_bound: Option<U128>,
 }
 
-#[derive(Default, BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize)]
 pub struct FeeStorage {
     pub deposit_fee: Option<Fee>,
     pub withdraw_fee: Option<Fee>,
+    pub withdraw_fee_per_silo: UnorderedMap<AccountId, Fee>,
+    pub deposit_fee_per_silo: UnorderedMap<AccountId, Fee>,
 }

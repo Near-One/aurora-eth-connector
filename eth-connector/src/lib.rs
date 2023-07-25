@@ -20,6 +20,7 @@ use near_contract_standards::fungible_token::metadata::{
 use near_contract_standards::fungible_token::receiver::ext_ft_receiver;
 use near_contract_standards::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use near_contract_standards::fungible_token::FungibleToken;
+use near_sdk::collections::UnorderedMap;
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -68,6 +69,8 @@ enum StorageKey {
     Proof = 0x2,
     Metadata = 0x3,
     EngineAccounts = 0x4,
+    WithdrawFeePerSilo = 0x5,
+    DespositFeePerSilo = 0x6,
 }
 
 impl EthConnectorContract {
@@ -197,7 +200,12 @@ impl EthConnectorContract {
             metadata: LazyOption::new(StorageKey::Metadata, Some(metadata)),
             used_proofs: LookupSet::new(StorageKey::Proof),
             known_engine_accounts: LookupSet::new(StorageKey::EngineAccounts),
-            fee: FeeStorage::default(),
+            fee: FeeStorage {
+                deposit_fee: None,
+                withdraw_fee: None,
+                withdraw_fee_per_silo: UnorderedMap::new(StorageKey::WithdrawFeePerSilo),
+                deposit_fee_per_silo: UnorderedMap::new(StorageKey::DespositFeePerSilo),
+            },
         };
         this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(owner_id);
@@ -519,7 +527,8 @@ impl Withdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
 
-        let fee_amount = self.calculate_fee_amount(amount.into(), FeeType::Withdraw);
+        let fee_amount =
+            self.calculate_fee_amount(amount.into(), FeeType::Withdraw, Some(sender_id));
         // Mint fee
         self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
@@ -551,7 +560,11 @@ impl EngineConnectorWithdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
 
-        let fee_amount = self.calculate_fee_amount(amount.into(), FeeType::Withdraw);
+        let fee_amount = self.calculate_fee_amount(
+            amount.into(),
+            FeeType::Withdraw,
+            Some(env::predecessor_account_id()),
+        );
         // Mint fee
         self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
@@ -580,10 +593,15 @@ impl FeeManagement for EthConnectorContract {
         self.fee.withdraw_fee
     }
 
-    fn calculate_fee_amount(&self, amount: U128, fee_type: FeeType) -> U128 {
+    fn calculate_fee_amount(
+        &self,
+        amount: U128,
+        fee_type: FeeType,
+        silo: Option<AccountId>,
+    ) -> U128 {
         let Some(fee) = (match fee_type {
-            FeeType::Deposit => self.fee.deposit_fee,
-            FeeType::Withdraw => self.fee.withdraw_fee,
+            FeeType::Deposit => silo.and_then(|silo| self.fee.deposit_fee_per_silo.get(&silo)).or(self.fee.deposit_fee),
+            FeeType::Withdraw => silo.and_then(|silo| self.fee.withdraw_fee_per_silo.get(&silo)).or(self.fee.withdraw_fee),
         }) else { return 0.into() };
 
         let fee_amount = (amount.0 * fee.fee_percentage.0) / FEE_DECIMAL_PRECISION;
@@ -607,6 +625,24 @@ impl FeeManagement for EthConnectorContract {
     fn set_withdraw_fee(&mut self, fee: Option<Fee>) {
         self.connector.assert_owner_access_right().sdk_unwrap();
         self.fee.withdraw_fee = fee;
+    }
+
+    fn set_deposit_fee_per_silo(&mut self, silo: AccountId, fee: Option<Fee>) {
+        self.connector.assert_owner_access_right().sdk_unwrap();
+        if let Some(fee) = fee {
+            self.fee.deposit_fee_per_silo.insert(&silo, &fee);
+        } else {
+            self.fee.deposit_fee_per_silo.remove(&silo);
+        }
+    }
+
+    fn set_withdraw_fee_per_silo(&mut self, silo: AccountId, fee: Option<Fee>) {
+        self.connector.assert_owner_access_right().sdk_unwrap();
+        if let Some(fee) = fee {
+            self.fee.withdraw_fee_per_silo.insert(&silo, &fee);
+        } else {
+            self.fee.withdraw_fee_per_silo.remove(&silo);
+        }
     }
 
     fn claim_fee(&mut self, amount: U128, receiver_id: Option<AccountId>) {
@@ -638,22 +674,26 @@ impl FundsFinish for EthConnectorContract {
         // Store proof only after `mint` calculations
         self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
-        let fee_amount = self.calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit);
-        let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
-
         if let Some(msg) = deposit_call.msg {
             // Mint - calculate new balances
             self.mint_eth_on_near(&env::current_account_id(), deposit_call.amount);
-
-            // Early return if the fee is higher than the transferred amount
-            if amount_to_transfer == 0 && fee_amount.0 != 0 {
-                return PromiseOrValue::Value(Some(U128(0)));
-            }
 
             // Transfer tokens to recipient minus fee
             let args = TransferCallCallArgs::try_from_slice(&msg)
                 .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                 .sdk_unwrap();
+
+            let fee_amount = self.calculate_fee_amount(
+                deposit_call.amount.into(),
+                FeeType::Deposit,
+                Some(args.receiver_id.clone()),
+            );
+            let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
+            // Early return if the fee is higher than the transferred amount
+            if amount_to_transfer == 0 && fee_amount.0 != 0 {
+                return PromiseOrValue::Value(Some(U128(0)));
+            }
+
             let promise = self.internal_ft_transfer_call(
                 env::predecessor_account_id(),
                 args.receiver_id,
@@ -666,6 +706,10 @@ impl FundsFinish for EthConnectorContract {
                 PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
             }
         } else {
+            let fee_amount =
+                self.calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit, None);
+            let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
+
             // Mint - calculate new balances
             self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
