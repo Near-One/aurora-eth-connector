@@ -900,7 +900,7 @@ mod tests {
     #[derive(Clone, Debug)]
     struct TestFeeCase {
         amount: u128,
-        fee: Fee,
+        fee: Option<Fee>,
         expected_transferred_amount: u128,
         expected_fee_amount: u128,
     }
@@ -909,43 +909,59 @@ mod tests {
         [
             TestFeeCase {
                 amount: 100_000,
-                fee: Fee {
+                fee: Some(Fee {
                     fee_percentage: U128(100_000), // 10%
                     lower_bound: None,
                     upper_bound: None,
-                },
+                }),
                 expected_transferred_amount: 90_000,
                 expected_fee_amount: 10_000,
             },
             TestFeeCase {
                 amount: 100_000,
-                fee: Fee {
+                fee: Some(Fee {
                     fee_percentage: U128(100_000), // 10%
                     lower_bound: Some(U128(20_000)),
                     upper_bound: None,
-                },
+                }),
                 expected_transferred_amount: 80_000,
                 expected_fee_amount: 20_000,
             },
             TestFeeCase {
                 amount: 100_000,
-                fee: Fee {
+                fee: Some(Fee {
                     fee_percentage: U128(200_000), // 20%
                     lower_bound: None,
                     upper_bound: Some(U128(10_000)),
-                },
+                }),
                 expected_transferred_amount: 90_000,
                 expected_fee_amount: 10_000,
             },
             TestFeeCase {
                 amount: 1000,
-                fee: Fee {
+                fee: Some(Fee {
                     fee_percentage: U128(200_000), // 20%
                     lower_bound: Some(U128(10_000)),
                     upper_bound: None,
-                },
+                }),
                 expected_transferred_amount: 0,
                 expected_fee_amount: 1000,
+            },
+            TestFeeCase {
+                amount: 100_000,
+                fee: Some(Fee {
+                    fee_percentage: U128(0), // 0%
+                    lower_bound: None,
+                    upper_bound: None,
+                }),
+                expected_transferred_amount: 100_000,
+                expected_fee_amount: 0,
+            },
+            TestFeeCase {
+                amount: 100_000,
+                fee: None,
+                expected_transferred_amount: 100_000,
+                expected_fee_amount: 0,
             },
         ]
         .to_vec()
@@ -973,7 +989,7 @@ mod tests {
         );
 
         for test_case in &get_fee_test_cases() {
-            contract.set_withdraw_fee(Some(test_case.fee));
+            contract.set_withdraw_fee(test_case.fee);
 
             let result = withdraw_function(&mut contract, test_case);
             assert_eq!(
@@ -1036,7 +1052,7 @@ mod tests {
         );
 
         for test_case in &get_fee_test_cases() {
-            contract.set_deposit_fee(Some(test_case.fee));
+            contract.set_deposit_fee(test_case.fee);
             let proof_key = rand::distributions::DistString::sample_string(
                 &rand::distributions::Alphanumeric,
                 &mut rand::thread_rng(),
