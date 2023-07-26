@@ -593,6 +593,14 @@ impl FeeManagement for EthConnectorContract {
         self.fee.withdraw_fee
     }
 
+    fn get_deposit_fee_per_silo(&self, silo: AccountId) -> Option<Fee> {
+        self.fee.deposit_fee_per_silo.get(&silo)
+    }
+
+    fn get_withdraw_fee_per_silo(&self, silo: AccountId) -> Option<Fee> {
+        self.fee.withdraw_fee_per_silo.get(&silo)
+    }
+
     fn calculate_fee_amount(
         &self,
         amount: U128,

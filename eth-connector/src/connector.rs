@@ -15,6 +15,8 @@ pub trait Deposit {
 pub trait FeeManagement {
     fn get_deposit_fee(&self) -> Option<Fee>;
     fn get_withdraw_fee(&self) -> Option<Fee>;
+    fn get_deposit_fee_per_silo(&self, silo: AccountId) -> Option<Fee>;
+    fn get_withdraw_fee_per_silo(&self, silo: AccountId) -> Option<Fee>;
     fn calculate_fee_amount(
         &self,
         amount: U128,
