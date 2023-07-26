@@ -700,7 +700,7 @@ impl FundsFinish for EthConnectorContract {
             }
 
             let promise = self.internal_ft_transfer_call(
-                env::predecessor_account_id(),
+                env::current_account_id(),
                 args.receiver_id,
                 amount_to_transfer.into(),
                 args.memo,
@@ -878,6 +878,10 @@ mod tests {
         "eth_connector".parse().unwrap()
     }
 
+    fn ft_owner() -> AccountId {
+        "ft_owner".parse().unwrap()
+    }
+
     const fn eth_custodian() -> Address {
         Address::from_array([0xab; 20])
     }
@@ -967,19 +971,22 @@ mod tests {
         .to_vec()
     }
 
-    fn test_withdraw_generic<F>(withdraw_function: F)
-    where
+    fn test_withdraw_generic<F>(
+        withdraw_function: F,
+        ft_owner: &AccountId,
+        silo: &Option<AccountId>,
+    ) where
         F: Fn(&mut EthConnectorContract, &TestFeeCase) -> WithdrawResult,
     {
         set_env!(predecessor_account_id: owner(), current_account_id: eth_connector(), attached_deposit: 1);
         let mut contract = create_contract();
 
         let mint_amount = 1_000_000_000_000_000_000_000;
-        contract.mint_eth_on_near(&owner(), mint_amount);
-        let mut owner_balance_before_withdraw = contract.ft_balance_of(owner()).0;
+        contract.mint_eth_on_near(ft_owner, mint_amount);
+        let mut ft_owner_balance_before_withdraw = contract.ft_balance_of(ft_owner.clone()).0;
         assert_eq!(
-            owner_balance_before_withdraw, mint_amount,
-            "Wrong owner balance of the owner after mint"
+            ft_owner_balance_before_withdraw, mint_amount,
+            "Wrong ft owner balance after mint"
         );
 
         let mut eth_connector_balance_before_withdraw = contract.ft_balance_of(eth_connector()).0;
@@ -989,7 +996,15 @@ mod tests {
         );
 
         for test_case in &get_fee_test_cases() {
-            contract.set_withdraw_fee(test_case.fee);
+            set_env!(
+                predecessor_account_id: owner(),
+                current_account_id: eth_connector()
+            );
+            if let Some(silo) = &silo {
+                contract.set_withdraw_fee_per_silo(silo.clone(), test_case.fee);
+            } else {
+                contract.set_withdraw_fee(test_case.fee);
+            }
 
             let result = withdraw_function(&mut contract, test_case);
             assert_eq!(
@@ -1002,11 +1017,11 @@ mod tests {
                 "Wrong withdraw result"
             );
 
-            let owner_balance_after_withdraw = contract.ft_balance_of(owner()).0;
+            let ft_owner_balance_after_withdraw = contract.ft_balance_of(ft_owner.clone()).0;
             assert_eq!(
-                owner_balance_after_withdraw,
-                owner_balance_before_withdraw - test_case.amount,
-                "Wrong owner balance after withdraw"
+                ft_owner_balance_after_withdraw,
+                ft_owner_balance_before_withdraw - test_case.amount,
+                "Wrong ft owner balance after withdraw"
             );
             let eth_connector_balance_after_withdraw = contract.ft_balance_of(eth_connector()).0;
             assert_eq!(
@@ -1015,34 +1030,73 @@ mod tests {
                 "Wrong eth-connector balance after withdraw"
             );
 
-            owner_balance_before_withdraw = owner_balance_after_withdraw;
+            ft_owner_balance_before_withdraw = ft_owner_balance_after_withdraw;
             eth_connector_balance_before_withdraw = eth_connector_balance_after_withdraw;
         }
     }
 
     #[test]
     fn test_fee_on_withdraw() {
-        test_withdraw_generic(|contract, test_case| {
-            contract.withdraw(recipient_address(), test_case.amount)
-        });
+        test_withdraw_generic(
+            |contract, test_case| {
+                set_env!(predecessor_account_id: ft_owner(), current_account_id: eth_connector(), attached_deposit: 1);
+                contract.withdraw(recipient_address(), test_case.amount)
+            },
+            &ft_owner(),
+            &None,
+        );
+    }
+
+    #[test]
+    fn test_fee_on_withdraw_per_silo() {
+        test_withdraw_generic(
+            |contract, test_case| {
+                set_env!(predecessor_account_id: engine(), current_account_id: eth_connector(), attached_deposit: 1);
+                contract.withdraw(recipient_address(), test_case.amount)
+            },
+            &engine(),
+            &Some(engine()),
+        );
     }
 
     #[test]
     fn test_fee_on_engine_withdraw() {
-        test_withdraw_generic(|contract, test_case| {
-            contract.engine_withdraw(owner(), recipient_address(), test_case.amount)
-        });
+        test_withdraw_generic(
+            |contract, test_case| {
+                set_env!(predecessor_account_id: engine(), current_account_id: eth_connector(), attached_deposit: 1);
+                contract.engine_withdraw(ft_owner(), recipient_address(), test_case.amount)
+            },
+            &ft_owner(),
+            &None,
+        );
     }
 
     #[test]
-    fn test_fee_on_finish_deposit() {
+    fn test_fee_on_engine_withdraw_per_silo() {
+        test_withdraw_generic(
+            |contract, test_case| {
+                set_env!(predecessor_account_id: engine(), current_account_id: eth_connector(), attached_deposit: 1);
+                contract.engine_withdraw(engine(), recipient_address(), test_case.amount)
+            },
+            &engine(),
+            &Some(engine()),
+        );
+    }
+
+    fn test_fee_on_finish_deposit_generic<F>(
+        deposit_function: F,
+        ft_owner: &AccountId,
+        silo: &Option<AccountId>,
+    ) where
+        F: Fn(&mut EthConnectorContract, &TestFeeCase, String),
+    {
         set_env!(predecessor_account_id: owner(), current_account_id: eth_connector(), attached_deposit: 1);
         let mut contract = create_contract();
 
-        let mut owner_balance_before_deposit = contract.ft_balance_of(owner()).0;
+        let mut ft_owner_balance_before_deposit = contract.ft_balance_of(ft_owner.clone()).0;
         assert_eq!(
-            owner_balance_before_deposit, 0,
-            "Wrong owner balance of the owner after mint"
+            ft_owner_balance_before_deposit, 0,
+            "Wrong ft owner balance after mint"
         );
 
         let mut eth_connector_balance_before_deposit = contract.ft_balance_of(eth_connector()).0;
@@ -1052,27 +1106,26 @@ mod tests {
         );
 
         for test_case in &get_fee_test_cases() {
-            contract.set_deposit_fee(test_case.fee);
             let proof_key = rand::distributions::DistString::sample_string(
                 &rand::distributions::Alphanumeric,
                 &mut rand::thread_rng(),
                 20,
             );
-            contract.finish_deposit(
-                FinishDepositCallArgs {
-                    new_owner_id: owner(),
-                    amount: test_case.amount,
-                    proof_key,
-                    msg: None,
-                },
-                true,
-            );
+            set_env!(predecessor_account_id: owner(), current_account_id: eth_connector(), attached_deposit: 1);
 
-            let owner_balance_after_deposit = contract.ft_balance_of(owner()).0;
+            if let Some(silo) = silo {
+                contract.set_deposit_fee_per_silo(silo.clone(), test_case.fee);
+            } else {
+                contract.set_deposit_fee(test_case.fee);
+            }
+
+            deposit_function(&mut contract, test_case, proof_key);
+
+            let ft_owner_balance_after_deposit = contract.ft_balance_of(ft_owner.clone()).0;
             assert_eq!(
-                owner_balance_after_deposit,
-                owner_balance_before_deposit + test_case.expected_transferred_amount,
-                "Wrong owner balance after deposit"
+                ft_owner_balance_after_deposit,
+                ft_owner_balance_before_deposit + test_case.expected_transferred_amount,
+                "Wrong ft owner balance after deposit"
             );
             let eth_connector_balance_after_deposit = contract.ft_balance_of(eth_connector()).0;
             assert_eq!(
@@ -1081,9 +1134,56 @@ mod tests {
                 "Wrong eth-connector balance after deposit"
             );
 
-            owner_balance_before_deposit = owner_balance_after_deposit;
+            ft_owner_balance_before_deposit = ft_owner_balance_after_deposit;
             eth_connector_balance_before_deposit = eth_connector_balance_after_deposit;
         }
+    }
+
+    #[test]
+    fn test_fee_on_finish_deposit() {
+        test_fee_on_finish_deposit_generic(
+            |contract, test_case, proof_key| {
+                contract.finish_deposit(
+                    FinishDepositCallArgs {
+                        new_owner_id: ft_owner(),
+                        amount: test_case.amount,
+                        proof_key,
+                        msg: None,
+                    },
+                    true,
+                );
+            },
+            &ft_owner(),
+            &None,
+        );
+    }
+
+    #[test]
+    fn test_fee_on_finish_deposit_per_silo() {
+        test_fee_on_finish_deposit_generic(
+            |contract, test_case, proof_key| {
+                contract.finish_deposit(
+                    FinishDepositCallArgs {
+                        new_owner_id: engine(),
+                        amount: test_case.amount,
+                        proof_key,
+                        msg: Some(
+                            TransferCallCallArgs {
+                                receiver_id: engine(),
+                                amount: test_case.amount,
+                                memo: None,
+                                msg: "msg".to_owned(),
+                            }
+                            .try_to_vec()
+                            .unwrap(),
+                        ),
+                    },
+                    true,
+                );
+            },
+            &engine(),
+            &Some(engine()),
+        );
     }
 
     fn create_contract() -> EthConnectorContract {
