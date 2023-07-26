@@ -560,11 +560,8 @@ impl EngineConnectorWithdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
 
-        let fee_amount = self.calculate_fee_amount(
-            amount.into(),
-            FeeType::Withdraw,
-            Some(env::predecessor_account_id()),
-        );
+        let fee_amount =
+            self.calculate_fee_amount(amount.into(), FeeType::Withdraw, Some(sender_id));
         // Mint fee
         self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
