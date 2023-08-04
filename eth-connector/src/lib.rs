@@ -609,7 +609,8 @@ impl FeeManagement for EthConnectorContract {
             FeeType::Withdraw => silo.and_then(|silo| self.fee.withdraw_fee_per_silo.get(&silo)).or(self.fee.withdraw_fee),
         }) else { return 0.into() };
 
-        let fee_amount = (amount.0 * fee.fee_percentage.0) / FEE_DECIMAL_PRECISION;
+        let fee_amount =
+            amount.0.checked_mul(fee.fee_percentage.0).sdk_unwrap() / FEE_DECIMAL_PRECISION;
 
         let bounded_fee_amount = if fee.lower_bound.map_or(false, |bound| fee_amount < bound.0) {
             fee.lower_bound.unwrap().0
