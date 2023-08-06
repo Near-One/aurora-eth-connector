@@ -527,12 +527,19 @@ impl Withdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
 
-        let fee_amount =
-            self.calculate_fee_amount(amount.into(), FeeType::Withdraw, Some(sender_id));
+        let fee_amount = self
+            .calculate_fee_amount(amount.into(), FeeType::Withdraw, Some(sender_id))
+            .0;
         // Mint fee
-        self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
+        self.mint_eth_on_near(&env::current_account_id(), fee_amount);
 
-        let withdraw_amount = amount.checked_sub(fee_amount.0).sdk_unwrap();
+        let withdraw_amount = amount.checked_sub(fee_amount).sdk_unwrap();
+
+        near_sdk::log!(
+            "withdraw_amount: {}, fee_amount: {}",
+            withdraw_amount,
+            fee_amount
+        );
         WithdrawResult {
             amount: withdraw_amount,
             recipient_id: recipient_address,
@@ -561,12 +568,19 @@ impl EngineConnectorWithdraw for EthConnectorContract {
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
 
-        let fee_amount =
-            self.calculate_fee_amount(amount.into(), FeeType::Withdraw, Some(sender_id));
+        let fee_amount = self
+            .calculate_fee_amount(amount.into(), FeeType::Withdraw, Some(sender_id))
+            .0;
         // Mint fee
-        self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
+        self.mint_eth_on_near(&env::current_account_id(), fee_amount);
 
-        let withdraw_amount = amount.checked_sub(fee_amount.0).sdk_unwrap();
+        let withdraw_amount = amount.checked_sub(fee_amount).sdk_unwrap();
+
+        near_sdk::log!(
+            "withdraw_amount: {}, fee_amount: {}",
+            withdraw_amount,
+            fee_amount
+        );
         WithdrawResult {
             amount: withdraw_amount,
             recipient_id: recipient_address,
@@ -691,14 +705,23 @@ impl FundsFinish for EthConnectorContract {
                 .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                 .sdk_unwrap();
 
-            let fee_amount = self.calculate_fee_amount(
-                deposit_call.amount.into(),
-                FeeType::Deposit,
-                Some(args.receiver_id.clone()),
+            let fee_amount = self
+                .calculate_fee_amount(
+                    deposit_call.amount.into(),
+                    FeeType::Deposit,
+                    Some(args.receiver_id.clone()),
+                )
+                .0;
+            let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount).sdk_unwrap();
+
+            near_sdk::log!(
+                "deposit_amount: {}, fee_amount: {}",
+                amount_to_transfer,
+                fee_amount
             );
-            let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
+
             // Early return if the fee is higher than the transferred amount
-            if amount_to_transfer == 0 && fee_amount.0 != 0 {
+            if amount_to_transfer == 0 && fee_amount != 0 {
                 return PromiseOrValue::Value(Some(U128(0)));
             }
 
@@ -714,12 +737,19 @@ impl FundsFinish for EthConnectorContract {
                 PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
             }
         } else {
-            let fee_amount =
-                self.calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit, None);
-            let deposit_amount = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
+            let fee_amount = self
+                .calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit, None)
+                .0;
+            let deposit_amount = deposit_call.amount.checked_sub(fee_amount).sdk_unwrap();
+
+            near_sdk::log!(
+                "deposit_amount: {}, fee_amount: {}",
+                deposit_amount,
+                fee_amount
+            );
 
             // Mint - calculate new balances
-            self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
+            self.mint_eth_on_near(&env::current_account_id(), fee_amount);
 
             self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_amount);
 
