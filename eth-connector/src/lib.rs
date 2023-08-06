@@ -203,8 +203,8 @@ impl EthConnectorContract {
             fee: FeeStorage {
                 deposit_fee: None,
                 withdraw_fee: None,
-                withdraw_fee_per_silo: UnorderedMap::new(StorageKey::WithdrawFeePerSilo),
                 deposit_fee_per_silo: UnorderedMap::new(StorageKey::DespositFeePerSilo),
+                withdraw_fee_per_silo: UnorderedMap::new(StorageKey::WithdrawFeePerSilo),
             },
         };
         this.register_if_not_exists(&env::current_account_id());
@@ -532,8 +532,9 @@ impl Withdraw for EthConnectorContract {
         // Mint fee
         self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
+        let withdraw_amount = amount.checked_sub(fee_amount.0).sdk_unwrap();
         WithdrawResult {
-            amount: amount.checked_sub(fee_amount.0).sdk_unwrap(),
+            amount: withdraw_amount,
             recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
@@ -565,8 +566,9 @@ impl EngineConnectorWithdraw for EthConnectorContract {
         // Mint fee
         self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
+        let withdraw_amount = amount.checked_sub(fee_amount.0).sdk_unwrap();
         WithdrawResult {
-            amount: amount.checked_sub(fee_amount.0).sdk_unwrap(),
+            amount: withdraw_amount,
             recipient_id: recipient_address,
             eth_custodian_address: self.connector.eth_custodian_address,
         }
@@ -677,7 +679,7 @@ impl FundsFinish for EthConnectorContract {
 
         log!("Finish deposit with the amount: {}", deposit_call.amount);
 
-        // Store proof only after `mint` calculations
+        // Store the proof key
         self.record_proof(&deposit_call.proof_key).sdk_unwrap();
 
         if let Some(msg) = deposit_call.msg {
@@ -714,12 +716,12 @@ impl FundsFinish for EthConnectorContract {
         } else {
             let fee_amount =
                 self.calculate_fee_amount(deposit_call.amount.into(), FeeType::Deposit, None);
-            let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
+            let deposit_amount = deposit_call.amount.checked_sub(fee_amount.0).sdk_unwrap();
 
             // Mint - calculate new balances
             self.mint_eth_on_near(&env::current_account_id(), fee_amount.0);
 
-            self.mint_eth_on_near(&deposit_call.new_owner_id, amount_to_transfer);
+            self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_amount);
 
             PromiseOrValue::Value(None)
         }

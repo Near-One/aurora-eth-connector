@@ -23,6 +23,6 @@ pub struct Fee {
 pub struct FeeStorage {
     pub deposit_fee: Option<Fee>,
     pub withdraw_fee: Option<Fee>,
-    pub withdraw_fee_per_silo: UnorderedMap<AccountId, Fee>,
     pub deposit_fee_per_silo: UnorderedMap<AccountId, Fee>,
+    pub withdraw_fee_per_silo: UnorderedMap<AccountId, Fee>,
 }
