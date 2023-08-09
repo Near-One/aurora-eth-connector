@@ -29,6 +29,7 @@ impl From<EthConnectorContractV0> for EthConnectorContract {
                 withdraw_fee: None,
                 deposit_fee_per_silo: UnorderedMap::new(StorageKey::DespositFeePerSilo),
                 withdraw_fee_per_silo: UnorderedMap::new(StorageKey::WithdrawFeePerSilo),
+                fee_owner: None,
             },
         }
     }

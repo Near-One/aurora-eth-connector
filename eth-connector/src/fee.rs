@@ -32,4 +32,6 @@ pub struct FeeStorage {
     pub deposit_fee_per_silo: UnorderedMap<AccountId, Fee>,
     // Override the default fee for withdrawal transfers initiated by silos
     pub withdraw_fee_per_silo: UnorderedMap<AccountId, Fee>,
+    // If set, then fee fee minted to the `fee_owner` account
+    pub fee_owner: Option<AccountId>,
 }
