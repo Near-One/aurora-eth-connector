@@ -25,8 +25,6 @@ impl From<EthConnectorContractV0> for EthConnectorContract {
             used_proofs: val.used_proofs,
             known_engine_accounts: val.known_engine_accounts,
             fee: FeeStorage {
-                deposit_fee: None,
-                withdraw_fee: None,
                 deposit_fee_per_silo: UnorderedMap::new(StorageKey::DespositFeePerSilo),
                 withdraw_fee_per_silo: UnorderedMap::new(StorageKey::WithdrawFeePerSilo),
                 fee_owner: None,

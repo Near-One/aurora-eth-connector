@@ -201,8 +201,6 @@ impl EthConnectorContract {
             used_proofs: LookupSet::new(StorageKey::Proof),
             known_engine_accounts: LookupSet::new(StorageKey::EngineAccounts),
             fee: FeeStorage {
-                deposit_fee: None,
-                withdraw_fee: None,
                 deposit_fee_per_silo: UnorderedMap::new(StorageKey::DespositFeePerSilo),
                 withdraw_fee_per_silo: UnorderedMap::new(StorageKey::WithdrawFeePerSilo),
                 fee_owner: None,
@@ -599,19 +597,11 @@ impl Deposit for EthConnectorContract {
 
 #[near_bindgen]
 impl FeeManagement for EthConnectorContract {
-    fn get_deposit_fee(&self) -> Option<Fee> {
-        self.fee.deposit_fee
-    }
-
-    fn get_withdraw_fee(&self) -> Option<Fee> {
-        self.fee.withdraw_fee
-    }
-
-    fn get_deposit_fee_per_silo(&self, silo: AccountId) -> Option<Fee> {
+    fn get_deposit_fee_per_silo(&self, silo: Option<AccountId>) -> Option<Fee> {
         self.fee.deposit_fee_per_silo.get(&silo)
     }
 
-    fn get_withdraw_fee_per_silo(&self, silo: AccountId) -> Option<Fee> {
+    fn get_withdraw_fee_per_silo(&self, silo: Option<AccountId>) -> Option<Fee> {
         self.fee.withdraw_fee_per_silo.get(&silo)
     }
 
@@ -629,8 +619,10 @@ impl FeeManagement for EthConnectorContract {
         silo: Option<AccountId>,
     ) -> U128 {
         let Some(fee) = (match fee_type {
-            FeeType::Deposit => silo.and_then(|silo| self.fee.deposit_fee_per_silo.get(&silo)).or(self.fee.deposit_fee),
-            FeeType::Withdraw => silo.and_then(|silo| self.fee.withdraw_fee_per_silo.get(&silo)).or(self.fee.withdraw_fee),
+            FeeType::Deposit => silo.and_then(|silo| self.fee.deposit_fee_per_silo.get(&Some(silo)))
+                                    .or_else(|| self.fee.deposit_fee_per_silo.get(&None)),
+            FeeType::Withdraw => silo.and_then(|silo| self.fee.withdraw_fee_per_silo.get(&Some(silo)))
+                                     .or_else(|| self.fee.withdraw_fee_per_silo.get(&None)),
         }) else { return 0.into() };
 
         let fee_amount =
@@ -647,17 +639,7 @@ impl FeeManagement for EthConnectorContract {
         U128(std::cmp::min(bounded_fee_amount, amount.0))
     }
 
-    fn set_deposit_fee(&mut self, fee: Option<Fee>) {
-        self.connector.assert_owner_access_right().sdk_unwrap();
-        self.fee.deposit_fee = fee;
-    }
-
-    fn set_withdraw_fee(&mut self, fee: Option<Fee>) {
-        self.connector.assert_owner_access_right().sdk_unwrap();
-        self.fee.withdraw_fee = fee;
-    }
-
-    fn set_deposit_fee_per_silo(&mut self, silo: AccountId, fee: Option<Fee>) {
+    fn set_deposit_fee_per_silo(&mut self, silo: Option<AccountId>, fee: Option<Fee>) {
         self.connector.assert_owner_access_right().sdk_unwrap();
         if let Some(fee) = fee {
             self.fee.deposit_fee_per_silo.insert(&silo, &fee);
@@ -666,7 +648,7 @@ impl FeeManagement for EthConnectorContract {
         }
     }
 
-    fn set_withdraw_fee_per_silo(&mut self, silo: AccountId, fee: Option<Fee>) {
+    fn set_withdraw_fee_per_silo(&mut self, silo: Option<AccountId>, fee: Option<Fee>) {
         self.connector.assert_owner_access_right().sdk_unwrap();
         if let Some(fee) = fee {
             self.fee.withdraw_fee_per_silo.insert(&silo, &fee);
@@ -1053,11 +1035,8 @@ mod tests {
                 predecessor_account_id: owner(),
                 current_account_id: eth_connector()
             );
-            if let Some(silo) = &silo {
-                contract.set_withdraw_fee_per_silo(silo.clone(), test_case.fee);
-            } else {
-                contract.set_withdraw_fee(test_case.fee);
-            }
+
+            contract.set_withdraw_fee_per_silo(silo.clone(), test_case.fee);
 
             let result = withdraw_function(&mut contract, test_case);
             assert_eq!(
@@ -1199,11 +1178,7 @@ mod tests {
             );
             set_env!(predecessor_account_id: owner(), current_account_id: eth_connector(), attached_deposit: 1);
 
-            if let Some(silo) = silo {
-                contract.set_deposit_fee_per_silo(silo.clone(), test_case.fee);
-            } else {
-                contract.set_deposit_fee(test_case.fee);
-            }
+            contract.set_deposit_fee_per_silo(silo.clone(), test_case.fee);
 
             deposit_function(&mut contract, test_case, proof_key);
 
