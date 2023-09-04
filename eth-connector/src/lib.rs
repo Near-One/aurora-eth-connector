@@ -626,7 +626,7 @@ impl FeeManagement for EthConnectorContract {
         }) else { return 0.into() };
 
         let fee_amount =
-            amount.0.checked_mul(fee.fee_percentage.0).sdk_unwrap() / FEE_DECIMAL_PRECISION;
+            amount.0.checked_mul(fee.fee_percentage.into()).sdk_unwrap() / FEE_DECIMAL_PRECISION;
 
         let bounded_fee_amount = if fee.lower_bound.map_or(false, |bound| fee_amount < bound.0) {
             fee.lower_bound.unwrap().0
@@ -946,7 +946,7 @@ mod tests {
             TestFeeCase {
                 amount: 100_000,
                 fee: Some(Fee {
-                    fee_percentage: U128(100_000), // 10%
+                    fee_percentage: 100_000, // 10%
                     lower_bound: None,
                     upper_bound: None,
                 }),
@@ -956,7 +956,7 @@ mod tests {
             TestFeeCase {
                 amount: 100_000,
                 fee: Some(Fee {
-                    fee_percentage: U128(100_000), // 10%
+                    fee_percentage: 100_000, // 10%
                     lower_bound: Some(U128(20_000)),
                     upper_bound: None,
                 }),
@@ -966,7 +966,7 @@ mod tests {
             TestFeeCase {
                 amount: 100_000,
                 fee: Some(Fee {
-                    fee_percentage: U128(200_000), // 20%
+                    fee_percentage: 200_000, // 20%
                     lower_bound: None,
                     upper_bound: Some(U128(10_000)),
                 }),
@@ -976,7 +976,7 @@ mod tests {
             TestFeeCase {
                 amount: 1000,
                 fee: Some(Fee {
-                    fee_percentage: U128(200_000), // 20%
+                    fee_percentage: 200_000, // 20%
                     lower_bound: Some(U128(10_000)),
                     upper_bound: None,
                 }),
@@ -986,7 +986,7 @@ mod tests {
             TestFeeCase {
                 amount: 100_000,
                 fee: Some(Fee {
-                    fee_percentage: U128(0), // 0%
+                    fee_percentage: 0, // 0%
                     lower_bound: None,
                     upper_bound: None,
                 }),

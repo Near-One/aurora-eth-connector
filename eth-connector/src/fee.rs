@@ -15,7 +15,7 @@ pub enum FeeType {
 #[derive(BorshDeserialize, BorshSerialize, Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct Fee {
     /// Fee percentage in 6 decimal precision (10% -> 0.1 * 10e6 -> 100_000)
-    pub fee_percentage: U128,
+    pub fee_percentage: u32,
     /// The minimum fee amount for transfer
     pub lower_bound: Option<U128>,
     /// The maximum fee amount for transfer
