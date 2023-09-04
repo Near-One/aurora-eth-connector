@@ -534,7 +534,7 @@ impl Withdraw for EthConnectorContract {
 
         let withdraw_amount = amount.checked_sub(fee_amount).sdk_unwrap();
 
-        near_sdk::log!(
+        log!(
             "withdraw_amount: {}, fee_amount: {}",
             withdraw_amount,
             fee_amount
@@ -575,7 +575,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
         let withdraw_amount = amount.checked_sub(fee_amount).sdk_unwrap();
 
-        near_sdk::log!(
+        log!(
             "withdraw_amount: {}, fee_amount: {}",
             withdraw_amount,
             fee_amount
@@ -706,7 +706,7 @@ impl FundsFinish for EthConnectorContract {
                 .0;
             let amount_to_transfer = deposit_call.amount.checked_sub(fee_amount).sdk_unwrap();
 
-            near_sdk::log!(
+            log!(
                 "deposit_amount: {}, fee_amount: {}",
                 amount_to_transfer,
                 fee_amount
@@ -738,7 +738,7 @@ impl FundsFinish for EthConnectorContract {
                 .0;
             let deposit_amount = deposit_call.amount.checked_sub(fee_amount).sdk_unwrap();
 
-            near_sdk::log!(
+            log!(
                 "deposit_amount: {}, fee_amount: {}",
                 deposit_amount,
                 fee_amount
