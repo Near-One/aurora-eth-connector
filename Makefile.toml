@@ -136,8 +136,6 @@ args = [
     "--features=${CARGO_FEATURES}",
     "-p",
     "aurora-eth-connector",
-    "-Z",
-    "avoid-dev-deps",
     "${@}",
 ]
 
