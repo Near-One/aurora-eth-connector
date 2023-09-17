@@ -12,6 +12,10 @@ jobs:
     name: Test suite (mainnet)
     runs-on: [self-hosted, heavy]
     steps:
+      - name: Set rust version
+        run: |
+          rustup show
+          rustup default stable
       - name: Clone the repository
         uses: actions/checkout@v2
       - name: Restore cache
