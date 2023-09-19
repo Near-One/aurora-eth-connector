@@ -12,10 +12,6 @@ jobs:
     name: Format
     runs-on: [self-hosted, light]
     steps:
-      - name: Set rust version
-        run: |
-          rustup show
-          rustup default  ${{ env.RUST_VERSION }}
       - name: Clone the repository
         uses: actions/checkout@v2
       - name: Run cargo fmt
@@ -24,14 +20,7 @@ jobs:
     name: Clippy
     runs-on: [self-hosted, heavy]
     steps:
-      - name: Set rust version
-        run: |
-          rustup show
-          rustup default  ${{ env.RUST_VERSION }}
       - name: Clone the repository
         uses: actions/checkout@v2
       - name: Run Contract cargo lint checker
         run: cargo make check
-
-env:
-  RUST_VERSION: 1.72.0
