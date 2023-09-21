@@ -24,3 +24,13 @@ jobs:
         uses: actions/checkout@v2
       - name: Run Contract cargo lint checker
         run: cargo make check
+  builds:
+    name: Builds
+    runs-on: [self-hosted, heavy]
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v2
+      - name: Run contract build
+        run: cargo make --profile=mainnet build
+      - name: Run contract build migration
+        run: cargo make --profile=mainnet build-migration

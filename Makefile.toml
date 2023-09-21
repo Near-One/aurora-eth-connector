@@ -59,7 +59,20 @@ category = "Check"
 command = "${CARGO}"
 args = [
     "clippy",
-    "--all-features",
+    "--all-targets",
+    "--",
+    "-D",
+    "warnings",
+]
+
+[tasks.clippy-migration]
+category = "Check"
+command = "${CARGO}"
+args = [
+    "clippy",
+    "--all-targets",
+    "--features",
+    "mainnet,migration",
     "--",
     "-D",
     "warnings",
@@ -77,7 +90,6 @@ args = [
     "warnings",
 ]
 
-
 [tasks.check-fmt]
 category = "Check"
 command = "${CARGO}"
@@ -92,6 +104,7 @@ category = "Check"
 dependencies = [
     "check-fmt",
     "clippy",
+    "clippy-migration",
     "clippy-tests",
 ]
 
@@ -124,6 +137,16 @@ args = [
     "bin",
 ]
 
+[tasks.wasm-opt]
+condition = { profiles = ["mainnet", "testnet", "custom"] }
+category = "Build"
+script = '''
+  filesize_before=$(wc -c bin/${WASM_FILE} | awk '{print $1}')
+  wasm-opt -O4 bin/${WASM_FILE} -o bin/${WASM_FILE} --strip-debug --vacuum
+  filesize_after=$(wc -c bin/${WASM_FILE} | awk '{print $1}')
+  echo "File size before: [$filesize_before] and after: [$filesize_after]"
+'''
+
 [tasks.build-contract]
 category = "Build"
 command = "${CARGO}"
@@ -151,6 +174,7 @@ dependencies = [
     "build-contract",
     "make-bin-directory",
     "copy-contract-build",
+    "wasm-opt",
     "post-contract-build-env",
 ]
 

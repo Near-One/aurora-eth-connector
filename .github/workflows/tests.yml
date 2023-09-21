@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Restore cache
         run: |
-          cache-util restore cargo_git cargo_registry sandbox:${{ env.NEAR_SANDBOX_BIN_PATH }}
+          cache-util restore cargo_git cargo_registry sandbox:${{ env.NEAR_SANDBOX_BIN_PATH }} wasm_opt:${{ env.WASM_OPT_BIN_PATH }}
       - name: Install sandbox
         run: |
           if [[ ! -f ${{ env.NEAR_SANDBOX_BIN_PATH }} ]]; then
@@ -29,6 +29,15 @@ jobs:
             cd ../
             rm -rf nearcore
           fi
+      - name: Install wasm-opt
+        run: |
+          if [[ ! -f wasm-opt ]]; then
+            mkdir binaryen
+            curl -L https://github.com/WebAssembly/binaryen/releases/download/version_110/binaryen-version_110-x86_64-linux.tar.gz | tar -xz -C binaryen
+            cp binaryen/binaryen-version_110/bin/* /usr/local/bin
+            cache-util save wasm_opt:${{ env.WASM_OPT_BIN_PATH }}
+            rm -rf binaryen
+          fi
       - name: Test mainnet
         run: cargo make --profile mainnet test
       - name: Save cache
@@ -37,5 +46,6 @@ jobs:
 
 env:
   NEAR_SANDBOX_BIN_PATH: /usr/local/bin/near-sandbox
+  WASM_OPT_BIN_PATH: /usr/local/bin/wasm-opt
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
