@@ -129,9 +129,15 @@ impl EthConnector {
             },
             // Deposit to Eth accounts
             TokenMessageData::Eth {
-                receiver_id,
+                mut receiver_id,
                 message,
             } => {
+                // The 'EthCustodian' contract produces events with the 'eth-connector'
+                // account as the recipient when depositing to the EVM,
+                // so here we override the receiver_id for backward compatibility.
+                if receiver_id == current_account_id {
+                    receiver_id = self.get_account_with_access_right();
+                }
                 // Transfer to self and then transfer ETH in `ft_on_transfer`
                 // address - is NEAR account
                 let transfer_data = TransferCallCallArgs {
