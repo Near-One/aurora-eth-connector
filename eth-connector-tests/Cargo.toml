@@ -20,15 +20,15 @@ near-sdk = "4.1"
 near-primitives = "0.17"
 near-units = "0.2"
 near-contract-standards = "4.1"
-tokio = { version = "1", features = ["full"] }
+# tokio = { version = "1", features = ["full"] }
 workspaces = "0.7.0"
 byte-slice-cast = "1.2"
 hex = "0.4.3"
 ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }
 aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git" }
-aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.3.1" }
-aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.3.1" }
+aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.4.0" }
+aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.4.0" }
 
 [features]
 migration-tests = []

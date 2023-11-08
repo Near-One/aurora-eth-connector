@@ -39,6 +39,15 @@ impl TestContract {
         let prover_account = contract.id();
         let metadata = Self::metadata_default();
         let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
+        println!("{prover_account:?}");
+        println!("{account_with_access_right:?}");
+        println!("{owner_id:?}");
+        println!("{eth_custodian_address:?}");
+        println!(
+            "{{\"spec\": {:?}, \"name\": {:?}, \"symbol\":{:?} }}",
+            metadata.spec, metadata.name, metadata.symbol
+        );
+
         // Init eth-connector
         let res = contract
             .init(

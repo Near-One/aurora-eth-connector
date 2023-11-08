@@ -30,6 +30,7 @@ async fn test_migration() {
         used_proofs: proof_keys,
         ..Default::default()
     };
+    //over truth crucial sweet soul truck merry vintage verify hungry slide prefer
     let res = contract
         .contract
         .migrate(data)
