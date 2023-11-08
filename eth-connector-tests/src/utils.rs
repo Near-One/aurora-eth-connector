@@ -260,7 +260,7 @@ impl TestContract {
         let fee = Fee::new(NEP141Wei::new(0));
         let message = recipient_id.to_string();
         let token_message_data: TokenMessageData =
-            TokenMessageData::parse_event_message_and_prepare_token_message_data(&message, fee)
+            TokenMessageData::parse_event_message_and_prepare_token_message_data(&message, zfee)
                 .unwrap();
 
         let deposit_event = DepositedEvent {

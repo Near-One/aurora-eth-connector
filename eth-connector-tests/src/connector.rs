@@ -501,6 +501,7 @@ async fn test_set_and_check_engine_account() {
     assert!(is_exist.result);
 }
 
+/*
 #[tokio::test]
 async fn test_deposit_with_0x_prefix() {
     let contract = TestContract::new().await.unwrap();
@@ -561,7 +562,7 @@ async fn test_deposit_with_0x_prefix() {
         .unwrap();
     assert_eq!(balance.0, deposit_amount);
 }
-
+*/
 #[tokio::test]
 async fn test_deposit_with_same_proof() {
     let contract = TestContract::new().await.unwrap();

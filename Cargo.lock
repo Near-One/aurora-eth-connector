@@ -309,7 +309,7 @@ dependencies = [
 name = "aurora-eth-connector"
 version = "0.6.2"
 dependencies = [
- "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?branch=develop)",
+ "aurora-engine-types 1.0.0 (git+https://github.com/aurora-is-near/aurora-engine.git?tag=3.3.1)",
  "byte-slice-cast",
  "ethabi",
  "hex",
