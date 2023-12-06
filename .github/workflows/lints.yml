@@ -10,7 +10,7 @@ name: Lints
 jobs:
   fmt:
     name: Format
-    runs-on: [self-hosted, light]
+    runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
@@ -18,7 +18,7 @@ jobs:
         run: cargo make check-fmt
   clippy:
     name: Clippy
-    runs-on: [self-hosted, heavy]
+    runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
