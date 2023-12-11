@@ -13,7 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      - name: Install cargo-make
+        run: cargo make -V || cargo install cargo-make
       - name: Run cargo fmt
         run: cargo make check-fmt
   clippy:
@@ -21,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+      - name: Install cargo-make
+        run: cargo make -V || cargo install cargo-make
       - name: Run Contract cargo lint checker
         run: cargo make check
