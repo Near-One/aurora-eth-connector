@@ -1,14 +1,14 @@
 [package]
 name = "aurora-eth-connector-tests"
-version .workspace= true
-author.workspaces = true
-edition.workspaces = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 description = ""
 documentation = ""
-readme = true
-homepage.workspaces = true
-repository.workspaces = true
-license.workspaces = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 publish = false
 autobenches = false
 
