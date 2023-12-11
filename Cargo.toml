@@ -1,3 +1,17 @@
+[workspace.package]
+authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
+edition = "2021"
+version = "0.6.3"
+homepage = "https://github.com/aurora-is-near/aurora-eth-connector"
+repository = "https://github.com/aurora-is-near/aurora-eth-connector"
+license = "CC0 1.0"
+
+[workspace.dependencies]
+aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false }
+
+[patch.crates-io]
+parity-secp256k1 = { git = 'https://github.com/paritytech/rust-secp256k1', rev = "d05fd8e" }
+
 [profile.release]
 opt-level = 3
 debug = false

@@ -1,14 +1,14 @@
 [package]
 name = "aurora-eth-connector"
-version = "0.6.1"
-authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
-edition = "2021"
+version .workspace= true
+author.workspaces = true
+edition.workspaces = true
 description = "Aurora Eth Connector NEAR contract"
 documentation = ""
 readme = true
-homepage = "https://github.com/aurora-is-near/aurora-fungible-token"
-repository = "https://github.com/aurora-is-near/aurora-fungible-token"
-license = "CC0 1.0"
+homepage.workspaces = true
+repository.workspaces = true
+license.workspaces = true
 publish = false
 autobenches = false
 
@@ -16,7 +16,7 @@ autobenches = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false, features = ["impl-serde", "borsh-compat"] }
+aurora-engine-types = { worspace = true, features = ["impl-serde", "borsh-compat"] }
 byte-slice-cast = "1"
 ethabi = { version = "18", default-features = false }
 hex = "0.4"

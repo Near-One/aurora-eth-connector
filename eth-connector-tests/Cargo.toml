@@ -1,20 +1,20 @@
 [package]
 name = "aurora-eth-connector-tests"
-version = "0.6.1"
-authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
-edition = "2021"
+version .workspace= true
+author.workspaces = true
+edition.workspaces = true
 description = ""
 documentation = ""
 readme = true
-homepage = "https://github.com/aurora-is-near/aurora-engine"
-repository = "https://github.com/aurora-is-near/aurora-engine"
-license = "CC0 1.0"
+homepage.workspaces = true
+repository.workspaces = true
+license.workspaces = true
 publish = false
 autobenches = false
 
 [dev-dependencies]
 aurora-eth-connector = { path = "../eth-connector" }
-aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", branch = "develop", default-features = false, features = ["impl-serde"] }
+aurora-engine-types = { workspace = true, features = ["impl-serde"] }
 anyhow = "1.0"
 near-sdk = "4.1"
 near-primitives = "0.17"
