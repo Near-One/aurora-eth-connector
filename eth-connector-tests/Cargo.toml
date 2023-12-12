@@ -1,28 +1,29 @@
 [package]
 name = "aurora-eth-connector-tests"
-version .workspace= true
-author.workspaces = true
-edition.workspaces = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 description = ""
 documentation = ""
-readme = true
-homepage.workspaces = true
-repository.workspaces = true
-license.workspaces = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 publish = false
 autobenches = false
 
 [dev-dependencies]
 aurora-eth-connector = { path = "../eth-connector" }
 aurora-engine-types = { workspace = true, features = ["impl-serde"] }
+near-sdk.workspace = true
+near-primitives.workspace = true
+near-contract-standards.workspace = true
+byte-slice-cast.workspace = true
+
 anyhow = "1.0"
-near-sdk = "4.1"
-near-primitives = "0.17"
 near-units = "0.2"
-near-contract-standards = "4.1"
 tokio = { version = "1", features = ["full"] }
 workspaces = "0.7.0"
-byte-slice-cast = "1.2"
 hex = "0.4.3"
 ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }

@@ -1,14 +1,14 @@
 [package]
 name = "aurora-eth-connector"
-version .workspace= true
-author.workspaces = true
-edition.workspaces = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
 description = "Aurora Eth Connector NEAR contract"
 documentation = ""
-readme = true
-homepage.workspaces = true
-repository.workspaces = true
-license.workspaces = true
+readme.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 publish = false
 autobenches = false
 
@@ -16,12 +16,13 @@ autobenches = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-aurora-engine-types = { worspace = true, features = ["impl-serde", "borsh-compat"] }
-byte-slice-cast = "1"
+aurora-engine-types = { workspace = true, features = ["impl-serde", "borsh-compat"] }
+near-contract-standards.workspace = true
+near-sdk.workspace = true
+byte-slice-cast.workspace = true
+
 ethabi = { version = "18", default-features = false }
 hex = "0.4"
-near-contract-standards = "4.1"
-near-sdk = "4.1"
 rlp = "0.5"
 serde = "1"
 serde_json = "1"
@@ -32,7 +33,7 @@ rand = "0.8"
 [features]
 log = []
 integration-test = ["log"]
-# Currently feature `mainnet` used only for 
+# Currently feature `mainnet` used only for
 # Makefile.toml profiles to indicate basic features
 mainnet = ["log"]
 migration = ["log"]
