@@ -13,10 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
-        uses: actions/checkout@v2
-      - name: Restore cache
-        run: |
-          cache-util restore cargo_git cargo_registry sandbox:${{ env.NEAR_SANDBOX_BIN_PATH }}
+        uses: actions/checkout@v4
       - name: Install sandbox
         run: |
           if [[ ! -f ${{ env.NEAR_SANDBOX_BIN_PATH }} ]]; then
@@ -31,9 +28,6 @@ jobs:
           fi
       - name: Test mainnet
         run: cargo make --profile mainnet test
-      - name: Save cache
-        run: |
-          cache-util save cargo_git cargo_registry
 
 env:
   NEAR_SANDBOX_BIN_PATH: /usr/local/bin/near-sandbox
