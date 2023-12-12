@@ -10,7 +10,7 @@ name: Tests
 jobs:
   test:
     name: Test suite (mainnet)
-    runs-on: [self-hosted, heavy]
+    runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
         uses: actions/checkout@v4
