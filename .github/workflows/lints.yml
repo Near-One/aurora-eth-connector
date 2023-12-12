@@ -1,11 +1,9 @@
----
 on:
   push:
     branches:
       - master
       - develop
   pull_request:
-
 name: Lints
 jobs:
   fmt:
@@ -14,6 +12,8 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
+      - name: Install dependencies
+        run: cargo +stable make -V || cargo +stable install cargo-make
       - name: Run cargo fmt
         run: cargo make check-fmt
   clippy:
@@ -22,5 +22,7 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
+      - name: Install dependencies
+        run: cargo +stable make -V || cargo +stable install cargo-make
       - name: Run Contract cargo lint checker
         run: cargo make check
