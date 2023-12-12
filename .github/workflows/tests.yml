@@ -10,7 +10,7 @@ name: Tests
 jobs:
   test:
     name: Test suite (mainnet)
-    runs-on: [self-hosted, heavy]
+    runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
         uses: actions/checkout@v2
@@ -24,7 +24,7 @@ jobs:
             git clone --depth 1 --branch 1.35.0 https://github.com/near/nearcore
             cd nearcore
             make sandbox-release
-            cp target/release/near-sandbox /usr/local/bin/
+            cp target/release/near-sandbox ${{ env.NEAR_SANDBOX_BIN_PATH }}
             cache-util save sandbox:${{ env.NEAR_SANDBOX_BIN_PATH }}          
             cd ../
             rm -rf nearcore
