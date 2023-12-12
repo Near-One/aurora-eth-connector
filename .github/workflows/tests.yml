@@ -24,8 +24,7 @@ jobs:
             git clone --depth 1 --branch 1.35.0 https://github.com/near/nearcore
             cd nearcore
             make sandbox-release
-            mkdir -p $HOME/bin/ || true
-            cp target/release/near-sandbox $HOME/bin/
+            cp target/release/near-sandbox /usr/local/bin/
             cache-util save sandbox:${{ env.NEAR_SANDBOX_BIN_PATH }}          
             cd ../
             rm -rf nearcore
