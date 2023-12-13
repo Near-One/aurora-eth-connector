@@ -198,6 +198,7 @@ impl TestContract {
             .max_gas()
             .transact()
             .await?;
+
         if res.is_failure() {
             anyhow::bail!("set_access_right failed");
         }

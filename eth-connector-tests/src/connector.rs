@@ -178,7 +178,7 @@ async fn test_withdraw_eth_from_near_engine() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     // The purpose of this withdraw variant is that it can withdraw on behalf of a user.
     // In this example the contract itself withdraws on behalf of the user
@@ -477,7 +477,7 @@ async fn test_set_and_check_engine_account() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     contract
         .set_and_check_access_right(user_acc.id())
@@ -649,7 +649,7 @@ async fn test_admin_controlled_only_admin_can_pause() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     let res = contract
         .contract
@@ -755,7 +755,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     let res = owner_acc
         .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
@@ -1195,7 +1195,7 @@ async fn test_access_rights() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     assert_eq!(
         DEPOSITED_AMOUNT + transfer_amount1.0,
@@ -1316,7 +1316,7 @@ async fn test_engine_ft_transfer() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     assert_eq!(
         DEPOSITED_AMOUNT,
@@ -1394,7 +1394,7 @@ async fn test_engine_ft_transfer_call() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+        assert!(contract.check_error_message(&err, "Insufficient permissions for method"));
     }
 
     assert_eq!(
@@ -1459,7 +1459,7 @@ async fn test_engine_storage_deposit() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+        assert!(contract.check_error_message(&err, "Insufficient permissions for method"));
     }
 
     contract
@@ -1510,7 +1510,7 @@ async fn test_engine_storage_withdraw() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+        assert!(contract.check_error_message(&err, "Insufficient permissions for method"));
     }
 
     contract
@@ -1562,7 +1562,7 @@ async fn test_engine_storage_unregister() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     contract
         .set_and_check_access_right(user_acc.id())

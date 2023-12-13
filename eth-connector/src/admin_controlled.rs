@@ -43,34 +43,6 @@ pub trait AdminControlled {
     /// Get account access right for contract
     fn get_account_with_access_right(&self) -> AccountId;
 
-    /// Check access right for predecessor account
-    ///
-    /// # Errors
-    ///
-    /// Error is returned if the caller hasn't rights.
-    fn assert_access_right(&self) -> Result<(), error::AdminControlledError> {
-        if self.get_account_with_access_right() == near_sdk::env::predecessor_account_id()
-            || self.is_owner()
-        {
-            Ok(())
-        } else {
-            Err(error::AdminControlledError::AccessRight)
-        }
-    }
-
-    /// Assert only owners of contract access right
-    ///
-    /// # Errors
-    ///
-    /// Error is returned if the caller isn't owner.
-    fn assert_owner_access_right(&self) -> Result<(), error::AdminControlledError> {
-        if self.is_owner() {
-            Ok(())
-        } else {
-            Err(error::AdminControlledError::AccessRight)
-        }
-    }
-
     /// Check is predecessor account ID is owner
     fn is_owner(&self) -> bool;
 }
