@@ -1,6 +1,6 @@
 #![deny(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
-use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
+use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL, PAUSE_DEPOSIT};
 use crate::connector::{
     Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
     KnownEngineAccountsManagement, Withdraw,
@@ -75,7 +75,7 @@ pub enum Role {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Pausable, Upgradable)]
 #[access_control(role_type(Role))]
-#[pausable(manager_roles(Role::PauseManager, Role::DAO))]
+#[pausable(manager_roles(Role::PauseManager, Role::DAO, Role::Owner, Role::ThisContract))]
 #[upgradable(access_control_roles(
 code_stagers(Role::UpgradableCodeStager, Role::DAO),
 code_deployers(Role::UpgradableCodeDeployer, Role::DAO),
@@ -490,12 +490,22 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 impl AdminControlled for EthConnectorContract {
     #[result_serializer(borsh)]
     fn get_paused_flags(&self) -> PausedMask {
-        self.connector.get_paused_flags()
+        (self.pa_is_paused("deposit".to_string()) as u8) | ((self.pa_is_paused("withdraw".to_string()) as u8) << 1)
     }
 
     #[access_control_any(roles(Role::Owner, Role::ThisContract))]
     fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
-        self.connector.set_paused_flags(paused);
+        if paused.clone() & PAUSE_WITHDRAW != 0 {
+            self.pa_pause_feature("withdraw".to_string());
+        } else {
+            self.pa_unpause_feature("withdraw".to_string());
+        }
+
+        if paused & PAUSE_DEPOSIT != 0 {
+            self.pa_pause_feature("deposit".to_string());
+        } else {
+            self.pa_unpause_feature("deposit".to_string());
+        }
     }
 
     #[access_control_any(roles(Role::Owner, Role::ThisContract))]
@@ -526,11 +536,6 @@ impl Withdraw for EthConnectorContract {
     ) -> WithdrawResult {
         assert_one_yocto();
 
-        // Check is current flow paused. If it's owner just skip assertion.
-        self.assert_not_paused(PAUSE_WITHDRAW)
-            .map_err(|_| "WithdrawErrorPaused")
-            .sdk_unwrap();
-
         let sender_id = env::predecessor_account_id();
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
@@ -547,6 +552,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
     #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[pause(except(roles(Role::Owner, Role::ThisContract)), name="withdraw")]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
@@ -555,10 +561,6 @@ impl EngineConnectorWithdraw for EthConnectorContract {
     ) -> WithdrawResult {
         assert_one_yocto();
 
-        // Check is current flow paused. If it's owner just skip assertion.
-        self.assert_not_paused(PAUSE_WITHDRAW)
-            .map_err(|_| "WithdrawErrorPaused")
-            .sdk_unwrap();
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
         WithdrawResult {

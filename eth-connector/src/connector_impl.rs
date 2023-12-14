@@ -87,9 +87,6 @@ impl EthConnector {
     pub(crate) fn deposit(&mut self, proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
 
-        // Check is current flow paused. If it's owner account just skip it.
-        self.assert_not_paused(PAUSE_DEPOSIT).sdk_unwrap();
-
         log!("[Deposit tokens]");
 
         // Fetch event data from Proof

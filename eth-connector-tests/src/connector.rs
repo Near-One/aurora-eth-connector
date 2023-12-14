@@ -755,7 +755,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
+    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
     let res = owner_acc
         .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
@@ -813,7 +813,7 @@ async fn test_deposit_pausability() {
         .user_deposit_with_proof(&user_acc, proof2)
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_PAUSED"));
+    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
     let proof3 = contract.mock_proof(user_acc.id(), 30, 3);
     let res = contract
@@ -891,7 +891,7 @@ async fn test_withdraw_from_near_pausability() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "WithdrawErrorPaused"));
+    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
     // Unpause all
     let res = contract
