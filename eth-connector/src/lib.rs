@@ -500,12 +500,12 @@ impl AdminControlled for EthConnectorContract {
 
     #[access_control_any(roles(Role::Owner, Role::ThisContract))]
     fn set_access_right(&mut self, account: &AccountId) {
-        self.connector.set_access_right(account);
+        self.acl_revoke_role("AccountWithAccessRight".to_string(), self.get_account_with_access_right());
         self.acl_grant_role("AccountWithAccessRight".to_string(), account.clone());
     }
 
     fn get_account_with_access_right(&self) -> AccountId {
-        self.connector.get_account_with_access_right()
+        self.acl_get_grantees("AccountWithAccessRight".to_string(), 0, 1)[0].clone()
     }
 
     fn is_owner(&self) -> bool {
@@ -518,6 +518,7 @@ impl AdminControlled for EthConnectorContract {
 impl Withdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
+    #[pause(except(roles(Role::Owner, Role::ThisContract)))]
     fn withdraw(
         &mut self,
         #[serializer(borsh)] recipient_address: Address,
@@ -570,6 +571,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl Deposit for EthConnectorContract {
+    #[pause(except(roles(Role::Owner, Role::ThisContract)))]
     fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
         self.connector.deposit(proof)
     }
@@ -736,7 +738,7 @@ mod tests {
     fn test_storage_balance_bounds() {
         let contract = create_contract();
         let storage_balance = contract
-            .storage_balance_of(contract.connector.owner_id.clone())
+            .storage_balance_of(contract.acl_get_grantees("Owner".to_string(), 0, 1)[0].clone())
             .unwrap();
         assert_eq!(storage_balance.total.0, 0);
         assert_eq!(storage_balance.available.0, 0);
