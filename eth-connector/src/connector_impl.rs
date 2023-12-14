@@ -60,29 +60,6 @@ pub struct EthConnector {
     pub owner_id: AccountId,
 }
 
-impl AdminControlled for EthConnector {
-    fn get_paused_flags(&self) -> PausedMask {
-        self.paused_mask
-    }
-
-    fn set_paused_flags(&mut self, paused: PausedMask) {
-        self.paused_mask = paused;
-    }
-
-    fn set_access_right(&mut self, account: &AccountId) {
-        self.account_with_access_right = account.clone();
-    }
-
-    fn get_account_with_access_right(&self) -> AccountId {
-        self.account_with_access_right.clone()
-    }
-
-    fn is_owner(&self) -> bool {
-        self.owner_id == env::predecessor_account_id()
-            || env::current_account_id() == env::predecessor_account_id()
-    }
-}
-
 impl EthConnector {
     pub(crate) fn deposit(&mut self, proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
@@ -133,7 +110,7 @@ impl EthConnector {
                 // account as the recipient when depositing to the EVM,
                 // so here we override the receiver_id for backward compatibility.
                 if receiver_id == current_account_id {
-                    receiver_id = self.get_account_with_access_right();
+                    receiver_id = self.account_with_access_right.clone();
                 }
                 // Transfer to self and then transfer ETH in `ft_on_transfer`
                 // address - is NEAR account
