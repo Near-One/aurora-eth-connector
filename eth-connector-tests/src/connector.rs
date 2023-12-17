@@ -636,15 +636,13 @@ async fn test_ft_transfer_call_without_relayer() {
 
 #[tokio::test]
 async fn test_admin_controlled_only_admin_can_pause() {
-    use aurora_eth_connector::admin_controlled::PAUSE_DEPOSIT;
-
     let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
         .await
         .unwrap();
     let owner_acc = contract.contract_account("owner").await.unwrap();
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     let res = user_acc
-        .set_paused_flags(PAUSE_DEPOSIT)
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -653,7 +651,7 @@ async fn test_admin_controlled_only_admin_can_pause() {
 
     let res = contract
         .contract
-        .set_paused_flags(PAUSE_DEPOSIT)
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -661,7 +659,7 @@ async fn test_admin_controlled_only_admin_can_pause() {
     assert!(res.is_success());
 
     let res = owner_acc
-        .set_paused_flags(PAUSE_DEPOSIT)
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -671,8 +669,6 @@ async fn test_admin_controlled_only_admin_can_pause() {
 
 #[tokio::test]
 async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
-    use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, PAUSE_WITHDRAW};
-
     // 1st deposit call when unpaused - should succeed
     let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
         .await
@@ -705,7 +701,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     // Pause deposit
     let res = contract
         .contract
-        .set_paused_flags(PAUSE_DEPOSIT)
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -724,7 +720,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     // Pause withdraw
     let res = contract
         .contract
-        .set_paused_flags(PAUSE_WITHDRAW)
+        .pa_pause_feature("withdraw".to_string())
         .max_gas()
         .transact()
         .await
@@ -775,8 +771,6 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
 
 #[tokio::test]
 async fn test_deposit_pausability() {
-    use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, UNPAUSE_ALL};
-
     let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
         .await
         .unwrap();
@@ -800,7 +794,7 @@ async fn test_deposit_pausability() {
     // Pause deposit
     let res = contract
         .contract
-        .set_paused_flags(PAUSE_DEPOSIT)
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -825,7 +819,16 @@ async fn test_deposit_pausability() {
     // Unpause all
     let res = contract
         .contract
-        .set_paused_flags(UNPAUSE_ALL)
+        .pa_unpause_feature("withdraw".to_string())
+        .max_gas()
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = contract
+        .contract
+        .pa_unpause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -844,8 +847,6 @@ async fn test_deposit_pausability() {
 
 #[tokio::test]
 async fn test_withdraw_from_near_pausability() {
-    use aurora_eth_connector::admin_controlled::{PAUSE_WITHDRAW, UNPAUSE_ALL};
-
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
@@ -876,7 +877,7 @@ async fn test_withdraw_from_near_pausability() {
     // Pause withdraw
     let res = contract
         .contract
-        .set_paused_flags(PAUSE_WITHDRAW)
+        .pa_pause_feature("withdraw".to_string())
         .max_gas()
         .transact()
         .await
@@ -896,7 +897,16 @@ async fn test_withdraw_from_near_pausability() {
     // Unpause all
     let res = contract
         .contract
-        .set_paused_flags(UNPAUSE_ALL)
+        .pa_unpause_feature("withdraw".to_string())
+        .max_gas()
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = contract
+        .contract
+        .pa_unpause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await

@@ -1,6 +1,5 @@
 #![deny(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
-use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL, PAUSE_DEPOSIT};
 use crate::connector::{
     Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
     KnownEngineAccountsManagement, Withdraw,
@@ -34,7 +33,6 @@ use near_sdk::{
 };
 use serde::{Serialize, Deserialize};
 
-pub mod admin_controlled;
 pub mod connector;
 pub mod connector_impl;
 pub mod deposit_event;
@@ -196,13 +194,10 @@ impl EthConnectorContract {
         metadata.assert_valid();
 
         // Get initial Eth Connector arguments
-        let paused_mask = UNPAUSE_ALL;
         let connector_data = EthConnector {
             prover_account,
-            paused_mask,
             eth_custodian_address,
             account_with_access_right: account_with_access_right.clone(),
-            owner_id: owner_id.clone(),
         };
 
         let mut this = Self {
@@ -483,44 +478,6 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
             reference_hash: None,
             decimals: 18,
         }, |v|v)
-    }
-}
-
-#[near_bindgen]
-impl AdminControlled for EthConnectorContract {
-    #[result_serializer(borsh)]
-    fn get_paused_flags(&self) -> PausedMask {
-        (self.pa_is_paused("deposit".to_string()) as u8) | ((self.pa_is_paused("withdraw".to_string()) as u8) << 1)
-    }
-
-    #[access_control_any(roles(Role::Owner, Role::ThisContract))]
-    fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
-        if paused.clone() & PAUSE_WITHDRAW != 0 {
-            self.pa_pause_feature("withdraw".to_string());
-        } else {
-            self.pa_unpause_feature("withdraw".to_string());
-        }
-
-        if paused & PAUSE_DEPOSIT != 0 {
-            self.pa_pause_feature("deposit".to_string());
-        } else {
-            self.pa_unpause_feature("deposit".to_string());
-        }
-    }
-
-    #[access_control_any(roles(Role::Owner, Role::ThisContract))]
-    fn set_access_right(&mut self, account: &AccountId) {
-        self.acl_revoke_role("AccountWithAccessRight".to_string(), self.get_account_with_access_right());
-        self.acl_grant_role("AccountWithAccessRight".to_string(), account.clone());
-    }
-
-    fn get_account_with_access_right(&self) -> AccountId {
-        self.acl_get_grantees("AccountWithAccessRight".to_string(), 0, 1)[0].clone()
-    }
-
-    fn is_owner(&self) -> bool {
-        self.acl_has_role("Owner".to_string(), env::predecessor_account_id()) ||
-            self.acl_has_role("ThisContract".to_string(), env::predecessor_account_id())
     }
 }
 

@@ -28,8 +28,8 @@ hex = "0.4.3"
 ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }
 aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git" }
-aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.3.1" }
-aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.3.1" }
+aurora-workspace-eth-connector = { path = "../../aurora-workspace/eth-connector" }
+aurora-workspace-utils = { path = "../../aurora-workspace/utils" }
 
 [features]
 migration-tests = []

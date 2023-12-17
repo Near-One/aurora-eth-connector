@@ -192,9 +192,25 @@ impl TestContract {
     }
 
     pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
+        let old_access_right_account: String = self
+            .contract
+            .acl_get_grantees("AccountWithAccessRight".to_string(), 0, 1)
+            .await?
+            .result[0].clone()
+            .into();
+
         let res = self
             .contract
-            .set_access_right(&acc)
+            .acl_revoke_role("AccountWithAccessRight".to_string(), old_access_right_account.clone())
+            .max_gas()
+            .transact()
+            .await?;
+
+        assert!(res.is_success());
+
+        let res = self
+            .contract
+            .acl_grant_role("AccountWithAccessRight".to_string(), acc.to_string())
             .max_gas()
             .transact()
             .await?;
@@ -205,10 +221,11 @@ impl TestContract {
 
         let res: String = self
             .contract
-            .get_account_with_access_right()
+            .acl_get_grantees("AccountWithAccessRight".to_string(), 0, 1)
             .await?
-            .result
+            .result[0].clone()
             .into();
+
         let acc_id = AccountId::try_from(res.clone())?;
 
         if &acc_id != acc {

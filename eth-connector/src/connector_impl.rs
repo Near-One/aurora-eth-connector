@@ -1,11 +1,9 @@
 use crate::{
-    admin_controlled::PAUSE_DEPOSIT,
     connector::{ext_funds_finish, ext_proof_verifier},
     deposit_event::{DepositedEvent, TokenMessageData},
     errors, log, panic_err,
     proof::Proof,
     types::SdkUnwrap,
-    AdminControlled, PausedMask,
 };
 use aurora_engine_types::types::Address;
 use near_sdk::{
@@ -52,12 +50,8 @@ pub struct EthConnector {
     pub prover_account: AccountId,
     /// The ETH address is used in the Deposit and Withdraw logic.
     pub eth_custodian_address: Address,
-    /// Admin controlled.
-    pub paused_mask: PausedMask,
     /// Account with access right for the current contract.
     pub account_with_access_right: AccountId,
-    /// Owner's account id.
-    pub owner_id: AccountId,
 }
 
 impl EthConnector {
