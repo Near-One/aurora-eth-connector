@@ -51,7 +51,7 @@ pub struct EthConnector {
     /// The ETH address is used in the Deposit and Withdraw logic.
     pub eth_custodian_address: Address,
     /// Account with access right for the current contract.
-    pub account_with_access_right: AccountId,
+    pub aurora_engine_account_id: AccountId,
 }
 
 impl EthConnector {
@@ -104,7 +104,7 @@ impl EthConnector {
                 // account as the recipient when depositing to the EVM,
                 // so here we override the receiver_id for backward compatibility.
                 if receiver_id == current_account_id {
-                    receiver_id = self.account_with_access_right.clone();
+                    receiver_id = self.aurora_engine_account_id.clone();
                 }
                 // Transfer to self and then transfer ETH in `ft_on_transfer`
                 // address - is NEAR account

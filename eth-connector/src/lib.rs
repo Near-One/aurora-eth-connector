@@ -60,9 +60,8 @@ pub enum Role {
     UpgradableCodeStager,
     UpgradableCodeDeployer,
     Owner,
-    AccountWithAccessRight,
-    DAO,
-    ThisContract
+    Engine,
+    DAO
 }
 
 /// Eth-connector contract data. It's stored in the storage.
@@ -73,7 +72,7 @@ pub enum Role {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Pausable, Upgradable)]
 #[access_control(role_type(Role))]
-#[pausable(manager_roles(Role::PauseManager, Role::DAO, Role::Owner, Role::ThisContract))]
+#[pausable(manager_roles(Role::PauseManager, Role::DAO, Role::Owner))]
 #[upgradable(access_control_roles(
 code_stagers(Role::UpgradableCodeStager, Role::DAO),
 code_deployers(Role::UpgradableCodeDeployer, Role::DAO),
@@ -197,7 +196,7 @@ impl EthConnectorContract {
         let connector_data = EthConnector {
             prover_account,
             eth_custodian_address,
-            account_with_access_right: account_with_access_right.clone(),
+            aurora_engine_account_id: account_with_access_right.clone(),
         };
 
         let mut this = Self {
@@ -215,9 +214,9 @@ impl EthConnectorContract {
         this.register_if_not_exists(owner_id);
 
         this.acl_init_super_admin(env::predecessor_account_id());
-        this.acl_grant_role("AccountWithAccessRight".to_string(), account_with_access_right);
+        this.acl_grant_role("Engine".to_string(), account_with_access_right);
         this.acl_grant_role("Owner".to_string(), owner_id.clone());
-        this.acl_grant_role("ThisContract".to_string(), env::current_account_id());
+        this.acl_grant_role("Owner".to_string(), env::current_account_id());
 
         this
     }
@@ -240,6 +239,11 @@ impl EthConnectorContract {
     #[must_use]
     pub fn get_bridge_prover(&self) -> AccountId {
         self.connector.prover_account.clone()
+    }
+
+    #[access_control_any(roles(Role::Owner))]
+    pub fn set_aurora_engine_account_id(&mut self, new_aurora_engine_account_id: AccountId) {
+        self.connector.aurora_engine_account_id = new_aurora_engine_account_id;
     }
 }
 
@@ -285,7 +289,7 @@ impl FungibleTokenCore for EthConnectorContract {
 #[near_bindgen]
 impl EngineFungibleToken for EthConnectorContract {
     #[payable]
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_ft_transfer(
         &mut self,
         sender_id: AccountId,
@@ -301,7 +305,7 @@ impl EngineFungibleToken for EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_ft_transfer_call(
         &mut self,
         sender_id: AccountId,
@@ -322,12 +326,12 @@ impl EngineFungibleToken for EthConnectorContract {
 /// Management for a known Engine accounts
 #[near_bindgen]
 impl KnownEngineAccountsManagement for EthConnectorContract {
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn set_engine_account(&mut self, engine_account: &AccountId) {
         self.known_engine_accounts.insert(engine_account);
     }
 
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn remove_engine_account(&mut self, engine_account: &AccountId) {
         self.known_engine_accounts.remove(engine_account);
     }
@@ -389,7 +393,7 @@ impl EngineStorageManagement for EthConnectorContract {
     /// If the attached deposit is less then the balance of the smart contract.
     #[allow(unused_variables)]
     #[payable]
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_storage_deposit(
         &mut self,
         sender_id: AccountId,
@@ -419,7 +423,7 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_storage_withdraw(
         &mut self,
         sender_id: AccountId,
@@ -445,7 +449,7 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
         self.internal_storage_unregister(sender_id, force).is_some()
     }
@@ -485,7 +489,7 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 impl Withdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
-    #[pause(except(roles(Role::Owner, Role::ThisContract)))]
+    #[pause(except(roles(Role::Owner)))]
     fn withdraw(
         &mut self,
         #[serializer(borsh)] recipient_address: Address,
@@ -508,8 +512,8 @@ impl Withdraw for EthConnectorContract {
 impl EngineConnectorWithdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
-    #[access_control_any(roles(Role::AccountWithAccessRight, Role::Owner, Role::ThisContract))]
-    #[pause(except(roles(Role::Owner, Role::ThisContract)), name="withdraw")]
+    #[access_control_any(roles(Role::Engine, Role::Owner))]
+    #[pause(except(roles(Role::Owner)), name="withdraw")]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
@@ -530,7 +534,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl Deposit for EthConnectorContract {
-    #[pause(except(roles(Role::Owner, Role::ThisContract)))]
+    #[pause(except(roles(Role::Owner)))]
     fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
         self.connector.deposit(proof)
     }
