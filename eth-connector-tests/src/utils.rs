@@ -196,7 +196,8 @@ impl TestContract {
             .contract
             .acl_get_grantees("Engine".to_string(), 0, 1)
             .await?
-            .result[0].clone()
+            .result[0]
+            .clone()
             .into();
 
         let res = self
@@ -223,7 +224,8 @@ impl TestContract {
             .contract
             .acl_get_grantees("Engine".to_string(), 0, 1)
             .await?
-            .result[0].clone()
+            .result[0]
+            .clone()
             .into();
 
         let acc_id = AccountId::try_from(res.clone())?;

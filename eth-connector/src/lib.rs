@@ -31,7 +31,7 @@ use near_sdk::{
     near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub mod connector;
 pub mod connector_impl;
@@ -61,7 +61,7 @@ pub enum Role {
     UpgradableCodeDeployer,
     Owner,
     Engine,
-    DAO
+    DAO,
 }
 
 /// Eth-connector contract data. It's stored in the storage.
@@ -74,11 +74,11 @@ pub enum Role {
 #[access_control(role_type(Role))]
 #[pausable(manager_roles(Role::PauseManager, Role::DAO, Role::Owner))]
 #[upgradable(access_control_roles(
-code_stagers(Role::UpgradableCodeStager, Role::DAO),
-code_deployers(Role::UpgradableCodeDeployer, Role::DAO),
-duration_initializers(Role::DAO),
-duration_update_stagers(Role::DAO),
-duration_update_appliers(Role::DAO),
+    code_stagers(Role::UpgradableCodeStager, Role::DAO),
+    code_deployers(Role::UpgradableCodeDeployer, Role::DAO),
+    duration_initializers(Role::DAO),
+    duration_update_stagers(Role::DAO),
+    duration_update_appliers(Role::DAO),
 ))]
 pub struct EthConnectorContract {
     connector: EthConnector,
@@ -513,7 +513,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
     #[access_control_any(roles(Role::Engine, Role::Owner))]
-    #[pause(except(roles(Role::Owner)), name="withdraw")]
+    #[pause(except(roles(Role::Owner)), name = "withdraw")]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
