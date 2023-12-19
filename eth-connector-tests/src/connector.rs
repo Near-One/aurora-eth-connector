@@ -11,7 +11,8 @@ use aurora_workspace_eth_connector::types::{Proof, WithdrawResult};
 use aurora_workspace_utils::ContractId;
 use byte_slice_cast::AsByteSlice;
 use near_sdk::{json_types::U128, ONE_YOCTO};
-use workspaces::AccountId;
+use near_workspaces::types::NearToken;
+use near_workspaces::AccountId;
 
 #[tokio::test]
 async fn test_ft_transfer() {
@@ -25,7 +26,7 @@ async fn test_ft_transfer() {
         .contract
         .ft_transfer(&receiver_id, transfer_amount, memo)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -66,7 +67,7 @@ async fn test_ft_transfer_user() {
     let res = user_acc
         .ft_transfer(contract.contract.id(), transfer_amount, memo)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -102,7 +103,7 @@ async fn test_withdraw_eth_from_near() {
         .contract
         .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -136,7 +137,7 @@ async fn test_withdraw_eth_from_near_user() {
     let res = user_acc
         .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -174,7 +175,7 @@ async fn test_withdraw_eth_from_near_engine() {
     let res = user_acc
         .engine_withdraw(user_acc.id(), recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap_err();
@@ -186,7 +187,7 @@ async fn test_withdraw_eth_from_near_engine() {
         .contract
         .engine_withdraw(user_acc.id(), recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -287,7 +288,7 @@ async fn test_ft_transfer_call_eth() {
         .contract
         .ft_transfer_call(&receiver_id, transfer_amount, memo, message)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -341,7 +342,7 @@ async fn test_ft_transfer_call_without_message() {
             message.to_string(),
         )
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -364,7 +365,7 @@ async fn test_ft_transfer_call_without_message() {
         .contract
         .ft_transfer_call(&some_acc, transfer_amount, memo, message.to_string())
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -418,7 +419,7 @@ async fn test_ft_transfer_call_user_message() {
             message.to_string(),
         )
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -450,7 +451,7 @@ async fn test_ft_transfer_call_user_message() {
     let res = user_acc
         .ft_transfer_call(&receiver_id, transfer_amount, memo, message.to_string())
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -620,7 +621,7 @@ async fn test_ft_transfer_call_without_relayer() {
         .contract
         .ft_transfer_call(contract.contract.id(), transfer_amount, memo, message)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -690,7 +691,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
         .contract
         .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -736,7 +737,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
         .contract
         .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -751,7 +752,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     let res = user_acc
         .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap_err();
@@ -760,7 +761,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     let res = owner_acc
         .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -861,7 +862,7 @@ async fn test_withdraw_from_near_pausability() {
     let res = user_acc
         .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -887,7 +888,7 @@ async fn test_withdraw_from_near_pausability() {
     let res = user_acc
         .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap_err();
@@ -906,7 +907,7 @@ async fn test_withdraw_from_near_pausability() {
     let res = user_acc
         .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1081,7 +1082,7 @@ async fn test_ft_transfer_max_value() {
         .contract
         .ft_transfer(&receiver_id, transfer_amount, memo)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap_err();
@@ -1113,7 +1114,7 @@ async fn test_ft_transfer_empty_value() {
         .near_call(&"ft_transfer")
         .args_json((receiver_id, transfer_amount, memo))
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1134,7 +1135,7 @@ async fn test_ft_transfer_wrong_u128_json_type() {
         .near_call(&"ft_transfer")
         .args_json((receiver_id, transfer_amount, memo))
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1155,7 +1156,7 @@ async fn test_access_rights() {
         .contract
         .ft_transfer(user_acc.id(), transfer_amount1, memo)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1191,7 +1192,7 @@ async fn test_access_rights() {
     let res = user_acc
         .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap_err();
@@ -1231,7 +1232,7 @@ async fn test_access_rights() {
         .contract
         .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1288,7 +1289,7 @@ async fn test_storage_withdraw() {
         .contract
         .storage_withdraw(amount)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1312,7 +1313,7 @@ async fn test_engine_ft_transfer() {
     let res = user_acc
         .engine_ft_transfer(user_acc.id(), &receiver_id, transfer_amount, memo.clone())
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap_err();
@@ -1344,7 +1345,7 @@ async fn test_engine_ft_transfer() {
     let res = user_acc
         .engine_ft_transfer(user_acc.id(), &&receiver_id, transfer_amount, memo)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1390,7 +1391,7 @@ async fn test_engine_ft_transfer_call() {
             message.clone(),
         )
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1415,7 +1416,7 @@ async fn test_engine_ft_transfer_call() {
     let res = user_acc
         .engine_ft_transfer_call(user_acc.id(), &receiver_id, transfer_amount, memo, message)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1506,7 +1507,7 @@ async fn test_engine_storage_withdraw() {
     let res = user_acc
         .engine_storage_withdraw(user_acc.id(), Some(amount))
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1532,7 +1533,7 @@ async fn test_engine_storage_withdraw() {
     let res = user_acc
         .engine_storage_withdraw(user_acc.id(), Some(amount))
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1558,7 +1559,7 @@ async fn test_engine_storage_unregister() {
     let res = user_acc
         .engine_storage_unregister(user_acc.id(), None)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap_err();
@@ -1583,7 +1584,7 @@ async fn test_engine_storage_unregister() {
     let res = user_acc
         .engine_storage_withdraw(user_acc.id(), Some(amount))
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1596,7 +1597,7 @@ async fn test_engine_storage_unregister() {
     let res = user_acc
         .engine_storage_unregister(user_acc.id(), None)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await
         .unwrap();
@@ -1605,7 +1606,7 @@ async fn test_engine_storage_unregister() {
     let res = user_acc
         .engine_storage_withdraw(user_acc.id(), Some(amount))
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1688,7 +1689,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
             message.clone(),
         )
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1705,7 +1706,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
         .contract
         .ft_transfer_call(contract.contract.id(), transfer_amount, memo, message)
         .max_gas()
-        .deposit(ONE_YOCTO)
+        .deposit(NearToken::from_yoctonear(ONE_YOCTO))
         .transact()
         .await;
     if let Err(err) = res {
