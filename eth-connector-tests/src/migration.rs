@@ -41,7 +41,10 @@ async fn test_migration() {
         .unwrap();
     assert!(res.is_success());
     assert!(to_tera(res.total_gas_burnt().as_gas()) < 95.6);
-    println!("Gas burnt: {:.1} TGas", to_tera(res.total_gas_burnt().as_gas()));
+    println!(
+        "Gas burnt: {:.1} TGas",
+        to_tera(res.total_gas_burnt().as_gas())
+    );
 }
 
 #[allow(clippy::too_many_lines)]
@@ -220,6 +223,11 @@ fn to_tera(gas: u64) -> f64 {
 
 fn vec_to_map(vec: &[(&near_sdk::AccountId, &NEP141Wei)]) -> HashMap<AccountId, Balance> {
     vec.iter()
-        .map(|(a, b)| (AccountId::from_str((*a).clone().as_str()).unwrap(), b.as_u128()))
+        .map(|(a, b)| {
+            (
+                AccountId::from_str((*a).clone().as_str()).unwrap(),
+                b.as_u128(),
+            )
+        })
         .collect()
 }
