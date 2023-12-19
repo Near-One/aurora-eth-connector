@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-migration-tool"
 version = "0.2.1"
-source = "git+https://github.com/aurora-is-near/aurora-engine-migration-tool.git?branch=update-near-sdk#c3ec37ebbf32dfcd25d381268d66cce50157199d"
+source = "git+https://github.com/aurora-is-near/aurora-engine-migration-tool.git?branch=update-near-sdk#78fd149ed96eed729ce7810e6b22d45d447053f7"
 dependencies = [
  "anyhow",
  "aurora-engine-types",
@@ -2881,7 +2881,7 @@ dependencies = [
 [[package]]
 name = "near-sdk"
 version = "4.1.1"
-source = "git+https://github.com/aurora-is-near/near-sdk-rs.git?tag=v4.1.1-fix-deps#707eafd54e5428570d12ce56e86bf6cf7e4c97b9"
+source = "git+https://github.com/aurora-is-near/near-sdk-rs.git?tag=v4.1.1-fix-deps#96afbfa37d1e8b1ecca69dde1d5c715ceeeb3872"
 dependencies = [
  "base64 0.13.1",
  "borsh 0.10.3",
@@ -2903,7 +2903,7 @@ dependencies = [
 [[package]]
 name = "near-sdk-macros"
 version = "4.1.1"
-source = "git+https://github.com/aurora-is-near/near-sdk-rs.git?tag=v4.1.1-fix-deps#707eafd54e5428570d12ce56e86bf6cf7e4c97b9"
+source = "git+https://github.com/aurora-is-near/near-sdk-rs.git?tag=v4.1.1-fix-deps#96afbfa37d1e8b1ecca69dde1d5c715ceeeb3872"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -2920,7 +2920,7 @@ checksum = "6540152fba5e96fe5d575b79e8cd244cf2add747bb01362426bdc069bc3a23bc"
 [[package]]
 name = "near-sys"
 version = "0.2.0"
-source = "git+https://github.com/aurora-is-near/near-sdk-rs.git?tag=v4.1.1-fix-deps#707eafd54e5428570d12ce56e86bf6cf7e4c97b9"
+source = "git+https://github.com/aurora-is-near/near-sdk-rs.git?tag=v4.1.1-fix-deps#96afbfa37d1e8b1ecca69dde1d5c715ceeeb3872"
 
 [[package]]
 name = "near-token"
