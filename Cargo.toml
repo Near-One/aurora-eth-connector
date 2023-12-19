@@ -8,13 +8,14 @@ license = "CC0 1.0"
 
 [workspace.dependencies]
 aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.3.1", default-features = false }
-near-sdk = "4.1"
+near-sdk = { git = "https://github.com/aurora-is-near/near-sdk-rs.git", tag = "v4.1.1-fix-deps" }
 near-primitives = "0.17"
 near-contract-standards = "4.1"
 byte-slice-cast = "1"
 
 [patch.crates-io]
 parity-secp256k1 = { git = 'https://github.com/paritytech/rust-secp256k1', rev = "d05fd8e" }
+near-sdk = { git = "https://github.com/aurora-is-near/near-sdk-rs.git", tag = "v4.1.1-fix-deps" }
 
 [profile.release]
 opt-level = 3

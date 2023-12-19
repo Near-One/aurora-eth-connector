@@ -1261,7 +1261,7 @@ async fn test_storage_deposit() {
         .contract
         .storage_deposit(Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
@@ -1456,7 +1456,7 @@ async fn test_engine_storage_deposit() {
     let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1472,7 +1472,7 @@ async fn test_engine_storage_deposit() {
         .contract
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
@@ -1523,7 +1523,7 @@ async fn test_engine_storage_withdraw() {
         .contract
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
@@ -1574,7 +1574,7 @@ async fn test_engine_storage_unregister() {
         .contract
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
