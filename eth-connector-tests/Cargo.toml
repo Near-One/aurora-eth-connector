@@ -28,9 +28,9 @@ workspaces = "0.7.0"
 hex = "0.4.3"
 ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }
-aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git", rev = "cb501f3c9b73469fe27c4f010087e9a19f9fd65a"}
-aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag="0.4.0" }
-aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag="0.4.0" }
+aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git", rev = "cb501f3c9b73469fe27c4f010087e9a19f9fd65a" }
+aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.4.0" }
+aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace.git", tag = "0.4.0" }
 
 [features]
 migration-tests = []
