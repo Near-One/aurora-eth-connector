@@ -22,9 +22,8 @@ byte-slice-cast.workspace = true
 
 anyhow = "1.0"
 near-units = "0.2"
-near-workspaces = "0.9"
 tokio = { version = "1", features = ["full"] }
-workspaces = "0.7.0"
+near-workspaces = "0.9"
 hex = "0.4.3"
 ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }
