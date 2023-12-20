@@ -384,7 +384,7 @@ dependencies = [
 [[package]]
 name = "aurora-engine-migration-tool"
 version = "0.2.1"
-source = "git+https://github.com/aurora-is-near/aurora-engine-migration-tool.git?branch=update-near-sdk#78fd149ed96eed729ce7810e6b22d45d447053f7"
+source = "git+https://github.com/aurora-is-near/aurora-engine-migration-tool.git?rev=cb501f3c9b73469fe27c4f010087e9a19f9fd65a#cb501f3c9b73469fe27c4f010087e9a19f9fd65a"
 dependencies = [
  "anyhow",
  "aurora-engine-types",
