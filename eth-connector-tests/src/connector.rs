@@ -178,7 +178,7 @@ async fn test_withdraw_eth_from_near_engine() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     // The purpose of this withdraw variant is that it can withdraw on behalf of a user.
     // In this example the contract itself withdraws on behalf of the user
@@ -484,7 +484,8 @@ async fn test_set_and_check_engine_account() {
         .await
         .unwrap();
 
-    let res = user_acc
+    let res = contract
+        .contract
         .set_engine_account(contract.contract.id())
         .max_gas()
         .transact()
@@ -698,6 +699,15 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
 
+    let res = user_acc
+        .ft_transfer(&owner_acc.id().to_string(), U128(withdraw_amount), None)
+        .max_gas()
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
     // Pause deposit
     let res = contract
         .contract
@@ -730,7 +740,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     // 2nd withdraw call when paused, but the admin is calling it - should succeed
     let res = contract
         .contract
-        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
+        .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -754,7 +764,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
     let res = owner_acc
-        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
+        .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -1205,7 +1215,7 @@ async fn test_access_rights() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     assert_eq!(
         DEPOSITED_AMOUNT + transfer_amount1.0,
@@ -1237,8 +1247,7 @@ async fn test_access_rights() {
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
@@ -1326,7 +1335,7 @@ async fn test_engine_ft_transfer() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     assert_eq!(
         DEPOSITED_AMOUNT,
@@ -1404,7 +1413,7 @@ async fn test_engine_ft_transfer_call() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "Insufficient permissions for method"));
+        assert!(contract.check_error_message(&err, "Method can be called only by aurora engine"));
     }
 
     assert_eq!(
@@ -1469,7 +1478,7 @@ async fn test_engine_storage_deposit() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "Insufficient permissions for method"));
+        assert!(contract.check_error_message(&err, "Method can be called only by aurora engine"));
     }
 
     contract
@@ -1477,8 +1486,7 @@ async fn test_engine_storage_deposit() {
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
@@ -1520,7 +1528,7 @@ async fn test_engine_storage_withdraw() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "Insufficient permissions for method"));
+        assert!(contract.check_error_message(&err, "Method can be called only by aurora engine"));
     }
 
     contract
@@ -1528,8 +1536,7 @@ async fn test_engine_storage_withdraw() {
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)
@@ -1572,15 +1579,14 @@ async fn test_engine_storage_unregister() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     contract
         .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(bounds.min.0)

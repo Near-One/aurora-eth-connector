@@ -60,7 +60,6 @@ pub enum Role {
     UpgradableCodeStager,
     UpgradableCodeDeployer,
     Owner,
-    Engine,
     DAO,
 }
 
@@ -214,7 +213,6 @@ impl EthConnectorContract {
         this.register_if_not_exists(owner_id);
 
         this.acl_init_super_admin(env::predecessor_account_id());
-        this.acl_grant_role("Engine".to_string(), account_with_access_right);
         this.acl_grant_role("Owner".to_string(), owner_id.clone());
         this.acl_grant_role("Owner".to_string(), env::current_account_id());
 
@@ -241,9 +239,13 @@ impl EthConnectorContract {
         self.connector.prover_account.clone()
     }
 
-    #[access_control_any(roles(Role::Owner))]
+    #[access_control_any(roles(Role::Owner, Role::DAO))]
     pub fn set_aurora_engine_account_id(&mut self, new_aurora_engine_account_id: AccountId) {
         self.connector.aurora_engine_account_id = new_aurora_engine_account_id;
+    }
+
+    pub fn get_aurora_engine_account_id(&self) -> AccountId {
+        self.connector.aurora_engine_account_id.clone()
     }
 }
 
@@ -289,7 +291,6 @@ impl FungibleTokenCore for EthConnectorContract {
 #[near_bindgen]
 impl EngineFungibleToken for EthConnectorContract {
     #[payable]
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_ft_transfer(
         &mut self,
         sender_id: AccountId,
@@ -297,6 +298,9 @@ impl EngineFungibleToken for EthConnectorContract {
         amount: U128,
         memo: Option<String>,
     ) {
+        require!(env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine");
+
         self.register_if_not_exists(&receiver_id);
         assert_one_yocto();
         let amount: Balance = amount.into();
@@ -305,7 +309,6 @@ impl EngineFungibleToken for EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_ft_transfer_call(
         &mut self,
         sender_id: AccountId,
@@ -314,6 +317,9 @@ impl EngineFungibleToken for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        require!(env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine");
+
         assert_one_yocto();
         require!(
             env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
@@ -326,12 +332,12 @@ impl EngineFungibleToken for EthConnectorContract {
 /// Management for a known Engine accounts
 #[near_bindgen]
 impl KnownEngineAccountsManagement for EthConnectorContract {
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
+    #[access_control_any(roles(Role::Owner, Role::DAO))]
     fn set_engine_account(&mut self, engine_account: &AccountId) {
         self.known_engine_accounts.insert(engine_account);
     }
 
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
+    #[access_control_any(roles(Role::Owner, Role::DAO))]
     fn remove_engine_account(&mut self, engine_account: &AccountId) {
         self.known_engine_accounts.remove(engine_account);
     }
@@ -393,13 +399,15 @@ impl EngineStorageManagement for EthConnectorContract {
     /// If the attached deposit is less then the balance of the smart contract.
     #[allow(unused_variables)]
     #[payable]
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_storage_deposit(
         &mut self,
         sender_id: AccountId,
         account_id: Option<AccountId>,
         registration_only: Option<bool>,
     ) -> StorageBalance {
+        require!(env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine");
+
         let amount: Balance = env::attached_deposit();
         let account_id = account_id.unwrap_or_else(|| sender_id.clone());
         if self.ft.accounts.contains_key(&account_id) {
@@ -423,12 +431,14 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_storage_withdraw(
         &mut self,
         sender_id: AccountId,
         amount: Option<U128>,
     ) -> StorageBalance {
+        require!(env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine");
+
         assert_one_yocto();
         let predecessor_account_id = sender_id;
         self.internal_storage_balance_of(&predecessor_account_id)
@@ -449,8 +459,10 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
+        require!(env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine");
+
         self.internal_storage_unregister(sender_id, force).is_some()
     }
 }
@@ -489,7 +501,7 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 impl Withdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
-    #[pause(except(roles(Role::Owner)))]
+    #[pause(except(roles(Role::Owner, Role::DAO)))]
     fn withdraw(
         &mut self,
         #[serializer(borsh)] recipient_address: Address,
@@ -512,14 +524,16 @@ impl Withdraw for EthConnectorContract {
 impl EngineConnectorWithdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
-    #[access_control_any(roles(Role::Engine, Role::Owner))]
-    #[pause(except(roles(Role::Owner)), name = "withdraw")]
+    #[pause(name = "withdraw")]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
     ) -> WithdrawResult {
+        require!(env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine");
+
         assert_one_yocto();
 
         // Burn tokens to recipient
@@ -534,7 +548,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl Deposit for EthConnectorContract {
-    #[pause(except(roles(Role::Owner)))]
+    #[pause(except(roles(Role::Owner, Role::DAO)))]
     fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
         self.connector.deposit(proof)
     }
