@@ -59,7 +59,6 @@ pub enum Role {
     PauseManager,
     UpgradableCodeStager,
     UpgradableCodeDeployer,
-    Owner,
     DAO,
 }
 
@@ -71,7 +70,7 @@ pub enum Role {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Pausable, Upgradable)]
 #[access_control(role_type(Role))]
-#[pausable(manager_roles(Role::PauseManager, Role::DAO, Role::Owner))]
+#[pausable(manager_roles(Role::PauseManager, Role::DAO))]
 #[upgradable(access_control_roles(
     code_stagers(Role::UpgradableCodeStager, Role::DAO),
     code_deployers(Role::UpgradableCodeDeployer, Role::DAO),
@@ -214,8 +213,7 @@ impl EthConnectorContract {
         this.register_if_not_exists(owner_id);
 
         this.acl_init_super_admin(env::predecessor_account_id());
-        this.acl_grant_role("Owner".to_string(), owner_id.clone());
-        this.acl_grant_role("Owner".to_string(), env::current_account_id());
+        this.acl_grant_role("DAO".to_string(), owner_id.clone());
 
         this
     }
@@ -240,7 +238,7 @@ impl EthConnectorContract {
         self.connector.prover_account.clone()
     }
 
-    #[access_control_any(roles(Role::Owner, Role::DAO))]
+    #[access_control_any(roles(Role::DAO))]
     pub fn set_aurora_engine_account_id(&mut self, new_aurora_engine_account_id: AccountId) {
         self.connector.aurora_engine_account_id = new_aurora_engine_account_id;
     }
@@ -338,12 +336,12 @@ impl EngineFungibleToken for EthConnectorContract {
 /// Management for a known Engine accounts
 #[near_bindgen]
 impl KnownEngineAccountsManagement for EthConnectorContract {
-    #[access_control_any(roles(Role::Owner, Role::DAO))]
+    #[access_control_any(roles(Role::DAO))]
     fn set_engine_account(&mut self, engine_account: &AccountId) {
         self.known_engine_accounts.insert(engine_account);
     }
 
-    #[access_control_any(roles(Role::Owner, Role::DAO))]
+    #[access_control_any(roles(Role::DAO))]
     fn remove_engine_account(&mut self, engine_account: &AccountId) {
         self.known_engine_accounts.remove(engine_account);
     }
@@ -513,7 +511,7 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 impl Withdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
-    #[pause(except(roles(Role::Owner, Role::DAO)))]
+    #[pause(except(roles(Role::DAO)))]
     fn withdraw(
         &mut self,
         #[serializer(borsh)] recipient_address: Address,
@@ -562,7 +560,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl Deposit for EthConnectorContract {
-    #[pause(except(roles(Role::Owner, Role::DAO)))]
+    #[pause(except(roles(Role::DAO)))]
     fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
         self.connector.deposit(proof)
     }
@@ -729,7 +727,7 @@ mod tests {
     fn test_storage_balance_bounds() {
         let contract = create_contract();
         let storage_balance = contract
-            .storage_balance_of(contract.acl_get_grantees("Owner".to_string(), 0, 1)[0].clone())
+            .storage_balance_of(contract.acl_get_grantees("DAO".to_string(), 0, 1)[0].clone())
             .unwrap();
         assert_eq!(storage_balance.total.0, 0);
         assert_eq!(storage_balance.available.0, 0);

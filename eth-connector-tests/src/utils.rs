@@ -95,8 +95,8 @@ impl TestContract {
             .into_result()?)
     }
 
-    pub async fn deposit_with_proof(&self, proof: &Proof) -> anyhow::Result<ExecutionResult<()>> {
-        self.contract
+    pub async fn deposit_with_proof(&self, proof: &Proof, owner_acc: &EthConnectorContract) -> anyhow::Result<ExecutionResult<()>> {
+        owner_acc
             .deposit(proof.clone())
             .max_gas()
             .transact()
@@ -131,16 +131,16 @@ impl TestContract {
             .result)
     }
 
-    pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
+    pub async fn call_deposit_eth_to_aurora(&self, owner_acc: &EthConnectorContract) -> anyhow::Result<()> {
         let proof = self.get_proof(PROOF_DATA_ETH);
-        let res = self.deposit_with_proof(&proof).await?;
+        let res = self.deposit_with_proof(&proof, owner_acc).await?;
         assert!(res.is_success(), "call_deposit_eth_to_aurora: {res:#?}");
         Ok(())
     }
 
     pub async fn call_deposit_eth_to_near(&self) -> anyhow::Result<()> {
         let proof = self.get_proof(PROOF_DATA_NEAR);
-        let res = self.deposit_with_proof(&proof).await?;
+        let res = self.deposit_with_proof(&proof, &self.contract).await?;
         assert!(res.is_success(), "call_deposit_eth_to_near: {res:#?}");
         Ok(())
     }
@@ -191,9 +191,8 @@ impl TestContract {
         Ok(account_id)
     }
 
-    pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
-        let res = self
-            .contract
+    pub async fn set_and_check_access_right(&self, acc: &AccountId, owner: &EthConnectorContract) -> anyhow::Result<()> {
+        let res = owner
             .set_aurora_engine_account_id(acc.to_string())
             .max_gas()
             .transact()
@@ -290,7 +289,7 @@ impl TestContract {
 
     pub async fn call_deposit_contract(&self) -> anyhow::Result<()> {
         let proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1);
-        let res = self.deposit_with_proof(&proof).await?;
+        let res = self.deposit_with_proof(&proof, &self.contract).await?;
         assert!(res.is_success(), "call_deposit_contract: {res:#?}");
         Ok(())
     }
