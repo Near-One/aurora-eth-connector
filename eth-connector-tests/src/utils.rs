@@ -208,7 +208,6 @@ impl TestContract {
             .get_aurora_engine_account_id()
             .await?
             .result
-            .clone()
             .into();
 
         let acc_id = AccountId::try_from(res.clone())?;
