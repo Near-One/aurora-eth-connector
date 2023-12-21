@@ -26,7 +26,9 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v4
+      - name: Install toolchain
+        run: rustup toolchain install 1.74.1
       - name: Install cargo-make
-        run: cargo make -V || cargo install cargo-make
+        run: cargo make -V || cargo +1.74.1 install cargo-make
       - name: Run Contract cargo lint checker
         run: cargo make check
