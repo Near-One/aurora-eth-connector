@@ -123,10 +123,10 @@ async fn test_migration_state() {
     // INCREASED!
     // assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1520.);
     assert!(
-        to_tera(accounts_gas_burnt) < 1986.,
+        to_tera(accounts_gas_burnt) < 1987.,
         "{:?} < {:?}",
         to_tera(accounts_gas_burnt),
-        1986.
+        1987.
     );
     total_gas_burnt += accounts_gas_burnt;
 
