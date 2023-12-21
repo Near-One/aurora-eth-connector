@@ -95,12 +95,12 @@ impl TestContract {
             .into_result()?)
     }
 
-    pub async fn deposit_with_proof(&self, proof: &Proof, owner_acc: &EthConnectorContract) -> anyhow::Result<ExecutionResult<()>> {
-        owner_acc
-            .deposit(proof.clone())
-            .max_gas()
-            .transact()
-            .await
+    pub async fn deposit_with_proof(
+        &self,
+        proof: &Proof,
+        owner_acc: &EthConnectorContract,
+    ) -> anyhow::Result<ExecutionResult<()>> {
+        owner_acc.deposit(proof.clone()).max_gas().transact().await
     }
 
     pub async fn user_deposit_with_proof(
@@ -131,7 +131,10 @@ impl TestContract {
             .result)
     }
 
-    pub async fn call_deposit_eth_to_aurora(&self, owner_acc: &EthConnectorContract) -> anyhow::Result<()> {
+    pub async fn call_deposit_eth_to_aurora(
+        &self,
+        owner_acc: &EthConnectorContract,
+    ) -> anyhow::Result<()> {
         let proof = self.get_proof(PROOF_DATA_ETH);
         let res = self.deposit_with_proof(&proof, owner_acc).await?;
         assert!(res.is_success(), "call_deposit_eth_to_aurora: {res:#?}");
@@ -191,7 +194,11 @@ impl TestContract {
         Ok(account_id)
     }
 
-    pub async fn set_and_check_access_right(&self, acc: &AccountId, owner: &EthConnectorContract) -> anyhow::Result<()> {
+    pub async fn set_and_check_access_right(
+        &self,
+        acc: &AccountId,
+        owner: &EthConnectorContract,
+    ) -> anyhow::Result<()> {
         let res = owner
             .set_aurora_engine_account_id(acc.to_string())
             .max_gas()

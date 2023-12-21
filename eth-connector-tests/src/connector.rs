@@ -249,7 +249,10 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() {
         .await
         .unwrap();
 
-    contract.call_deposit_eth_to_aurora(&contract.contract).await.unwrap();
+    contract
+        .call_deposit_eth_to_aurora(&contract.contract)
+        .await
+        .unwrap();
     assert!(
         contract.call_is_used_proof(PROOF_DATA_ETH).await.unwrap(),
         "Expected not to fail because the proof should have been already used",
@@ -552,7 +555,10 @@ async fn test_deposit_with_0x_prefix() {
         proof: Vec::new(),
     };
 
-    let res = contract.deposit_with_proof(&proof, &contract.contract).await.unwrap();
+    let res = contract
+        .deposit_with_proof(&proof, &contract.contract)
+        .await
+        .unwrap();
     assert!(res.is_success());
 
     let balance = contract
@@ -717,7 +723,10 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
         .transact()
         .await
         .unwrap();
-    contract.call_deposit_eth_to_aurora(&owner_acc).await.unwrap();
+    contract
+        .call_deposit_eth_to_aurora(&owner_acc)
+        .await
+        .unwrap();
 
     // Pause withdraw
     let res = owner_acc
