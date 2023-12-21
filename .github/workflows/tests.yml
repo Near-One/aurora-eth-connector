@@ -15,7 +15,7 @@ jobs:
       - name: Clone the repository
         uses: actions/checkout@v4
       - name: Install cargo-make
-        run: cargo make -V || cargo install cargo-make
+        run: cargo make -V || cargo +1.74.1 install cargo-make
       - name: Install sandbox
         run: |
           if [[ ! -f ${{ env.NEAR_SANDBOX_BIN_PATH }} ]]; then
