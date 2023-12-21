@@ -16,7 +16,7 @@ autobenches = false
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-aurora-engine-types = { workspace = true, features = ["impl-serde", "borsh-compat"] }
+aurora-engine-types = { workspace = true, features = ["impl-serde"] }
 near-contract-standards.workspace = true
 near-sdk.workspace = true
 byte-slice-cast.workspace = true

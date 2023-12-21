@@ -10,8 +10,11 @@ use aurora_eth_connector::log_entry;
 use aurora_workspace_eth_connector::types::{Proof, WithdrawResult};
 use aurora_workspace_utils::ContractId;
 use byte_slice_cast::AsByteSlice;
-use near_sdk::{json_types::U128, ONE_YOCTO};
-use workspaces::AccountId;
+use near_sdk::json_types::U128;
+use near_workspaces::types::NearToken;
+use near_workspaces::AccountId;
+
+const ONE_YOCTO: NearToken = NearToken::from_yoctonear(near_sdk::ONE_YOCTO);
 
 #[tokio::test]
 async fn test_ft_transfer() {
@@ -1260,7 +1263,7 @@ async fn test_storage_deposit() {
         .contract
         .storage_deposit(Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
@@ -1455,7 +1458,7 @@ async fn test_engine_storage_deposit() {
     let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await;
     if let Err(err) = res {
@@ -1471,7 +1474,7 @@ async fn test_engine_storage_deposit() {
         .contract
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
@@ -1522,7 +1525,7 @@ async fn test_engine_storage_withdraw() {
         .contract
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
@@ -1573,7 +1576,7 @@ async fn test_engine_storage_unregister() {
         .contract
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(bounds.min.0)
+        .deposit(NearToken::from_yoctonear(bounds.min.0))
         .transact()
         .await
         .unwrap();
