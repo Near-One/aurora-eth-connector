@@ -15,7 +15,7 @@ jobs:
       - name: Clone the repository
         uses: actions/checkout@v4
       - name: Install toolchain
-        run: rustup toolchain install 1.69
+        run: rustup toolchain install 1.69 && rustup +1.69 target add wasm32-unknown-unknown
       - name: Install cargo-make
         run: cargo make -V || cargo install cargo-make
       - name: Install sandbox
