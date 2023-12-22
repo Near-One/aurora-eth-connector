@@ -98,9 +98,8 @@ impl TestContract {
     pub async fn deposit_with_proof(
         &self,
         proof: &Proof,
-        owner_acc: &EthConnectorContract,
     ) -> anyhow::Result<ExecutionResult<()>> {
-        owner_acc.deposit(proof.clone()).max_gas().transact().await
+        self.contract.deposit(proof.clone()).max_gas().transact().await
     }
 
     pub async fn user_deposit_with_proof(
@@ -136,14 +135,14 @@ impl TestContract {
         owner_acc: &EthConnectorContract,
     ) -> anyhow::Result<()> {
         let proof = self.get_proof(PROOF_DATA_ETH);
-        let res = self.deposit_with_proof(&proof, owner_acc).await?;
+        let res = self.user_deposit_with_proof(owner_acc, proof).await?;
         assert!(res.is_success(), "call_deposit_eth_to_aurora: {res:#?}");
         Ok(())
     }
 
     pub async fn call_deposit_eth_to_near(&self) -> anyhow::Result<()> {
         let proof = self.get_proof(PROOF_DATA_NEAR);
-        let res = self.deposit_with_proof(&proof, &self.contract).await?;
+        let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_eth_to_near: {res:#?}");
         Ok(())
     }
@@ -296,7 +295,7 @@ impl TestContract {
 
     pub async fn call_deposit_contract(&self) -> anyhow::Result<()> {
         let proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1);
-        let res = self.deposit_with_proof(&proof, &self.contract).await?;
+        let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_contract: {res:#?}");
         Ok(())
     }
