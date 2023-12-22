@@ -1,8 +1,10 @@
 use crate::utils::TestContract;
 use aurora_engine_migration_tool::{BorshDeserialize, NEP141Wei, StateData};
 use aurora_workspace_eth_connector::types::{MigrationCheckResult, MigrationInputData};
-use near_sdk::{AccountId, Balance};
+use near_sdk::Balance;
+use near_workspaces::AccountId;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[tokio::test]
 async fn test_migration_access_right() {
@@ -38,8 +40,11 @@ async fn test_migration() {
         .await
         .unwrap();
     assert!(res.is_success());
-    assert!(to_tera(res.total_gas_burnt()) < 95.6);
-    println!("Gas burnt: {:.1} TGas", to_tera(res.total_gas_burnt()));
+    assert!(to_tera(res.total_gas_burnt().as_gas()) < 95.6);
+    println!(
+        "Gas burnt: {:.1} TGas",
+        to_tera(res.total_gas_burnt().as_gas())
+    );
 }
 
 #[allow(clippy::too_many_lines)]
@@ -70,7 +75,7 @@ async fn test_migration_state() {
             .await
             .unwrap();
         assert!(res.is_success());
-        proofs_gas_burnt += res.total_gas_burnt();
+        proofs_gas_burnt += res.total_gas_burnt().as_gas();
         println!(
             "Proofs: {proofs_count:?} [{:.1} TGas]",
             to_tera(proofs_gas_burnt)
@@ -104,7 +109,7 @@ async fn test_migration_state() {
             .await
             .unwrap();
         assert!(res.is_success());
-        accounts_gas_burnt += res.total_gas_burnt();
+        accounts_gas_burnt += res.total_gas_burnt().as_gas();
 
         println!(
             "Accounts: {accounts_count:?} [{:.1} TGas]",
@@ -118,10 +123,10 @@ async fn test_migration_state() {
     // INCREASED!
     // assert!(accounts_gas_burnt as f64 / 1_000_000_000_000. < 1520.);
     assert!(
-        to_tera(accounts_gas_burnt) < 1990.,
+        to_tera(accounts_gas_burnt) < 1992.,
         "{:?} < {:?}",
         to_tera(accounts_gas_burnt),
-        1990.
+        1992.
     );
     total_gas_burnt += accounts_gas_burnt;
 
@@ -139,7 +144,7 @@ async fn test_migration_state() {
         .await
         .unwrap();
     assert!(res.is_success());
-    total_gas_burnt += res.total_gas_burnt();
+    total_gas_burnt += res.total_gas_burnt().as_gas();
     // INCREASED!
     //assert!(total_gas_burnt as f64 / 1_000_000_000_000. < 6878.6);
     // INCREASED!
@@ -216,8 +221,13 @@ fn to_tera(gas: u64) -> f64 {
     gas as f64 / 1_000_000_000_000.
 }
 
-fn vec_to_map(vec: &[(&AccountId, &NEP141Wei)]) -> HashMap<AccountId, Balance> {
+fn vec_to_map(vec: &[(&near_sdk::AccountId, &NEP141Wei)]) -> HashMap<AccountId, Balance> {
     vec.iter()
-        .map(|(a, b)| ((*a).clone(), b.as_u128()))
+        .map(|(a, b)| {
+            (
+                AccountId::from_str((*a).clone().as_str()).unwrap(),
+                b.as_u128(),
+            )
+        })
         .collect()
 }

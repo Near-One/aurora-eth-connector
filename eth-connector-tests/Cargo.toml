@@ -23,11 +23,11 @@ byte-slice-cast.workspace = true
 anyhow = "1.0"
 near-units = "0.2"
 tokio = { version = "1", features = ["full"] }
-workspaces = "0.7.0"
+near-workspaces = "0.9"
 hex = "0.4.3"
 ethabi = "18.0"
 rlp = { version = "0.5.0", default-features = false }
-aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git" }
+aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git", tag = "0.2.2" }
 aurora-workspace-eth-connector = { git = "https://github.com/olga24912/aurora-workspace", branch = "add-near-plugin" }
 aurora-workspace-utils = { git = "https://github.com/olga24912/aurora-workspace", branch = "add-near-plugin" }
 

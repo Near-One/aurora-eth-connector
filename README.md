@@ -4,11 +4,11 @@
 [![Lints](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/lints.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/lints.yml)
 [![Tests](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/tests.yml/badge.svg)](https://github.com/aurora-is-near/aurora-fungible-token/actions/workflows/tests.yml)
 
-Aurora Eth Connecotr - Fungible Token implementation is the smart contract on the NEAR Protocol for
+Aurora Eth Connector - Fungible Token implementation is a smart contract on the NEAR Protocol for the
 [Aurora Engine](https://github.com/aurora-is-near/aurora-engine).
-It is implementation for [NEP-141](https://nomicon.io/Standards/Tokens/FungibleToken/Core).
+It is an implementation for [NEP-141](https://nomicon.io/Standards/Tokens/FungibleToken/Core).
 
-It is base on [AIP:  Split NEP-141 logic outside of Engine](https://github.com/aurora-is-near/AIPs/pull/5).
+It is based on [AIP:  Split NEP-141 logic outside of Engine](https://github.com/aurora-is-near/AIPs/pull/5).
 
 ## Development
 
@@ -24,12 +24,9 @@ cargo install --force cargo-make
 
 #### Running unit & integration tests
 
-To run tests, there are a few cargo make tasks we can run:
+`cago make test`: tests the whole cargo workspace and the ETH contracts. This requires a `--profile` argument.
 
-- `test`, tests the whole cargo workspace and ETH contracts. Requires a
-  `--profile` argument.
-
-For example, the following will test the whole workspace and ETH contracts:
+For example, the following will test the whole workspace and the ETH contracts:
 
 ```sh
 cargo make --profile mainnet test 
@@ -39,18 +36,18 @@ cargo make --profile mainnet test
 
 Every task with `cargo make` must have a `--profile` argument.
 
-The current available `profile`s are:
+The currently available `profile`s are:
 
 - `mainnet`, suitable for mainnet.
 - `testnet`, suitable for testnet.
 - `local`, suitable for local development.
-- `custom`, suitable for custom environments, see note below.
+- `custom`, suitable for custom environments, see the note below.
 
 A custom environment may be required depending on the circumstances. This can
 be created in the `.env` folder as `custom.env` following the structure of the
 other `.env` files. See `bin/local-custom.env` for more details.
 
-Every make most follow the following pattern, though `--profile` is not required
+Every make must follow the following pattern, though `--profile` is not required
 for all such as cleanup:
 
 ```sh
@@ -59,18 +56,15 @@ cargo make [--profile <profile>] <task>
 
 #### Building the aurora-eth-connector contract
 
-To build the binaries there are a few commands to do such following the format.
+There are a few different commands available to build binaries.
 
-The current available build `task`s are:
+The currently available build `task`s are:
 
-- `default`, does not need to be specified, runs `build`. Requires a `--profile`
-  argument.
-- `build`, builds smart contract and produces the
-  `aurora-<profile>.wasm` in the `bin` folder.
+- `default`: does not need to be specified, runs `build`. Requires a `--profile` argument.
+- `build`: builds smart contract and produces `aurora-<profile>.wasm` in the `bin` folder.
   Requires a `--profile` argument.
-- `build-test`, builds all the below using test features. Requires a `--profile`
-  argument.
-- `build-migration`, builds smart contract with migration functionality and produces the
+- `build-test`: builds all tasks using the test features. Requires a `--profile` argument.
+- `build-migration`, builds smart contract with the migration functionality and produces
   `aurora-<profile>.wasm` in the `bin` folder.
 
 For example, the following will build the mainnet debug binary:
@@ -83,7 +77,7 @@ cargo make --profile mainnet build
 
 To run lints and checks, the following tasks are available:
 
-- `check`, checks the format, clippy and ETH contracts.
+- `check`, checks the format, clippy, and ETH contracts.
 - `check-fmt`, checks the workspace Rust format only.
 - `check-clippy`, checks the Rust workspace with clippy only.
 
