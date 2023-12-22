@@ -176,6 +176,14 @@ impl EthConnectorContract {
             )
             .into()
     }
+
+    // Check if predecessor account is the aurora engine
+    fn assert_aurora_engine_access_right(&self) {
+        require!(
+            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine"
+        );
+    }
 }
 
 #[near_bindgen]
@@ -298,10 +306,7 @@ impl EngineFungibleToken for EthConnectorContract {
         amount: U128,
         memo: Option<String>,
     ) {
-        require!(
-            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
-            "Method can be called only by aurora engine"
-        );
+        self.assert_aurora_engine_access_right();
 
         self.register_if_not_exists(&receiver_id);
         assert_one_yocto();
@@ -319,10 +324,7 @@ impl EngineFungibleToken for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        require!(
-            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
-            "Method can be called only by aurora engine"
-        );
+        self.assert_aurora_engine_access_right();
 
         assert_one_yocto();
         require!(
@@ -409,10 +411,7 @@ impl EngineStorageManagement for EthConnectorContract {
         account_id: Option<AccountId>,
         registration_only: Option<bool>,
     ) -> StorageBalance {
-        require!(
-            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
-            "Method can be called only by aurora engine"
-        );
+        self.assert_aurora_engine_access_right();
 
         let amount: Balance = env::attached_deposit();
         let account_id = account_id.unwrap_or_else(|| sender_id.clone());
@@ -442,10 +441,7 @@ impl EngineStorageManagement for EthConnectorContract {
         sender_id: AccountId,
         amount: Option<U128>,
     ) -> StorageBalance {
-        require!(
-            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
-            "Method can be called only by aurora engine"
-        );
+        self.assert_aurora_engine_access_right();
 
         assert_one_yocto();
         let predecessor_account_id = sender_id;
@@ -468,10 +464,7 @@ impl EngineStorageManagement for EthConnectorContract {
 
     #[payable]
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
-        require!(
-            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
-            "Method can be called only by aurora engine"
-        );
+        self.assert_aurora_engine_access_right();
 
         self.internal_storage_unregister(sender_id, force).is_some()
     }
@@ -541,10 +534,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
     ) -> WithdrawResult {
-        require!(
-            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
-            "Method can be called only by aurora engine"
-        );
+        self.assert_aurora_engine_access_right();
 
         assert_one_yocto();
 
