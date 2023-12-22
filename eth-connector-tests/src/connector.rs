@@ -558,10 +558,7 @@ async fn test_deposit_with_0x_prefix() {
         proof: Vec::new(),
     };
 
-    let res = contract
-        .deposit_with_proof(&proof)
-        .await
-        .unwrap();
+    let res = contract.deposit_with_proof(&proof).await.unwrap();
     assert!(res.is_success());
 
     let balance = contract
