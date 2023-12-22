@@ -61,7 +61,7 @@ async fn test_ft_transfer_user() {
 
     let transfer_amount: U128 = 70.into();
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -439,7 +439,7 @@ async fn test_ft_transfer_call_user_message() {
     assert_eq!(balance.0, DEPOSITED_AMOUNT - transfer_amount.0);
 
     contract
-        .set_and_check_access_right(contract.contract.id(), &contract.contract)
+        .set_and_check_access_right(contract.contract.id())
         .await
         .unwrap();
 
@@ -486,7 +486,7 @@ async fn test_set_and_check_engine_account() {
     assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -791,7 +791,7 @@ async fn test_deposit_pausability() {
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     contract
-        .set_and_check_access_right(user_acc.id(), &owner_acc)
+        .user_set_and_check_access_right(user_acc.id(), &owner_acc)
         .await
         .unwrap();
 
@@ -861,7 +861,7 @@ async fn test_withdraw_from_near_pausability() {
     contract.call_deposit_contract().await.unwrap();
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -1242,7 +1242,7 @@ async fn test_access_rights() {
     );
 
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -1355,7 +1355,7 @@ async fn test_engine_ft_transfer() {
     assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
 
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -1426,7 +1426,7 @@ async fn test_engine_ft_transfer_call() {
     assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
 
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -1481,7 +1481,7 @@ async fn test_engine_storage_deposit() {
     }
 
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -1531,7 +1531,7 @@ async fn test_engine_storage_withdraw() {
     }
 
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -1581,7 +1581,7 @@ async fn test_engine_storage_unregister() {
     assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     contract
-        .set_and_check_access_right(user_acc.id(), &contract.contract)
+        .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
@@ -1634,7 +1634,7 @@ async fn test_engine_storage_unregister() {
 async fn test_manage_engine_accounts() {
     let contract = TestContract::new().await.unwrap();
     contract
-        .set_and_check_access_right(contract.contract.id(), &contract.contract)
+        .set_and_check_access_right(contract.contract.id())
         .await
         .unwrap();
 
