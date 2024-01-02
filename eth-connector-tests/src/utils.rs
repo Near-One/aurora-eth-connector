@@ -40,6 +40,7 @@ impl TestContract {
         let prover_account = contract.id();
         let metadata = Self::metadata_default();
         let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
+        let min_proof_acceptance_height = 0;
         // Init eth-connector
         let res = contract
             .init(
@@ -48,6 +49,7 @@ impl TestContract {
                 metadata,
                 &account_with_access_right,
                 &owner_id,
+                min_proof_acceptance_height,
             )
             .transact()
             .await?;
