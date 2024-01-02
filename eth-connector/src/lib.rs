@@ -166,6 +166,7 @@ impl EthConnectorContract {
         metadata: &FungibleTokenMetadata,
         account_with_access_right: AccountId,
         owner_id: &AccountId,
+        min_proof_acceptance_height: u64,
     ) -> Self {
         metadata.assert_valid();
 
@@ -177,6 +178,7 @@ impl EthConnectorContract {
             eth_custodian_address,
             account_with_access_right,
             owner_id: owner_id.clone(),
+            min_proof_acceptance_height,
         };
         let mut this = Self {
             ft: FungibleToken {
@@ -721,12 +723,14 @@ mod tests {
         };
         let account_with_access_right = "engine.near".parse().unwrap();
         let owner_id = "owner.near".parse().unwrap();
+        let min_proof_acceptance_height = 1;
         EthConnectorContract::new(
             prover_account,
             eth_custodian_address,
             &metadata,
             account_with_access_right,
             &owner_id,
+            min_proof_acceptance_height,
         )
     }
 }
