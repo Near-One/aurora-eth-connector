@@ -63,6 +63,12 @@ impl From<Proof> for VerifyProofArgs {
     }
 }
 
+#[cfg(feature = "integration-test")]
+#[derive(BorshDeserialize, BorshSerialize, Default, Debug)]
+pub struct MockHeader {
+    pub height: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::Proof;

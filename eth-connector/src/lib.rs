@@ -206,8 +206,13 @@ impl EthConnectorContract {
     #[result_serializer(borsh)]
     #[must_use]
     #[allow(unused_variables)]
-    pub fn verify_log_entry(#[serializer(borsh)] proof_args: &VerifyProofArgs) -> bool {
+    pub fn verify_log_entry(&self, #[serializer(borsh)] proof_args: &VerifyProofArgs) -> bool {
         log!("Call from verify_log_entry");
+        if let Ok(header) = proof::MockHeader::try_from_slice(&proof_args.header_data) {
+            if header.height < self.connector.min_proof_acceptance_height {
+                return false;
+            }
+        }
         true
     }
 

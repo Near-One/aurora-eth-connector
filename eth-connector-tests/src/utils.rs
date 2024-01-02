@@ -34,13 +34,20 @@ impl TestContract {
         eth_custodian_address: &str,
         owner_id: &str,
     ) -> anyhow::Result<Self> {
+        Self::new_with_options(eth_custodian_address, owner_id, 0).await
+    }
+
+    pub async fn new_with_options(
+        eth_custodian_address: &str,
+        owner_id: &str,
+        min_proof_acceptance_height: u64,
+    ) -> anyhow::Result<Self> {
         let (contract, root_account) = Self::deploy_eth_connector().await?;
         let owner_id: AccountId = owner_id.parse().unwrap();
 
         let prover_account = contract.id();
         let metadata = Self::metadata_default();
         let account_with_access_right: AccountId = CONTRACT_ACC.parse().unwrap();
-        let min_proof_acceptance_height = 0;
         // Init eth-connector
         let res = contract
             .init(
@@ -236,6 +243,7 @@ impl TestContract {
         recipient_id: &AccountId,
         deposit_amount: u128,
         proof_index: u64,
+        header_height: u64,
     ) -> Proof {
         use aurora_engine_types::{
             types::{Fee, NEP141Wei},
@@ -279,17 +287,25 @@ impl TestContract {
                 ethabi::Token::Uint(U256::from(fee.as_u128())),
             ]),
         };
+        // The borsh is used instead of rlp to simplify the mock logic
+        let header_data =
+            near_sdk::borsh::BorshSerialize::try_to_vec(&aurora_eth_connector::proof::MockHeader {
+                height: header_height,
+            })
+            .unwrap();
+
         Proof {
             log_index: proof_index,
             // Only this field matters for the purpose of this test
             log_entry_data: rlp::encode(&log_entry).to_vec(),
             receipt_index: 1,
+            header_data,
             ..Default::default()
         }
     }
 
     pub async fn call_deposit_contract(&self) -> anyhow::Result<()> {
-        let proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1);
+        let proof = self.mock_proof(self.contract.id(), DEPOSITED_CONTRACT, 1, 0);
         let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_contract: {res:#?}");
         Ok(())
