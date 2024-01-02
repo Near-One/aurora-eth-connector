@@ -799,7 +799,6 @@ async fn test_deposit_with_proof_lower_than_acceptance_height() {
 
     // Should succeed
     let proof_header_height = min_proof_acceptance_height;
-    let user_account = contract.contract_account("eth_recipient").await.unwrap();
     let proof = contract.mock_proof(user_account.id(), 10, 1, proof_header_height);
     let res = contract
         .user_deposit_with_proof(&user_account, proof)
