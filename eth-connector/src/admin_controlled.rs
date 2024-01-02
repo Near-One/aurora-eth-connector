@@ -104,6 +104,7 @@ fn test_pause_control() {
         paused_mask: UNPAUSE_ALL,
         account_with_access_right: "aurora".parse().unwrap(),
         owner_id: "aurora".parse().unwrap(),
+        min_proof_acceptance_height: 0,
     };
 
     assert!(connector.assert_not_paused(PAUSE_DEPOSIT).is_ok());

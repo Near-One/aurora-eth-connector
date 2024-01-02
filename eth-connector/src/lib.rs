@@ -723,7 +723,7 @@ mod tests {
         };
         let account_with_access_right = "engine.near".parse().unwrap();
         let owner_id = "owner.near".parse().unwrap();
-        let min_proof_acceptance_height = 1;
+        let min_proof_acceptance_height = 0;
         EthConnectorContract::new(
             prover_account,
             eth_custodian_address,
