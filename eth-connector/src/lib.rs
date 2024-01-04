@@ -299,6 +299,7 @@ impl FungibleTokenCore for EthConnectorContract {
 #[near_bindgen]
 impl EngineFungibleToken for EthConnectorContract {
     #[payable]
+    #[pause(name = "engine")]
     fn engine_ft_transfer(
         &mut self,
         sender_id: AccountId,
@@ -316,6 +317,7 @@ impl EngineFungibleToken for EthConnectorContract {
     }
 
     #[payable]
+    #[pause(name = "engine")]
     fn engine_ft_transfer_call(
         &mut self,
         sender_id: AccountId,
@@ -405,6 +407,7 @@ impl EngineStorageManagement for EthConnectorContract {
     /// If the attached deposit is less then the balance of the smart contract.
     #[allow(unused_variables)]
     #[payable]
+    #[pause(name = "engine")]
     fn engine_storage_deposit(
         &mut self,
         sender_id: AccountId,
@@ -436,6 +439,7 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
+    #[pause(name = "engine")]
     fn engine_storage_withdraw(
         &mut self,
         sender_id: AccountId,
@@ -463,6 +467,7 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
+    #[pause(name = "engine")]
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
         self.assert_aurora_engine_access_right();
 
@@ -527,7 +532,7 @@ impl Withdraw for EthConnectorContract {
 impl EngineConnectorWithdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
-    #[pause(name = "withdraw")]
+    #[pause]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
