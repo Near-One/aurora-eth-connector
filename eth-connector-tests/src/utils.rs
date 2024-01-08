@@ -48,6 +48,7 @@ impl TestContract {
                 metadata,
                 &account_with_access_right,
                 &owner_id,
+                0
             )
             .transact()
             .await?;
