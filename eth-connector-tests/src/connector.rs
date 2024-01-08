@@ -737,6 +737,14 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
         .unwrap();
     assert!(res.is_success());
 
+    let res = owner_acc
+        .pa_pause_feature("engine_withdraw".to_string())
+        .max_gas()
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
     // 2nd withdraw call when paused, but the admin is calling it - should succeed
     let res = owner_acc
         .withdraw(recipient_addr, withdraw_amount)
