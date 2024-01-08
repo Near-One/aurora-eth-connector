@@ -3,7 +3,7 @@ use crate::{
     connector::{ext_funds_finish, ext_proof_verifier},
     deposit_event::{DepositedEvent, TokenMessageData},
     errors, log, panic_err,
-    proof::Proof,
+    proof::{Proof, VerifyProofArgs},
     types::SdkUnwrap,
     AdminControlled, PausedMask,
 };
@@ -58,6 +58,9 @@ pub struct EthConnector {
     pub account_with_access_right: AccountId,
     /// Owner's account id.
     pub owner_id: AccountId,
+    /// Proofs from blocks that are below the acceptance height will be rejected.
+    // If `minBlockAcceptanceHeight` value is zero - proofs from block with any height are accepted.
+    pub min_proof_acceptance_height: u64,
 }
 
 impl AdminControlled for EthConnector {
@@ -160,9 +163,12 @@ impl EthConnector {
             }
         };
 
+        let mut verify_log_args: VerifyProofArgs = proof.into();
+        verify_log_args.min_header_height = Some(self.min_proof_acceptance_height);
+
         ext_proof_verifier::ext(self.prover_account.clone())
             .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
-            .verify_log_entry(proof.into())
+            .verify_log_entry_in_bound(verify_log_args)
             .then(
                 ext_funds_finish::ext(current_account_id)
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)

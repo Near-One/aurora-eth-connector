@@ -318,7 +318,7 @@ dependencies = [
 [[package]]
 name = "aurora-workspace-eth-connector"
 version = "0.4.1"
-source = "git+https://github.com/aurora-is-near/aurora-workspace.git?tag=0.4.1#dbed3551cbfd17f760a58e042c6f4c7f7f9a9a20"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git?rev=16d6263d6561cbc1f838016ae15416eadc88ec90#16d6263d6561cbc1f838016ae15416eadc88ec90"
 dependencies = [
  "anyhow",
  "aurora-engine-types",
@@ -333,7 +333,7 @@ dependencies = [
 [[package]]
 name = "aurora-workspace-utils"
 version = "0.4.1"
-source = "git+https://github.com/aurora-is-near/aurora-workspace.git?tag=0.4.1#dbed3551cbfd17f760a58e042c6f4c7f7f9a9a20"
+source = "git+https://github.com/aurora-is-near/aurora-workspace.git?rev=16d6263d6561cbc1f838016ae15416eadc88ec90#16d6263d6561cbc1f838016ae15416eadc88ec90"
 dependencies = [
  "anyhow",
  "aurora-engine-types",

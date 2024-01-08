@@ -42,6 +42,8 @@ pub struct VerifyProofArgs {
     pub receipt_data: Vec<u8>,
     pub header_data: Vec<u8>,
     pub proof: Vec<Vec<u8>>,
+    pub min_header_height: Option<u64>,
+    pub max_header_height: Option<u64>,
     pub skip_bridge_call: bool,
 }
 
@@ -54,9 +56,17 @@ impl From<Proof> for VerifyProofArgs {
             receipt_data: value.receipt_data,
             header_data: value.header_data,
             proof: value.proof,
+            min_header_height: None,
+            max_header_height: None,
             skip_bridge_call: false,
         }
     }
+}
+
+#[cfg(feature = "integration-test")]
+#[derive(BorshDeserialize, BorshSerialize, Default, Debug)]
+pub struct MockHeader {
+    pub height: u64,
 }
 
 #[cfg(test)]
