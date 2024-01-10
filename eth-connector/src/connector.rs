@@ -34,7 +34,7 @@ pub trait FundsFinish {
 #[ext_contract(ext_proof_verifier)]
 pub trait ProofVerifier {
     #[result_serializer(borsh)]
-    fn verify_log_entry(&self, #[serializer(borsh)] args: VerifyProofArgs) -> bool;
+    fn verify_log_entry_in_bound(&self, #[serializer(borsh)] args: VerifyProofArgs) -> bool;
 }
 
 /// Withdraw method for legacy implementation in Engine

@@ -2,7 +2,7 @@ use crate::{
     connector::{ext_funds_finish, ext_proof_verifier},
     deposit_event::{DepositedEvent, TokenMessageData},
     errors, log, panic_err,
-    proof::Proof,
+    proof::{Proof, VerifyProofArgs},
     types::SdkUnwrap,
 };
 use aurora_engine_types::types::Address;
@@ -52,6 +52,9 @@ pub struct EthConnector {
     pub eth_custodian_address: Address,
     /// Account with access right for the current contract.
     pub aurora_engine_account_id: AccountId,
+    /// Proofs from blocks that are below the acceptance height will be rejected.
+    // If `minBlockAcceptanceHeight` value is zero - proofs from block with any height are accepted.
+    pub min_proof_acceptance_height: u64,
 }
 
 impl EthConnector {
@@ -128,9 +131,12 @@ impl EthConnector {
             }
         };
 
+        let mut verify_log_args: VerifyProofArgs = proof.into();
+        verify_log_args.min_header_height = Some(self.min_proof_acceptance_height);
+
         ext_proof_verifier::ext(self.prover_account.clone())
             .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
-            .verify_log_entry(proof.into())
+            .verify_log_entry_in_bound(verify_log_args)
             .then(
                 ext_funds_finish::ext(current_account_id)
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)

@@ -787,6 +787,37 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
 }
 
 #[tokio::test]
+async fn test_deposit_with_proof_lower_than_acceptance_height() {
+    let min_proof_acceptance_height = 1000;
+    let contract = TestContract::new_with_options(
+        CUSTODIAN_ADDRESS,
+        "owner.root",
+        min_proof_acceptance_height,
+    )
+    .await
+    .unwrap();
+
+    // Should fail
+    let proof_header_height = min_proof_acceptance_height - 1;
+    let user_account = contract.contract_account("eth_recipient").await.unwrap();
+    let proof = contract.mock_proof(user_account.id(), 10, 1, proof_header_height);
+    let res = contract
+        .user_deposit_with_proof(&user_account, proof)
+        .await
+        .unwrap_err();
+    assert!(contract.check_error_message(&res, "ERR_VERIFY_PROOF"));
+
+    // Should succeed
+    let proof_header_height = min_proof_acceptance_height;
+    let proof = contract.mock_proof(user_account.id(), 10, 1, proof_header_height);
+    let res = contract
+        .user_deposit_with_proof(&user_account, proof)
+        .await
+        .unwrap();
+    assert!(res.is_success());
+}
+
+#[tokio::test]
 async fn test_deposit_pausability() {
     let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
         .await
@@ -801,7 +832,7 @@ async fn test_deposit_pausability() {
         .unwrap();
 
     // 1st deposit call - should succeed
-    let proof1 = contract.mock_proof(user_acc.id(), 10, 1);
+    let proof1 = contract.mock_proof(user_acc.id(), 10, 1, 0);
     let res = contract
         .user_deposit_with_proof(&user_acc, proof1)
         .await
@@ -818,14 +849,14 @@ async fn test_deposit_pausability() {
     assert!(res.is_success());
 
     // 2nd deposit call - should fail for `user_acc`
-    let proof2 = contract.mock_proof(user_acc.id(), 20, 2);
+    let proof2 = contract.mock_proof(user_acc.id(), 20, 2, 0);
     let res = contract
         .user_deposit_with_proof(&user_acc, proof2)
         .await
         .unwrap_err();
     assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
-    let proof3 = contract.mock_proof(user_acc.id(), 30, 3);
+    let proof3 = contract.mock_proof(user_acc.id(), 30, 3, 0);
     let res = contract
         .user_deposit_with_proof(&owner_acc, proof3)
         .await
@@ -850,7 +881,7 @@ async fn test_deposit_pausability() {
     assert!(res.is_success());
 
     // 3rd deposit call - should succeed
-    let proof4 = contract.mock_proof(user_acc.id(), 40, 4);
+    let proof4 = contract.mock_proof(user_acc.id(), 40, 4, 0);
     let res = contract
         .user_deposit_with_proof(&user_acc, proof4)
         .await

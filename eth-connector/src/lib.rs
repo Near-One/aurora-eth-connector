@@ -196,6 +196,7 @@ impl EthConnectorContract {
         metadata: &FungibleTokenMetadata,
         account_with_access_right: AccountId,
         owner_id: &AccountId,
+        min_proof_acceptance_height: u64,
     ) -> Self {
         metadata.assert_valid();
 
@@ -204,6 +205,7 @@ impl EthConnectorContract {
             prover_account,
             eth_custodian_address,
             aurora_engine_account_id: account_with_access_right,
+            min_proof_acceptance_height,
         };
 
         let mut this = Self {
@@ -236,8 +238,16 @@ impl EthConnectorContract {
     #[result_serializer(borsh)]
     #[must_use]
     #[allow(unused_variables)]
-    pub fn verify_log_entry(#[serializer(borsh)] proof_args: &VerifyProofArgs) -> bool {
-        log!("Call from verify_log_entry");
+    pub fn verify_log_entry_in_bound(
+        &self,
+        #[serializer(borsh)] proof_args: &VerifyProofArgs,
+    ) -> bool {
+        log!("Call from verify_log_entry_in_bound");
+        if let Ok(header) = proof::MockHeader::try_from_slice(&proof_args.header_data) {
+            if header.height < self.connector.min_proof_acceptance_height {
+                return false;
+            }
+        }
         true
     }
 
@@ -744,12 +754,14 @@ mod tests {
         };
         let account_with_access_right = "engine.near".parse().unwrap();
         let owner_id = "owner.near".parse().unwrap();
+        let min_proof_acceptance_height = 0;
         EthConnectorContract::new(
             prover_account,
             eth_custodian_address,
             &metadata,
             account_with_access_right,
             &owner_id,
+            min_proof_acceptance_height,
         )
     }
 }

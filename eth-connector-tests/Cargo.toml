@@ -13,7 +13,7 @@ publish = false
 autobenches = false
 
 [dev-dependencies]
-aurora-eth-connector = { path = "../eth-connector" }
+aurora-eth-connector = { path = "../eth-connector", features = ["integration-test"] }
 aurora-engine-types = { workspace = true, features = ["impl-serde"] }
 near-sdk.workspace = true
 near-primitives.workspace = true
