@@ -260,12 +260,14 @@ impl EthConnectorContract {
 #[near_bindgen]
 impl FungibleTokenCore for EthConnectorContract {
     #[payable]
+    #[pause(except(roles(Role::DAO)))]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
         self.register_if_not_exists(&receiver_id);
         self.ft.ft_transfer(receiver_id, amount, memo);
     }
 
     #[payable]
+    #[pause(except(roles(Role::DAO)))]
     fn ft_transfer_call(
         &mut self,
         receiver_id: AccountId,
