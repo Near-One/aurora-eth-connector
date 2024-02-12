@@ -258,6 +258,7 @@ impl EthConnectorContract {
 
     #[access_control_any(roles(Role::DAO))]
     pub fn set_aurora_engine_account_id(&mut self, new_aurora_engine_account_id: AccountId) {
+        assert_one_yocto();
         self.connector.aurora_engine_account_id = new_aurora_engine_account_id;
     }
 
@@ -354,11 +355,13 @@ impl EngineFungibleToken for EthConnectorContract {
 impl KnownEngineAccountsManagement for EthConnectorContract {
     #[access_control_any(roles(Role::DAO))]
     fn set_engine_account(&mut self, engine_account: &AccountId) {
+        assert_one_yocto();
         self.known_engine_accounts.insert(engine_account);
     }
 
     #[access_control_any(roles(Role::DAO))]
     fn remove_engine_account(&mut self, engine_account: &AccountId) {
+        assert_one_yocto();
         self.known_engine_accounts.remove(engine_account);
     }
 
