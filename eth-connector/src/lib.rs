@@ -121,6 +121,9 @@ impl EthConnectorContract {
             let _ = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
         }
 
+        let balance = self.ft.ft_balance_of(sender_id.clone());
+        require!(balance.0 >= amount, "Insufficient sender balance");
+
         // Special case, we do not fail if `sender_id == receiver_id`
         // if `predecessor_account_id` call `ft_transfer_call` as receiver itself
         // to call `ft_on_transfer`.
@@ -132,8 +135,6 @@ impl EthConnectorContract {
                 amount > 0,
                 "The amount should be a positive non zero number"
             );
-            let balance = self.ft.ft_balance_of(sender_id.clone());
-            require!(balance.0 >= amount, "Insufficient sender balance");
         } else {
             self.ft
                 .internal_transfer(&sender_id, &receiver_id, amount, memo);
