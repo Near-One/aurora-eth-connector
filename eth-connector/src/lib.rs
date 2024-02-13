@@ -344,7 +344,9 @@ impl EthConnectorContract {
             if balance == 0 || force {
                 self.ft.accounts.remove(&account_id);
                 self.ft.total_supply -= balance;
-                Promise::new(account_id.clone()).transfer(self.storage_balance_bounds().min.0 + 1);
+                Promise::new(account_id.clone()).transfer(
+                    self.storage_balance_bounds().min.0.saturating_add(1),
+                );
                 Some((account_id, balance))
             } else {
                 env::panic_str(
