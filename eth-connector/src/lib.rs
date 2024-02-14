@@ -1,5 +1,7 @@
 #![deny(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
+
+use std::collections::HashSet;
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
@@ -70,7 +72,6 @@ impl EthConnectorContract {
     fn mint_eth_on_near(&mut self, owner_id: &AccountId, amount: Balance) {
         log!("Mint {} nETH tokens for: {}", amount, owner_id);
         // Create account to avoid panic with deposit
-        self.register_if_not_exists(owner_id);
         self.ft.internal_deposit(owner_id, amount);
     }
 
@@ -96,6 +97,31 @@ impl EthConnectorContract {
         }
     }
 
+    fn multiple_storage_deposit(&mut self, accounts: Vec<&AccountId>) {
+        let amount: Balance = env::attached_deposit();
+        let accounts: Vec<_> = accounts.into_iter()
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        let mut storage_amount = 0;
+        let min_balance = self.storage_balance_bounds().min.0;
+        for account_id in accounts {
+            if !self.ft.accounts.contains_key(&account_id) {
+                storage_amount += min_balance;
+            }
+        }
+
+        if amount < storage_amount {
+            env::panic_str("The attached deposit is less than the minimum storage balance");
+        }
+
+        let refund = amount - storage_amount;
+        if refund > 0 {
+            Promise::new(env::predecessor_account_id()).transfer(refund);
+        }
+    }
+
     fn internal_ft_transfer_call(
         &mut self,
         sender_id: AccountId,
@@ -104,8 +130,6 @@ impl EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        self.register_if_not_exists(&receiver_id);
-
         let amount: Balance = amount.into();
         log!(
             "Transfer call from {} to {} amount {}",
@@ -229,7 +253,7 @@ impl EthConnectorContract {
 impl FungibleTokenCore for EthConnectorContract {
     #[payable]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
-        self.register_if_not_exists(&receiver_id);
+        self.ft.storage_deposit(Some(receiver_id.clone()), None);
         self.ft.ft_transfer(receiver_id, amount, memo);
     }
 
@@ -247,6 +271,7 @@ impl FungibleTokenCore for EthConnectorContract {
             "More gas is required"
         );
         let sender_id = env::predecessor_account_id();
+        self.ft.storage_deposit(Some(receiver_id.clone()), None);
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
 
@@ -275,7 +300,7 @@ impl EngineFungibleToken for EthConnectorContract {
         memo: Option<String>,
     ) {
         self.assert_access_right().sdk_unwrap();
-        self.register_if_not_exists(&receiver_id);
+        self.ft.storage_deposit(Some(receiver_id.clone()), None);
         assert_one_yocto();
         let amount: Balance = amount.into();
         self.ft
@@ -297,6 +322,7 @@ impl EngineFungibleToken for EthConnectorContract {
             "More gas is required"
         );
         self.assert_access_right().sdk_unwrap();
+        self.ft.storage_deposit(Some(receiver_id.clone()), None);
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
 }
@@ -545,6 +571,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl Deposit for EthConnectorContract {
+    #[payable]
     fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
         self.connector.deposit(proof)
     }
@@ -563,21 +590,31 @@ impl FundsFinish for EthConnectorContract {
         if !verify_log_result {
             panic_err(errors::ERR_VERIFY_PROOF);
         }
-
         log!("Finish deposit with the amount: {}", deposit_call.amount);
 
-        // Mint - calculate new balances
-        self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
-        // Store proof only after `mint` calculations
-        self.record_proof(&deposit_call.proof_key).sdk_unwrap();
-
         // Mint tokens to recipient minus fee
-        deposit_call.msg.map_or_else(
-            || PromiseOrValue::Value(None),
-            |msg| {
+        match deposit_call.msg {
+            None => {
+                self.ft.storage_deposit(Some(deposit_call.new_owner_id.clone()), None);
+                // Mint - calculate new balances
+                self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
+                // Store proof only after `mint` calculations
+                self.record_proof(&deposit_call.proof_key).sdk_unwrap();
+                PromiseOrValue::Value(None)
+            },
+            Some(msg) => {
                 let args = TransferCallCallArgs::try_from_slice(&msg)
                     .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                     .sdk_unwrap();
+
+                self.multiple_storage_deposit(vec![&deposit_call.new_owner_id,
+                                                           &args.receiver_id]);
+
+                // Mint - calculate new balances
+                self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
+                // Store proof only after `mint` calculations
+                self.record_proof(&deposit_call.proof_key).sdk_unwrap();
+
                 let promise = self.internal_ft_transfer_call(
                     env::predecessor_account_id(),
                     args.receiver_id,
@@ -589,8 +626,8 @@ impl FundsFinish for EthConnectorContract {
                     PromiseOrValue::Promise(p) => PromiseOrValue::Promise(p),
                     PromiseOrValue::Value(v) => PromiseOrValue::Value(Some(v)),
                 }
-            },
-        )
+            }
+        }
     }
 }
 
