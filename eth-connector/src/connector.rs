@@ -50,7 +50,7 @@ pub trait EngineConnectorWithdraw {
 }
 
 /// Engin compatible methods for NEP-141
-#[ext_contract(ext_enine_ft)]
+#[ext_contract(ext_engine_ft)]
 pub trait EngineFungibleToken {
     fn engine_ft_transfer(
         &mut self,
@@ -71,7 +71,7 @@ pub trait EngineFungibleToken {
 }
 
 /// Engin compatible methods for NEP-141
-#[ext_contract(ext_enine_storage)]
+#[ext_contract(ext_engine_storage)]
 pub trait EngineStorageManagement {
     fn engine_storage_deposit(
         &mut self,
