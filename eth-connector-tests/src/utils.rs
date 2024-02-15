@@ -20,6 +20,8 @@ pub const DEPOSITED_EVM_FEE: u128 = 200;
 pub const DEPOSITED_EVM_AMOUNT: u128 = 10200;
 pub const CONTRACT_ACC: &str = "eth_connector.root";
 
+const ONE_YOCTO: NearToken = NearToken::from_yoctonear(near_sdk::ONE_YOCTO);
+
 pub struct TestContract {
     pub contract: EthConnectorContract,
     pub root_account: Account,
@@ -211,6 +213,7 @@ impl TestContract {
         let res = owner
             .set_aurora_engine_account_id(acc.to_string())
             .max_gas()
+            .deposit(ONE_YOCTO)
             .transact()
             .await?;
 
@@ -243,6 +246,7 @@ impl TestContract {
             .contract
             .set_engine_account(engine_account)
             .max_gas()
+            .deposit(ONE_YOCTO)
             .transact()
             .await
             .unwrap();

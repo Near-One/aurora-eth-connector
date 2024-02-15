@@ -494,6 +494,7 @@ async fn test_set_and_check_engine_account() {
         .contract
         .set_engine_account(contract.contract.id())
         .max_gas()
+        .deposit(ONE_YOCTO)
         .transact()
         .await
         .unwrap();
@@ -720,6 +721,7 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     owner_acc
         .set_engine_account(contract.contract.id())
         .max_gas()
+        .deposit(ONE_YOCTO)
         .transact()
         .await
         .unwrap();
@@ -1695,6 +1697,7 @@ async fn test_manage_engine_accounts() {
         .contract
         .remove_engine_account(&acc1)
         .max_gas()
+        .deposit(ONE_YOCTO)
         .transact()
         .await
         .unwrap();
