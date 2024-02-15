@@ -1,7 +1,6 @@
 #![deny(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 
-use std::collections::HashSet;
 use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
@@ -30,6 +29,7 @@ use near_sdk::{
     near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
+use std::collections::HashSet;
 
 pub mod admin_controlled;
 pub mod connector;
@@ -99,7 +99,8 @@ impl EthConnectorContract {
 
     fn multiple_storage_deposit(&mut self, accounts: Vec<&AccountId>) {
         let amount: Balance = env::attached_deposit();
-        let accounts: Vec<_> = accounts.into_iter()
+        let accounts: Vec<_> = accounts
+            .into_iter()
             .collect::<HashSet<_>>()
             .into_iter()
             .collect();
@@ -595,20 +596,20 @@ impl FundsFinish for EthConnectorContract {
         // Mint tokens to recipient minus fee
         match deposit_call.msg {
             None => {
-                self.ft.storage_deposit(Some(deposit_call.new_owner_id.clone()), None);
+                self.ft
+                    .storage_deposit(Some(deposit_call.new_owner_id.clone()), None);
                 // Mint - calculate new balances
                 self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
                 // Store proof only after `mint` calculations
                 self.record_proof(&deposit_call.proof_key).sdk_unwrap();
                 PromiseOrValue::Value(None)
-            },
+            }
             Some(msg) => {
                 let args = TransferCallCallArgs::try_from_slice(&msg)
                     .map_err(|_| crate::errors::ERR_BORSH_DESERIALIZE)
                     .sdk_unwrap();
 
-                self.multiple_storage_deposit(vec![&deposit_call.new_owner_id,
-                                                           &args.receiver_id]);
+                self.multiple_storage_deposit(vec![&deposit_call.new_owner_id, &args.receiver_id]);
 
                 // Mint - calculate new balances
                 self.mint_eth_on_near(&deposit_call.new_owner_id, deposit_call.amount);
