@@ -108,7 +108,7 @@ impl EthConnectorContract {
         let mut storage_amount = 0;
         let min_balance = self.storage_balance_bounds().min.0;
         for account_id in accounts {
-            if !self.ft.accounts.contains_key(&account_id) {
+            if !self.ft.accounts.contains_key(account_id) {
                 storage_amount += min_balance;
             }
         }
