@@ -345,7 +345,13 @@ impl EthConnectorContract {
             if balance == 0 || force {
                 self.ft.accounts.remove(&account_id);
                 self.ft.total_supply -= balance;
-                Promise::new(account_id.clone()).transfer(self.storage_balance_bounds().min.0 + 1);
+                let withdraw_amount = self
+                    .storage_balance_bounds()
+                    .min
+                    .0
+                    .checked_add(1)
+                    .expect("Overflow in withdrawal amount calculation");
+                Promise::new(account_id.clone()).transfer(withdraw_amount);
                 Some((account_id, balance))
             } else {
                 env::panic_str(
