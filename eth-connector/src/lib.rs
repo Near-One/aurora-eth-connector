@@ -617,7 +617,6 @@ impl Migration for EthConnectorContract {
             .then(
                 ext_migrate::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_CALLS)
-                    .with_attached_deposit(1)
                     .migrate_callback(),
             );
     }
