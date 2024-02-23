@@ -1,5 +1,5 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract, AccountId, Balance, StorageUsage};
+use near_sdk::{ext_contract, AccountId, Balance, Promise, StorageUsage};
 use std::collections::HashMap;
 
 #[derive(BorshDeserialize, BorshSerialize)]
@@ -21,12 +21,12 @@ pub enum CheckResult {
 
 #[ext_contract(ext_deposit)]
 pub trait Migration {
-    fn migrate(&mut self, #[serializer(borsh)] accounts: Vec<AccountId>);
+    fn migrate(&mut self, #[serializer(borsh)] accounts: Vec<AccountId>) -> Promise;
     fn migrate_callback(
         &mut self,
         #[callback]
         #[serializer(borsh)]
-        balances: HashMap<AccountId, Balance>
+        balances: aurora_engine_types::HashMap<AccountId, Balance>,
     );
 
     #[result_serializer(borsh)]

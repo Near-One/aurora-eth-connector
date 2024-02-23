@@ -1,10 +1,9 @@
 use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, WithdrawResult};
-use aurora_engine_types::types::Address;
+use aurora_engine_types::types::{Address, NEP141Wei};
 use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::{
     borsh, ext_contract, json_types::U128, AccountId, Balance, Promise, PromiseOrValue,
 };
-use std::collections::HashMap;
 
 #[ext_contract(ext_deposit)]
 pub trait Deposit {
@@ -44,7 +43,7 @@ pub trait Migrate {
         &mut self,
         #[callback]
         #[serializer(borsh)]
-        balances: HashMap<AccountId, Balance>,
+        balances: aurora_engine_types::HashMap<AccountId, NEP141Wei>,
     );
 }
 
@@ -84,7 +83,7 @@ pub trait EngineFungibleToken {
 #[ext_contract(ext_engine_connector)]
 pub trait EngineConnector {
     #[result_serializer(borsh)]
-    fn ft_balance_of_accounts(
+    fn ft_balances_of(
         &mut self,
         #[serializer(borsh)] accounts: Vec<AccountId>,
     ) -> std::collections::HashMap<AccountId, Balance>;

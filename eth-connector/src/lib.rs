@@ -12,6 +12,7 @@ use crate::deposit_event::FtTransferMessageData;
 use crate::proof::{Proof, VerifyProofArgs};
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
+use aurora_engine_types::HashMap;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
@@ -218,6 +219,20 @@ impl EthConnectorContract {
             }
         }
         true
+    }
+
+    #[cfg(feature = "integration-test")]
+    #[result_serializer(borsh)]
+    #[must_use]
+    pub fn ft_balances_of(
+        &self,
+        #[serializer(borsh)] accounts: Vec<AccountId>,
+    ) -> HashMap<AccountId, aurora_engine_types::types::NEP141Wei> {
+        let mut balances = HashMap::new();
+        for account_id in accounts {
+            balances.insert(account_id, aurora_engine_types::types::NEP141Wei::new(10));
+        }
+        balances
     }
 
     #[must_use]
@@ -609,23 +624,23 @@ use crate::migration::{CheckResult, InputData, Migration};
 impl Migration for EthConnectorContract {
     /// Migrate accounts balances
     #[private]
-    fn migrate(&mut self, #[serializer(borsh)] accounts: Vec<AccountId>) {
-        const GAS_FOR_CALLS: Gas = Gas(145 * Gas::ONE_TERA.0);
+    fn migrate(&mut self, #[serializer(borsh)] accounts: Vec<AccountId>) -> Promise {
+        const GAS_FOR_CALLS: Gas = Gas(140 * Gas::ONE_TERA.0);
         ext_engine_connector::ext(self.connector.account_with_access_right.clone())
             .with_static_gas(GAS_FOR_CALLS)
-            .ft_balance_of_accounts(accounts)
+            .ft_balances_of(accounts)
             .then(
                 ext_migrate::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_CALLS)
                     .migrate_callback(),
-            );
+            )
     }
 
     fn migrate_callback(
         &mut self,
         #[callback]
         #[serializer(borsh)]
-        balances: std::collections::HashMap<AccountId, Balance>,
+        balances: HashMap<AccountId, Balance>,
     ) {
         for (account, amount) in &balances {
             if let Some(previous_balance) = self.ft.accounts.insert(account, amount) {
