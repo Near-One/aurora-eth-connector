@@ -1,6 +1,5 @@
 #![deny(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
-use crate::admin_controlled::{AdminControlled, PausedMask, PAUSE_WITHDRAW, UNPAUSE_ALL};
 use crate::connector::{
     Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
     KnownEngineAccountsManagement, Withdraw,
@@ -19,6 +18,10 @@ use near_contract_standards::fungible_token::metadata::{
 use near_contract_standards::fungible_token::receiver::ext_ft_receiver;
 use near_contract_standards::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use near_contract_standards::fungible_token::FungibleToken;
+use near_plugins::{
+    access_control, access_control_any, pause, AccessControlRole, AccessControllable, Pausable,
+    Upgradable,
+};
 use near_sdk::{
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -28,8 +31,8 @@ use near_sdk::{
     near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
     PromiseOrValue,
 };
+use serde::{Deserialize, Serialize};
 
-pub mod admin_controlled;
 pub mod connector;
 pub mod connector_impl;
 pub mod deposit_event;
@@ -42,27 +45,45 @@ pub mod types;
 const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
 const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25 * Gas::ONE_TERA.0 + GAS_FOR_RESOLVE_TRANSFER.0);
 
-/// Eth-connector contract data. It's stored in the storage.
-/// Contains:
-/// * connector specific data
-/// * Fungible token data
-/// * paused_mask - admin control flow data
-#[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-pub struct EthConnectorContract {
-    connector: EthConnector,
-    ft: FungibleToken,
-    metadata: LazyOption<FungibleTokenMetadata>,
-    used_proofs: LookupSet<String>,
-    known_engine_accounts: LookupSet<AccountId>,
-}
-
 #[derive(BorshSerialize, BorshStorageKey)]
 enum StorageKey {
     FungibleToken = 0x1,
     Proof = 0x2,
     Metadata = 0x3,
     EngineAccounts = 0x4,
+}
+
+#[derive(AccessControlRole, Deserialize, Serialize, Copy, Clone)]
+#[serde(crate = "near_sdk::serde")]
+pub enum Role {
+    PauseManager,
+    UpgradableCodeStager,
+    UpgradableCodeDeployer,
+    DAO,
+}
+
+/// Eth-connector contract data. It's stored in the storage.
+/// Contains:
+/// * connector specific data
+/// * Fungible token data
+/// * paused_mask - admin control flow data
+#[near_bindgen]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault, Pausable, Upgradable)]
+#[access_control(role_type(Role))]
+#[pausable(manager_roles(Role::PauseManager, Role::DAO))]
+#[upgradable(access_control_roles(
+    code_stagers(Role::UpgradableCodeStager, Role::DAO),
+    code_deployers(Role::UpgradableCodeDeployer, Role::DAO),
+    duration_initializers(Role::DAO),
+    duration_update_stagers(Role::DAO),
+    duration_update_appliers(Role::DAO),
+))]
+pub struct EthConnectorContract {
+    connector: EthConnector,
+    ft: FungibleToken,
+    metadata: LazyOption<FungibleTokenMetadata>,
+    used_proofs: LookupSet<String>,
+    known_engine_accounts: LookupSet<AccountId>,
 }
 
 impl EthConnectorContract {
@@ -118,7 +139,8 @@ impl EthConnectorContract {
         // to avoid verification panics inside `ft_on_transfer`.
         // Allowed empty message if `receiver_id != known_engin_accounts`.
         if self.known_engine_accounts.contains(&receiver_id) {
-            let _ = FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
+            let _: FtTransferMessageData =
+                FtTransferMessageData::parse_on_transfer_message(&msg).sdk_unwrap();
         }
 
         let balance = self.ft.ft_balance_of(sender_id.clone());
@@ -155,6 +177,14 @@ impl EthConnectorContract {
             )
             .into()
     }
+
+    // Check if predecessor account is the aurora engine
+    fn assert_aurora_engine_access_right(&self) {
+        require!(
+            env::predecessor_account_id() == self.connector.aurora_engine_account_id,
+            "Method can be called only by aurora engine"
+        );
+    }
 }
 
 #[near_bindgen]
@@ -172,15 +202,13 @@ impl EthConnectorContract {
         metadata.assert_valid();
 
         // Get initial Eth Connector arguments
-        let paused_mask = UNPAUSE_ALL;
         let connector_data = EthConnector {
             prover_account,
-            paused_mask,
             eth_custodian_address,
-            account_with_access_right,
-            owner_id: owner_id.clone(),
+            aurora_engine_account_id: account_with_access_right,
             min_proof_acceptance_height,
         };
+
         let mut this = Self {
             ft: FungibleToken {
                 accounts: near_sdk::collections::LookupMap::new(StorageKey::FungibleToken),
@@ -194,6 +222,10 @@ impl EthConnectorContract {
         };
         this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(owner_id);
+
+        this.acl_init_super_admin(env::predecessor_account_id());
+        this.acl_grant_role("DAO".to_string(), owner_id.clone());
+
         this
     }
 
@@ -224,17 +256,31 @@ impl EthConnectorContract {
     pub fn get_bridge_prover(&self) -> AccountId {
         self.connector.prover_account.clone()
     }
+
+    #[payable]
+    #[access_control_any(roles(Role::DAO))]
+    pub fn set_aurora_engine_account_id(&mut self, new_aurora_engine_account_id: AccountId) {
+        assert_one_yocto();
+        self.connector.aurora_engine_account_id = new_aurora_engine_account_id;
+    }
+
+    #[must_use]
+    pub fn get_aurora_engine_account_id(&self) -> AccountId {
+        self.connector.aurora_engine_account_id.clone()
+    }
 }
 
 #[near_bindgen]
 impl FungibleTokenCore for EthConnectorContract {
     #[payable]
+    #[pause(except(roles(Role::DAO)))]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
         self.register_if_not_exists(&receiver_id);
         self.ft.ft_transfer(receiver_id, amount, memo);
     }
 
     #[payable]
+    #[pause(except(roles(Role::DAO)))]
     fn ft_transfer_call(
         &mut self,
         receiver_id: AccountId,
@@ -268,6 +314,7 @@ impl FungibleTokenCore for EthConnectorContract {
 #[near_bindgen]
 impl EngineFungibleToken for EthConnectorContract {
     #[payable]
+    #[pause(name = "engine")]
     fn engine_ft_transfer(
         &mut self,
         sender_id: AccountId,
@@ -275,7 +322,8 @@ impl EngineFungibleToken for EthConnectorContract {
         amount: U128,
         memo: Option<String>,
     ) {
-        self.assert_access_right().sdk_unwrap();
+        self.assert_aurora_engine_access_right();
+
         self.register_if_not_exists(&receiver_id);
         assert_one_yocto();
         let amount: Balance = amount.into();
@@ -284,6 +332,7 @@ impl EngineFungibleToken for EthConnectorContract {
     }
 
     #[payable]
+    #[pause(name = "engine")]
     fn engine_ft_transfer_call(
         &mut self,
         sender_id: AccountId,
@@ -292,12 +341,13 @@ impl EngineFungibleToken for EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        self.assert_aurora_engine_access_right();
+
         assert_one_yocto();
         require!(
             env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
             "More gas is required"
         );
-        self.assert_access_right().sdk_unwrap();
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
 }
@@ -305,13 +355,17 @@ impl EngineFungibleToken for EthConnectorContract {
 /// Management for a known Engine accounts
 #[near_bindgen]
 impl KnownEngineAccountsManagement for EthConnectorContract {
+    #[payable]
+    #[access_control_any(roles(Role::DAO))]
     fn set_engine_account(&mut self, engine_account: &AccountId) {
-        self.assert_access_right().sdk_unwrap();
+        assert_one_yocto();
         self.known_engine_accounts.insert(engine_account);
     }
 
+    #[payable]
+    #[access_control_any(roles(Role::DAO))]
     fn remove_engine_account(&mut self, engine_account: &AccountId) {
-        self.assert_access_right().sdk_unwrap();
+        assert_one_yocto();
         self.known_engine_accounts.remove(engine_account);
     }
 
@@ -378,13 +432,15 @@ impl EngineStorageManagement for EthConnectorContract {
     /// If the attached deposit is less then the balance of the smart contract.
     #[allow(unused_variables)]
     #[payable]
+    #[pause(name = "engine")]
     fn engine_storage_deposit(
         &mut self,
         sender_id: AccountId,
         account_id: Option<AccountId>,
         registration_only: Option<bool>,
     ) -> StorageBalance {
-        self.assert_access_right().sdk_unwrap();
+        self.assert_aurora_engine_access_right();
+
         let amount: Balance = env::attached_deposit();
         let account_id = account_id.unwrap_or_else(|| sender_id.clone());
         if self.ft.accounts.contains_key(&account_id) {
@@ -408,12 +464,14 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
+    #[pause(name = "engine")]
     fn engine_storage_withdraw(
         &mut self,
         sender_id: AccountId,
         amount: Option<U128>,
     ) -> StorageBalance {
-        self.assert_access_right().sdk_unwrap();
+        self.assert_aurora_engine_access_right();
+
         assert_one_yocto();
         let predecessor_account_id = sender_id;
         self.internal_storage_balance_of(&predecessor_account_id)
@@ -434,8 +492,10 @@ impl EngineStorageManagement for EthConnectorContract {
     }
 
     #[payable]
+    #[pause(name = "engine")]
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool {
-        self.assert_access_right().sdk_unwrap();
+        self.assert_aurora_engine_access_right();
+
         self.internal_storage_unregister(sender_id, force).is_some()
     }
 }
@@ -471,46 +531,16 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 }
 
 #[near_bindgen]
-impl AdminControlled for EthConnectorContract {
-    #[result_serializer(borsh)]
-    fn get_paused_flags(&self) -> PausedMask {
-        self.connector.get_paused_flags()
-    }
-
-    fn set_paused_flags(&mut self, #[serializer(borsh)] paused: PausedMask) {
-        self.connector.assert_owner_access_right().sdk_unwrap();
-        self.connector.set_paused_flags(paused);
-    }
-
-    fn set_access_right(&mut self, account: &AccountId) {
-        self.connector.assert_owner_access_right().sdk_unwrap();
-        self.connector.set_access_right(account);
-    }
-
-    fn get_account_with_access_right(&self) -> AccountId {
-        self.connector.get_account_with_access_right()
-    }
-
-    fn is_owner(&self) -> bool {
-        self.connector.is_owner()
-    }
-}
-
-#[near_bindgen]
 impl Withdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
+    #[pause(except(roles(Role::DAO)))]
     fn withdraw(
         &mut self,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
     ) -> WithdrawResult {
         assert_one_yocto();
-
-        // Check is current flow paused. If it's owner just skip assertion.
-        self.assert_not_paused(PAUSE_WITHDRAW)
-            .map_err(|_| "WithdrawErrorPaused")
-            .sdk_unwrap();
 
         let sender_id = env::predecessor_account_id();
         // Burn tokens to recipient
@@ -527,19 +557,17 @@ impl Withdraw for EthConnectorContract {
 impl EngineConnectorWithdraw for EthConnectorContract {
     #[payable]
     #[result_serializer(borsh)]
+    #[pause]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
         #[serializer(borsh)] amount: Balance,
     ) -> WithdrawResult {
-        self.assert_access_right().sdk_unwrap();
+        self.assert_aurora_engine_access_right();
+
         assert_one_yocto();
 
-        // Check is current flow paused. If it's owner just skip assertion.
-        self.assert_not_paused(PAUSE_WITHDRAW)
-            .map_err(|_| "WithdrawErrorPaused")
-            .sdk_unwrap();
         // Burn tokens to recipient
         self.ft.internal_withdraw(&sender_id, amount);
         WithdrawResult {
@@ -552,6 +580,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
 #[near_bindgen]
 impl Deposit for EthConnectorContract {
+    #[pause(except(roles(Role::DAO)))]
     fn deposit(&mut self, #[serializer(borsh)] proof: Proof) -> Promise {
         self.connector.deposit(proof)
     }
@@ -718,7 +747,7 @@ mod tests {
     fn test_storage_balance_bounds() {
         let contract = create_contract();
         let storage_balance = contract
-            .storage_balance_of(contract.connector.owner_id.clone())
+            .storage_balance_of(contract.acl_get_grantees("DAO".to_string(), 0, 1)[0].clone())
             .unwrap();
         assert_eq!(storage_balance.total.0, 0);
         assert_eq!(storage_balance.available.0, 0);

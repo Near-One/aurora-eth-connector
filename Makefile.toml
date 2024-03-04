@@ -127,6 +127,7 @@ args = [
 [tasks.build-contract]
 category = "Build"
 command = "${CARGO}"
+toolchain = "1.69"
 args = [
     "build",
     "--target",
