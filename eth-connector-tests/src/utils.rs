@@ -20,6 +20,8 @@ pub const DEPOSITED_EVM_FEE: u128 = 200;
 pub const DEPOSITED_EVM_AMOUNT: u128 = 10200;
 pub const CONTRACT_ACC: &str = "eth_connector.root";
 
+const ONE_YOCTO: NearToken = NearToken::from_yoctonear(near_sdk::ONE_YOCTO);
+
 pub struct TestContract {
     pub contract: EthConnectorContract,
     pub root_account: Account,
@@ -140,9 +142,12 @@ impl TestContract {
             .result)
     }
 
-    pub async fn call_deposit_eth_to_aurora(&self) -> anyhow::Result<()> {
+    pub async fn call_deposit_eth_to_aurora(
+        &self,
+        owner_acc: &EthConnectorContract,
+    ) -> anyhow::Result<()> {
         let proof = self.get_proof(PROOF_DATA_ETH);
-        let res = self.deposit_with_proof(&proof).await?;
+        let res = self.user_deposit_with_proof(owner_acc, proof).await?;
         assert!(res.is_success(), "call_deposit_eth_to_aurora: {res:#?}");
         Ok(())
     }
@@ -200,23 +205,29 @@ impl TestContract {
         Ok(account_id)
     }
 
-    pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
-        let res = self
-            .contract
-            .set_access_right(&acc)
+    pub async fn user_set_and_check_access_right(
+        &self,
+        acc: &AccountId,
+        owner: &EthConnectorContract,
+    ) -> anyhow::Result<()> {
+        let res = owner
+            .set_aurora_engine_account_id(acc.to_string())
             .max_gas()
+            .deposit(ONE_YOCTO)
             .transact()
             .await?;
+
         if res.is_failure() {
             anyhow::bail!("set_access_right failed");
         }
 
         let res: String = self
             .contract
-            .get_account_with_access_right()
+            .get_aurora_engine_account_id()
             .await?
             .result
             .into();
+
         let acc_id = AccountId::try_from(res.clone())?;
 
         if &acc_id != acc {
@@ -225,11 +236,17 @@ impl TestContract {
         Ok(())
     }
 
+    pub async fn set_and_check_access_right(&self, acc: &AccountId) -> anyhow::Result<()> {
+        self.user_set_and_check_access_right(acc, &self.contract)
+            .await
+    }
+
     pub async fn set_engine_account(&self, engine_account: &AccountId) -> anyhow::Result<()> {
         let res = self
             .contract
             .set_engine_account(engine_account)
             .max_gas()
+            .deposit(ONE_YOCTO)
             .transact()
             .await
             .unwrap();

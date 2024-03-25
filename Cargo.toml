@@ -9,6 +9,7 @@ license = "CC0 1.0"
 [workspace.dependencies]
 aurora-engine-types = { git = "https://github.com/aurora-is-near/aurora-engine.git", tag = "3.5.0", default-features = false }
 near-sdk = "4.1"
+near-plugins = { git = "https://github.com/aurora-is-near/near-plugins", tag = "v0.1.0" }
 near-primitives = "0.17"
 near-contract-standards = "4.1"
 byte-slice-cast = "1"
