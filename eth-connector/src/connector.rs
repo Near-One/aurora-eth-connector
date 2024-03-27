@@ -1,5 +1,5 @@
 use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, WithdrawResult};
-use aurora_engine_types::types::Address;
+use aurora_engine_types::types::{Address, NEP141Wei};
 use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::{
     borsh, ext_contract, json_types::U128, AccountId, Balance, Promise, PromiseOrValue,
@@ -37,6 +37,16 @@ pub trait ProofVerifier {
     fn verify_log_entry_in_bound(&self, #[serializer(borsh)] args: VerifyProofArgs) -> bool;
 }
 
+#[ext_contract(ext_migrate)]
+pub trait Migrate {
+    fn migrate_callback(
+        &mut self,
+        #[callback]
+        #[serializer(borsh)]
+        balances: aurora_engine_types::HashMap<AccountId, NEP141Wei>,
+    );
+}
+
 /// Withdraw method for legacy implementation in Engine
 #[ext_contract(ext_engine_withdraw)]
 pub trait EngineConnectorWithdraw {
@@ -68,6 +78,15 @@ pub trait EngineFungibleToken {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128>;
+}
+
+#[ext_contract(ext_engine_connector)]
+pub trait EngineConnector {
+    #[result_serializer(borsh)]
+    fn ft_balances_of(
+        &mut self,
+        #[serializer(borsh)] accounts: Vec<AccountId>,
+    ) -> std::collections::HashMap<AccountId, Balance>;
 }
 
 /// Engin compatible methods for NEP-141

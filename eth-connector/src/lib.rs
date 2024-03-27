@@ -1,8 +1,8 @@
 #![deny(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 use crate::connector::{
-    Deposit, EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, FundsFinish,
-    KnownEngineAccountsManagement, Withdraw,
+    ext_engine_connector, ext_migrate, Deposit, EngineConnectorWithdraw, EngineFungibleToken,
+    EngineStorageManagement, FundsFinish, KnownEngineAccountsManagement, Withdraw,
 };
 use crate::connector_impl::{
     EthConnector, FinishDepositCallArgs, TransferCallCallArgs, WithdrawResult,
@@ -11,6 +11,7 @@ use crate::deposit_event::FtTransferMessageData;
 use crate::proof::{Proof, VerifyProofArgs};
 use crate::types::{panic_err, SdkUnwrap};
 use aurora_engine_types::types::Address;
+use aurora_engine_types::HashMap;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
     FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
@@ -250,6 +251,20 @@ impl EthConnectorContract {
             }
         }
         true
+    }
+
+    #[cfg(feature = "integration-test")]
+    #[result_serializer(borsh)]
+    #[must_use]
+    pub fn ft_balances_of(
+        &self,
+        #[serializer(borsh)] accounts: Vec<AccountId>,
+    ) -> HashMap<AccountId, aurora_engine_types::types::NEP141Wei> {
+        let mut balances = HashMap::new();
+        for account_id in accounts {
+            balances.insert(account_id, aurora_engine_types::types::NEP141Wei::new(10));
+        }
+        balances
     }
 
     #[must_use]
@@ -636,38 +651,32 @@ use crate::migration::{CheckResult, InputData, Migration};
 #[cfg(feature = "migration")]
 #[near_bindgen]
 impl Migration for EthConnectorContract {
-    /// Migrate contract data
+    /// Migrate accounts balances
     #[private]
-    fn migrate(&mut self, #[serializer(borsh)] data: InputData) {
-        // Insert account
-        for (account, amount) in &data.accounts {
-            self.ft.accounts.insert(account, amount);
-        }
-        log!("Inserted accounts_eth: {:?}", data.accounts.len());
+    fn migrate(&mut self, #[serializer(borsh)] accounts: Vec<AccountId>) -> Promise {
+        const GAS_FOR_CALLS: Gas = Gas(140 * Gas::ONE_TERA.0);
+        ext_engine_connector::ext(self.connector.aurora_engine_account_id.clone())
+            .with_static_gas(GAS_FOR_CALLS)
+            .ft_balances_of(accounts)
+            .then(
+                ext_migrate::ext(env::current_account_id())
+                    .with_static_gas(GAS_FOR_CALLS)
+                    .migrate_callback(),
+            )
+    }
 
-        // Insert total_eth_supply_on_near
-        if let Some(total_eth_supply_on_near) = data.total_supply {
-            self.ft.total_supply = total_eth_supply_on_near;
-            log!(
-                "Inserted total_eth_supply_on_near: {:?}",
-                total_eth_supply_on_near
-            );
+    fn migrate_callback(
+        &mut self,
+        #[callback]
+        #[serializer(borsh)]
+        balances: HashMap<AccountId, Balance>,
+    ) {
+        for (account, amount) in &balances {
+            if let Some(previous_balance) = self.ft.accounts.insert(account, amount) {
+                self.ft.total_supply -= previous_balance;
+            }
+            self.ft.total_supply += amount;
         }
-
-        // Insert account_storage_usage
-        if let Some(account_storage_usage) = data.account_storage_usage {
-            self.ft.account_storage_usage = account_storage_usage;
-            log!(
-                "Inserted account_storage_usage: {:?}",
-                account_storage_usage
-            );
-        }
-
-        // Insert Proof
-        for proof_key in &data.used_proofs {
-            self.used_proofs.insert(proof_key);
-        }
-        log!("Inserted used_proofs: {:?}", data.used_proofs.len());
     }
 
     #[result_serializer(borsh)]
@@ -695,22 +704,6 @@ impl Migration for EthConnectorContract {
             return CheckResult::AccountAmount(accounts_with_amount_not_found);
         }
 
-        // Check proofs
-        let mut proofs_not_found: Vec<String> = vec![];
-        for proof in &data.used_proofs {
-            if !self.used_proofs.contains(proof) {
-                proofs_not_found.push(proof.clone());
-            }
-        }
-        if !proofs_not_found.is_empty() {
-            return CheckResult::Proof(proofs_not_found);
-        }
-
-        if let Some(account_storage_usage) = data.account_storage_usage {
-            if self.ft.account_storage_usage != account_storage_usage {
-                return CheckResult::StorageUsage(self.ft.account_storage_usage);
-            }
-        }
         if let Some(total_supply) = data.total_supply {
             if self.ft.total_supply != total_supply {
                 return CheckResult::TotalSupply(self.ft.total_supply);
