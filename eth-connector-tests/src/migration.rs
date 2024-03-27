@@ -2,6 +2,7 @@ use crate::utils::TestContract;
 use aurora_engine_migration_tool::{BorshDeserialize, StateData};
 use aurora_workspace_eth_connector::types::{MigrationCheckResult, MigrationInputData};
 use near_workspaces::AccountId;
+use std::collections::HashMap;
 use std::str::FromStr;
 
 const DEFAULT_ACCOUNT_BALANCE_FOR_TESTS: u128 = 10;
@@ -94,13 +95,8 @@ async fn test_migration_state() {
 
     // Check basic (NEP-141) contract data
     let args = MigrationInputData {
-        total_supply: Some(
-            (accounts_count as u128 * DEFAULT_ACCOUNT_BALANCE_FOR_TESTS)
-                .try_into()
-                .unwrap(),
-        ),
-        account_storage_usage: Some(state.contract_data.account_storage_usage),
-        accounts: Default::default(),
+        total_supply: Some(accounts_count as u128 * DEFAULT_ACCOUNT_BALANCE_FOR_TESTS),
+        accounts: HashMap::default(),
     };
     let res = contract
         .contract
@@ -128,7 +124,6 @@ async fn test_migration_state() {
         let args = MigrationInputData {
             accounts,
             total_supply: None,
-            account_storage_usage: None,
         };
         let res = contract
             .contract

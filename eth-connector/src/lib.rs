@@ -704,11 +704,6 @@ impl Migration for EthConnectorContract {
             return CheckResult::AccountAmount(accounts_with_amount_not_found);
         }
 
-        if let Some(account_storage_usage) = data.account_storage_usage {
-            if self.ft.account_storage_usage != account_storage_usage {
-                return CheckResult::StorageUsage(self.ft.account_storage_usage);
-            }
-        }
         if let Some(total_supply) = data.total_supply {
             if self.ft.total_supply != total_supply {
                 return CheckResult::TotalSupply(self.ft.total_supply);
