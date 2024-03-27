@@ -6,7 +6,6 @@ use std::collections::HashMap;
 pub struct InputData {
     pub accounts: HashMap<AccountId, Balance>,
     pub total_supply: Option<Balance>,
-    pub account_storage_usage: Option<StorageUsage>,
 }
 
 #[derive(Debug, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
