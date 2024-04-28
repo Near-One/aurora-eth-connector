@@ -140,6 +140,7 @@ impl EthConnector {
             .then(
                 ext_funds_finish::ext(current_account_id)
                     .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
+                    .with_attached_deposit(env::attached_deposit())
                     .finish_deposit(finish_deposit_data),
             )
     }
