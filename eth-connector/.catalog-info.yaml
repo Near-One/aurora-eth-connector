@@ -13,8 +13,8 @@ metadata:
   annotations:
     aurora.dev/security-tier: "1"
 spec:
-  owner: protocol-team
+  owner: bridge-team
   type: contract
   lifecycle: production
-  system: aurora-engine
+  system: bridge-connectors
   interactsWith: []

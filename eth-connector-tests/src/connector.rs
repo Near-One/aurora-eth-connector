@@ -181,7 +181,7 @@ async fn test_withdraw_eth_from_near_engine() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     // The purpose of this withdraw variant is that it can withdraw on behalf of a user.
     // In this example the contract itself withdraws on behalf of the user
@@ -252,7 +252,10 @@ async fn test_deposit_eth_to_aurora_balance_total_supply() {
         .await
         .unwrap();
 
-    contract.call_deposit_eth_to_aurora().await.unwrap();
+    contract
+        .call_deposit_eth_to_aurora(&contract.contract)
+        .await
+        .unwrap();
     assert!(
         contract.call_is_used_proof(PROOF_DATA_ETH).await.unwrap(),
         "Expected not to fail because the proof should have been already used",
@@ -480,16 +483,18 @@ async fn test_set_and_check_engine_account() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     contract
         .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
-    let res = user_acc
+    let res = contract
+        .contract
         .set_engine_account(contract.contract.id())
         .max_gas()
+        .deposit(ONE_YOCTO)
         .transact()
         .await
         .unwrap();
@@ -639,32 +644,21 @@ async fn test_ft_transfer_call_without_relayer() {
 
 #[tokio::test]
 async fn test_admin_controlled_only_admin_can_pause() {
-    use aurora_eth_connector::admin_controlled::PAUSE_DEPOSIT;
-
     let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
         .await
         .unwrap();
     let owner_acc = contract.contract_account("owner").await.unwrap();
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     let res = user_acc
-        .set_paused_flags(PAUSE_DEPOSIT)
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
-
-    let res = contract
-        .contract
-        .set_paused_flags(PAUSE_DEPOSIT)
-        .max_gas()
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 
     let res = owner_acc
-        .set_paused_flags(PAUSE_DEPOSIT)
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -674,8 +668,6 @@ async fn test_admin_controlled_only_admin_can_pause() {
 
 #[tokio::test]
 async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
-    use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, PAUSE_WITHDRAW};
-
     // 1st deposit call when unpaused - should succeed
     let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
         .await
@@ -705,10 +697,18 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert_eq!(data.amount, withdraw_amount);
     assert_eq!(data.eth_custodian_address, custodian_addr);
 
+    let res = user_acc
+        .ft_transfer(&owner_acc.id().to_string(), U128(2 * withdraw_amount), None)
+        .max_gas()
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
     // Pause deposit
-    let res = contract
-        .contract
-        .set_paused_flags(PAUSE_DEPOSIT)
+    let res = owner_acc
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -718,16 +718,29 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     // 2nd deposit call when paused, but the admin is calling it - should succeed
     // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
     // method which should be paused
-    contract
+    owner_acc
         .set_engine_account(contract.contract.id())
+        .max_gas()
+        .deposit(ONE_YOCTO)
+        .transact()
         .await
         .unwrap();
-    contract.call_deposit_eth_to_aurora().await.unwrap();
+    contract
+        .call_deposit_eth_to_aurora(&owner_acc)
+        .await
+        .unwrap();
 
     // Pause withdraw
-    let res = contract
-        .contract
-        .set_paused_flags(PAUSE_WITHDRAW)
+    let res = owner_acc
+        .pa_pause_feature("withdraw".to_string())
+        .max_gas()
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = owner_acc
+        .pa_pause_feature("engine_withdraw".to_string())
         .max_gas()
         .transact()
         .await
@@ -735,9 +748,8 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
     assert!(res.is_success());
 
     // 2nd withdraw call when paused, but the admin is calling it - should succeed
-    let res = contract
-        .contract
-        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
+    let res = owner_acc
+        .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -758,10 +770,10 @@ async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
     let res = owner_acc
-        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
+        .withdraw(recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
@@ -809,8 +821,6 @@ async fn test_deposit_with_proof_lower_than_acceptance_height() {
 
 #[tokio::test]
 async fn test_deposit_pausability() {
-    use aurora_eth_connector::admin_controlled::{PAUSE_DEPOSIT, UNPAUSE_ALL};
-
     let contract = TestContract::new_with_custodian_and_owner(CUSTODIAN_ADDRESS, "owner.root")
         .await
         .unwrap();
@@ -819,7 +829,7 @@ async fn test_deposit_pausability() {
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     contract
-        .set_and_check_access_right(user_acc.id())
+        .user_set_and_check_access_right(user_acc.id(), &owner_acc)
         .await
         .unwrap();
 
@@ -832,9 +842,8 @@ async fn test_deposit_pausability() {
     assert!(res.is_success());
 
     // Pause deposit
-    let res = contract
-        .contract
-        .set_paused_flags(PAUSE_DEPOSIT)
+    let res = owner_acc
+        .pa_pause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -847,7 +856,7 @@ async fn test_deposit_pausability() {
         .user_deposit_with_proof(&user_acc, proof2)
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_PAUSED"));
+    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
     let proof3 = contract.mock_proof(user_acc.id(), 30, 3, 0);
     let res = contract
@@ -857,9 +866,16 @@ async fn test_deposit_pausability() {
     assert!(res.is_success());
 
     // Unpause all
-    let res = contract
-        .contract
-        .set_paused_flags(UNPAUSE_ALL)
+    let res = owner_acc
+        .pa_unpause_feature("withdraw".to_string())
+        .max_gas()
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = owner_acc
+        .pa_unpause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -878,8 +894,6 @@ async fn test_deposit_pausability() {
 
 #[tokio::test]
 async fn test_withdraw_from_near_pausability() {
-    use aurora_eth_connector::admin_controlled::{PAUSE_WITHDRAW, UNPAUSE_ALL};
-
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
@@ -910,7 +924,7 @@ async fn test_withdraw_from_near_pausability() {
     // Pause withdraw
     let res = contract
         .contract
-        .set_paused_flags(PAUSE_WITHDRAW)
+        .pa_pause_feature("withdraw".to_string())
         .max_gas()
         .transact()
         .await
@@ -925,12 +939,21 @@ async fn test_withdraw_from_near_pausability() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "WithdrawErrorPaused"));
+    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
 
     // Unpause all
     let res = contract
         .contract
-        .set_paused_flags(UNPAUSE_ALL)
+        .pa_unpause_feature("withdraw".to_string())
+        .max_gas()
+        .transact()
+        .await
+        .unwrap();
+    assert!(res.is_success());
+
+    let res = contract
+        .contract
+        .pa_unpause_feature("deposit".to_string())
         .max_gas()
         .transact()
         .await
@@ -1229,7 +1252,7 @@ async fn test_access_rights() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     assert_eq!(
         DEPOSITED_AMOUNT + transfer_amount1.0,
@@ -1261,8 +1284,7 @@ async fn test_access_rights() {
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
         .max_gas()
         .deposit(ONE_YOCTO)
@@ -1350,7 +1372,7 @@ async fn test_engine_ft_transfer() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     assert_eq!(
         DEPOSITED_AMOUNT,
@@ -1428,7 +1450,7 @@ async fn test_engine_ft_transfer_call() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+        assert!(contract.check_error_message(&err, "Method can be called only by aurora engine"));
     }
 
     assert_eq!(
@@ -1493,7 +1515,7 @@ async fn test_engine_storage_deposit() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+        assert!(contract.check_error_message(&err, "Method can be called only by aurora engine"));
     }
 
     contract
@@ -1501,8 +1523,7 @@ async fn test_engine_storage_deposit() {
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(NearToken::from_yoctonear(bounds.min.0))
@@ -1544,7 +1565,7 @@ async fn test_engine_storage_withdraw() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_ACCESS_RIGHT"));
+        assert!(contract.check_error_message(&err, "Method can be called only by aurora engine"));
     }
 
     contract
@@ -1552,8 +1573,7 @@ async fn test_engine_storage_withdraw() {
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(NearToken::from_yoctonear(bounds.min.0))
@@ -1596,15 +1616,14 @@ async fn test_engine_storage_unregister() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "ERR_ACCESS_RIGHT"));
+    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
 
     contract
         .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
 
-    let res = contract
-        .contract
+    let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
         .deposit(NearToken::from_yoctonear(bounds.min.0))
@@ -1678,6 +1697,7 @@ async fn test_manage_engine_accounts() {
         .contract
         .remove_engine_account(&acc1)
         .max_gas()
+        .deposit(ONE_YOCTO)
         .transact()
         .await
         .unwrap();

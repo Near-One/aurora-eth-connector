@@ -1,11 +1,9 @@
 use crate::{
-    admin_controlled::PAUSE_DEPOSIT,
     connector::{ext_funds_finish, ext_proof_verifier},
     deposit_event::{DepositedEvent, TokenMessageData},
     errors, log, panic_err,
     proof::{Proof, VerifyProofArgs},
     types::SdkUnwrap,
-    AdminControlled, PausedMask,
 };
 use aurora_engine_types::types::Address;
 use near_sdk::{
@@ -52,46 +50,16 @@ pub struct EthConnector {
     pub prover_account: AccountId,
     /// The ETH address is used in the Deposit and Withdraw logic.
     pub eth_custodian_address: Address,
-    /// Admin controlled.
-    pub paused_mask: PausedMask,
     /// Account with access right for the current contract.
-    pub account_with_access_right: AccountId,
-    /// Owner's account id.
-    pub owner_id: AccountId,
+    pub aurora_engine_account_id: AccountId,
     /// Proofs from blocks that are below the acceptance height will be rejected.
     // If `minBlockAcceptanceHeight` value is zero - proofs from block with any height are accepted.
     pub min_proof_acceptance_height: u64,
 }
 
-impl AdminControlled for EthConnector {
-    fn get_paused_flags(&self) -> PausedMask {
-        self.paused_mask
-    }
-
-    fn set_paused_flags(&mut self, paused: PausedMask) {
-        self.paused_mask = paused;
-    }
-
-    fn set_access_right(&mut self, account: &AccountId) {
-        self.account_with_access_right = account.clone();
-    }
-
-    fn get_account_with_access_right(&self) -> AccountId {
-        self.account_with_access_right.clone()
-    }
-
-    fn is_owner(&self) -> bool {
-        self.owner_id == env::predecessor_account_id()
-            || env::current_account_id() == env::predecessor_account_id()
-    }
-}
-
 impl EthConnector {
     pub(crate) fn deposit(&mut self, proof: Proof) -> Promise {
         let current_account_id = env::current_account_id();
-
-        // Check is current flow paused. If it's owner account just skip it.
-        self.assert_not_paused(PAUSE_DEPOSIT).sdk_unwrap();
 
         log!("[Deposit tokens]");
 
@@ -139,7 +107,7 @@ impl EthConnector {
                 // account as the recipient when depositing to the EVM,
                 // so here we override the receiver_id for backward compatibility.
                 if receiver_id == current_account_id {
-                    receiver_id = self.get_account_with_access_right();
+                    receiver_id = self.aurora_engine_account_id.clone();
                 }
                 // Transfer to self and then transfer ETH in `ft_on_transfer`
                 // address - is NEAR account
