@@ -132,6 +132,7 @@ impl EthConnectorContract {
         for account_id in accounts {
             if !self.ft.accounts.contains_key(account_id) {
                 storage_amount += min_balance;
+                self.ft.internal_register_account(account_id);
             }
         }
 
