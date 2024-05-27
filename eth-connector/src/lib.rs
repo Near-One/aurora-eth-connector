@@ -63,6 +63,7 @@ pub enum Role {
     UpgradableCodeStager,
     UpgradableCodeDeployer,
     DAO,
+    Migrator,
 }
 
 /// Eth-connector contract data. It's stored in the storage.
@@ -691,7 +692,7 @@ use crate::migration::{CheckResult, InputData, Migration};
 #[near_bindgen]
 impl Migration for EthConnectorContract {
     /// Migrate accounts balances
-    #[private]
+    #[access_control_any(roles(Role::Migrator, Role::DAO))]
     fn migrate(&mut self, #[serializer(borsh)] accounts: Vec<AccountId>) -> Promise {
         const GAS_FOR_CALLS: Gas = Gas(140 * Gas::ONE_TERA.0);
         ext_engine_connector::ext(self.connector.aurora_engine_account_id.clone())
@@ -704,6 +705,7 @@ impl Migration for EthConnectorContract {
             )
     }
 
+    #[private]
     fn migrate_callback(
         &mut self,
         #[callback]
