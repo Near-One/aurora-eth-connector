@@ -18,7 +18,7 @@ async fn test_migration_access_right() {
         .transact()
         .await
         .unwrap_err();
-    assert!(contract.check_error_message(&res, "Method migrate is private"));
+    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
 }
 
 #[tokio::test]
