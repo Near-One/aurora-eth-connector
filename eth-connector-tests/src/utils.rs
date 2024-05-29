@@ -329,24 +329,14 @@ impl TestContract {
     }
 
     pub async fn unpause_all(&self) {
-        let keys = [
-            "ft_transfer",
-            "ft_transfer_call",
-            "engine",
-            "withdraw",
-            "engine_withdraw",
-            "deposit",
-        ];
-        for key in keys {
-            let res = self
-                .contract
-                .pa_unpause_feature(key.to_string())
-                .max_gas()
-                .transact()
-                .await
-                .unwrap();
-            assert!(res.is_success());
-        }
+        let res = self
+            .contract
+            .pa_unpause_feature("ALL".to_string())
+            .max_gas()
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
     }
 }
 

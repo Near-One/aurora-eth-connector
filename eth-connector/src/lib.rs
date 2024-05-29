@@ -255,12 +255,7 @@ impl EthConnectorContract {
         this.acl_grant_role("DAO".to_string(), owner_id.clone());
         this.acl_grant_role("PauseManager".to_string(), env::predecessor_account_id());
 
-        this.pa_pause_feature("ft_transfer".to_string());
-        this.pa_pause_feature("ft_transfer_call".to_string());
-        this.pa_pause_feature("engine".to_string());
-        this.pa_pause_feature("withdraw".to_string());
-        this.pa_pause_feature("engine_withdraw".to_string());
-        this.pa_pause_feature("deposit".to_string());
+        this.pa_pause_feature("ALL".to_string());
 
         this
     }
