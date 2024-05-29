@@ -64,6 +64,14 @@ impl TestContract {
             .await?;
         assert!(res.is_success());
 
+        let res = contract
+            .pa_unpause_feature("ALL".to_string())
+            .max_gas()
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+
         Ok(Self {
             contract,
             root_account,
