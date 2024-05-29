@@ -64,6 +64,14 @@ impl TestContract {
             .await?;
         assert!(res.is_success());
 
+        let res = contract
+            .pa_unpause_feature("ALL".to_string())
+            .max_gas()
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+
         Ok(Self {
             contract,
             root_account,
@@ -326,17 +334,6 @@ impl TestContract {
         let res = self.deposit_with_proof(&proof).await?;
         assert!(res.is_success(), "call_deposit_contract: {res:#?}");
         Ok(())
-    }
-
-    pub async fn unpause_all(&self) {
-        let res = self
-            .contract
-            .pa_unpause_feature("ALL".to_string())
-            .max_gas()
-            .transact()
-            .await
-            .unwrap();
-        assert!(res.is_success());
     }
 }
 
