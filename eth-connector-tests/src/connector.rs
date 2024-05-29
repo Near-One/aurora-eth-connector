@@ -418,7 +418,12 @@ async fn test_ft_transfer_call_user_message() {
 
     // Send to engine contract with wrong message should failed
     let res = user_acc
-        .ft_transfer_call(&receiver_id, transfer_amount, memo.clone(), message.to_string())
+        .ft_transfer_call(
+            &receiver_id,
+            transfer_amount,
+            memo.clone(),
+            message.to_string(),
+        )
         .max_gas()
         .deposit(ONE_YOCTO)
         .transact()
