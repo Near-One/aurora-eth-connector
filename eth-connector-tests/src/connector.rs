@@ -397,9 +397,42 @@ async fn test_ft_transfer_call_user_message() {
     let contract = TestContract::new().await.unwrap();
     contract.call_deposit_eth_to_near().await.unwrap();
     contract.call_deposit_contract().await.unwrap();
+    contract
+        .set_and_check_access_right(contract.contract.id())
+        .await
+        .unwrap();
+
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
 
     let receiver_id = contract.contract.id();
+    let transfer_amount: U128 = 50.into();
+    let memo: Option<String> = None;
+    let message = "";
+
+    let is_exist = contract
+        .contract
+        .is_engine_account_exist(receiver_id)
+        .await
+        .unwrap();
+    assert!(is_exist.result);
+
+    // Send to engine contract with wrong message should failed
+    let res = user_acc
+        .ft_transfer_call(
+            &receiver_id,
+            transfer_amount,
+            memo.clone(),
+            message.to_string(),
+        )
+        .max_gas()
+        .deposit(ONE_YOCTO)
+        .transact()
+        .await;
+    if let Err(err) = res {
+        assert!(contract.check_error_message(&err, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+    }
+    let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
+    assert_eq!(balance.0, DEPOSITED_CONTRACT);
     let balance = contract
         .get_eth_on_near_balance(user_acc.id())
         .await
@@ -412,10 +445,9 @@ async fn test_ft_transfer_call_user_message() {
         .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
 
-    let transfer_amount: U128 = 50.into();
-    let memo: Option<String> = None;
-    let message = "";
-    // Send to non-engine contract with wrong message should failed
+    contract.remove_engine_account(receiver_id).await.unwrap();
+
+    // Send to non-engine contract with wrong message should not failed
     let res = user_acc
         .ft_transfer_call(
             &receiver_id,
@@ -430,38 +462,6 @@ async fn test_ft_transfer_call_user_message() {
         .unwrap();
     assert!(res.is_success());
 
-    let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
-    assert_eq!(balance.0, DEPOSITED_CONTRACT + transfer_amount.0);
-    let balance = contract
-        .get_eth_on_near_balance(user_acc.id())
-        .await
-        .unwrap();
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - transfer_amount.0);
-
-    contract
-        .set_and_check_access_right(contract.contract.id())
-        .await
-        .unwrap();
-
-    contract.set_engine_account(receiver_id).await.unwrap();
-
-    let is_exist = contract
-        .contract
-        .is_engine_account_exist(receiver_id)
-        .await
-        .unwrap();
-    assert!(is_exist.result);
-
-    // Send to engine contract with wrong message should failed
-    let res = user_acc
-        .ft_transfer_call(&receiver_id, transfer_amount, memo, message.to_string())
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await;
-    if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
-    }
     let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT + transfer_amount.0);
     let balance = contract

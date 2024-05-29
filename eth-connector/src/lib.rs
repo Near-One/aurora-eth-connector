@@ -248,6 +248,10 @@ impl EthConnectorContract {
             used_proofs: LookupSet::new(StorageKey::Proof),
             known_engine_accounts: LookupSet::new(StorageKey::EngineAccounts),
         };
+
+        this.known_engine_accounts
+            .insert(&this.connector.aurora_engine_account_id);
+
         this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(owner_id);
 
