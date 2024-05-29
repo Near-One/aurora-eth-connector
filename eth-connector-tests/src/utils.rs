@@ -254,6 +254,19 @@ impl TestContract {
         Ok(())
     }
 
+    pub async fn remove_engine_account(&self, engine_account: &AccountId) -> anyhow::Result<()> {
+        let res = self
+            .contract
+            .remove_engine_account(engine_account)
+            .max_gas()
+            .deposit(ONE_YOCTO)
+            .transact()
+            .await
+            .unwrap();
+        assert!(res.is_success());
+        Ok(())
+    }
+
     #[must_use]
     pub fn mock_proof(
         &self,
