@@ -257,6 +257,9 @@ impl EthConnectorContract {
 
         this.acl_init_super_admin(env::predecessor_account_id());
         this.acl_grant_role("DAO".to_string(), owner_id.clone());
+        this.acl_grant_role("PauseManager".to_string(), env::predecessor_account_id());
+
+        this.pa_pause_feature("ALL".to_string());
 
         this
     }
