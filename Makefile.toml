@@ -162,7 +162,7 @@ run_task = "build-contract-flow"
 
 [tasks.build-migration]
 condition = { profiles = ["mainnet", "testnet", "localnet", "development", "custom"] }
-env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATURES_BUILD_MIGRATION}", "RELEASE" = "--release", "TARGET_DIR" = "release" }
+env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATURES_BUILD_MIGRATION}", "WASM_FILE" = "${WASM_FILE_MIGRATION}", "RELEASE" = "--release", "TARGET_DIR" = "release" }
 category = "Build"
 run_task = "build-contract-flow"
 
