@@ -37,6 +37,9 @@ jobs:
       - name: Clone the repository
         uses: actions/checkout@v2
 
+      - name: Build  
+        run: ./build.sh
+
       - name: Diff
         run: |
           git diff
