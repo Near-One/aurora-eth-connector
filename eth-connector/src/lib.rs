@@ -655,6 +655,7 @@ impl Deposit for EthConnectorContract {
 
 #[near_bindgen]
 impl FundsFinish for EthConnectorContract {
+    #[payable]
     #[private]
     fn finish_deposit(
         &mut self,
