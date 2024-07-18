@@ -323,6 +323,11 @@ impl EthConnectorContract {
         self.connector.aurora_engine_account_id = new_aurora_engine_account_id;
     }
 
+    #[must_use]
+    pub fn get_aurora_engine_account_id(&self) -> AccountId {
+        self.connector.aurora_engine_account_id.clone()
+    }
+
     pub fn get_config(&self) -> EthConnector {
         self.connector.clone()
     }
