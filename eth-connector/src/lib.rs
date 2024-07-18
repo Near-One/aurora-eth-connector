@@ -306,6 +306,16 @@ impl EthConnectorContract {
         self.connector.prover_account.clone()
     }
 
+    #[access_control_any(roles(Role::DAO))]
+    pub fn set_prover(&mut self, account_id: AccountId) {
+        self.connector.prover_account = account_id;
+    }
+
+    #[access_control_any(roles(Role::DAO))]
+    pub fn set_min_proof_acceptance_height(&mut self, height: u64) {
+        self.connector.min_proof_acceptance_height = height;
+    }
+
     #[payable]
     #[access_control_any(roles(Role::DAO))]
     pub fn set_aurora_engine_account_id(&mut self, new_aurora_engine_account_id: AccountId) {
@@ -313,9 +323,8 @@ impl EthConnectorContract {
         self.connector.aurora_engine_account_id = new_aurora_engine_account_id;
     }
 
-    #[must_use]
-    pub fn get_aurora_engine_account_id(&self) -> AccountId {
-        self.connector.aurora_engine_account_id.clone()
+    pub fn get_config(&self) -> EthConnector {
+        self.connector.clone()
     }
 }
 

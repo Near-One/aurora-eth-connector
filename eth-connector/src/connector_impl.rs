@@ -8,7 +8,9 @@ use crate::{
 use aurora_engine_types::types::Address;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, AccountId, Balance, Gas, Promise,
+    env,
+    serde::Serialize,
+    AccountId, Balance, Gas, Promise,
 };
 
 /// NEAR Gas for calling `finish_deposit` promise. Used in the `deposit` logic.
@@ -44,7 +46,7 @@ pub struct WithdrawResult {
 }
 
 /// Connector specific data. It always should contain `prover account` -
-#[derive(BorshSerialize, BorshDeserialize)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize)]
 pub struct EthConnector {
     /// The account is used in the Deposit flow to verify the incoming proof's log entry.
     pub prover_account: AccountId,
