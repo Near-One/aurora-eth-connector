@@ -600,11 +600,7 @@ impl StorageManagement for EthConnectorContract {
 
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
-        if let Some(_) = self.ft.internal_storage_unregister(force) {
-            true
-        } else {
-            false
-        }
+        self.ft.internal_storage_unregister(force).is_some()
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
