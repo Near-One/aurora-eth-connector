@@ -20,6 +20,9 @@ use near_contract_standards::fungible_token::metadata::{
 use near_contract_standards::fungible_token::receiver::ext_ft_receiver;
 use near_contract_standards::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
 use near_contract_standards::fungible_token::FungibleToken;
+use near_contract_standards::storage_management::{
+    StorageBalance, StorageBalanceBounds, StorageManagement,
+};
 use near_plugins::{
     access_control, access_control_any, pause, AccessControlRole, AccessControllable, Pausable,
     Upgradable,
@@ -579,7 +582,46 @@ impl FungibleTokenResolver for EthConnectorContract {
     }
 }
 
-near_contract_standards::impl_fungible_token_storage!(EthConnectorContract, ft);
+#[near_bindgen]
+impl StorageManagement for EthConnectorContract {
+    #[payable]
+    fn storage_deposit(
+        &mut self,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
+        self.ft.storage_deposit(account_id, registration_only)
+    }
+
+    #[payable]
+    fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
+        self.ft.storage_withdraw(amount)
+    }
+
+    #[payable]
+    fn storage_unregister(&mut self, force: Option<bool>) -> bool {
+        if let Some(_) = self.ft.internal_storage_unregister(force) {
+            true
+        } else {
+            false
+        }
+    }
+
+    fn storage_balance_bounds(&self) -> StorageBalanceBounds {
+        self.ft.storage_balance_bounds()
+    }
+
+    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
+        if self.ft.account_storage_usage == 0 {
+            Some(StorageBalance {
+                total: 0.into(),
+                available: 0.into(),
+            })
+        } else {
+            self.ft.storage_balance_of(account_id)
+        }
+    }
+}
 
 #[near_bindgen]
 impl FungibleTokenMetadataProvider for EthConnectorContract {
