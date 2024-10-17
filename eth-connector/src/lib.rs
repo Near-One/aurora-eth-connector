@@ -115,7 +115,7 @@ impl EthConnectorContract {
 
     // Register user and calculate counter
     fn register_if_not_exists(&mut self, account: &AccountId) {
-        if !self.ft.accounts.contains_key(account) {
+        if self.ft.account_storage_usage == 0 && !self.ft.accounts.contains_key(account) {
             self.ft.internal_register_account(account);
         }
     }
@@ -339,7 +339,7 @@ impl FungibleTokenCore for EthConnectorContract {
     #[payable]
     #[pause(except(roles(Role::DAO)))]
     fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
-        self.ft.storage_deposit(Some(receiver_id.clone()), None);
+        self.register_if_not_exists(&receiver_id);
         self.ft.ft_transfer(receiver_id, amount, memo);
     }
 
@@ -358,7 +358,7 @@ impl FungibleTokenCore for EthConnectorContract {
             "More gas is required"
         );
         let sender_id = env::predecessor_account_id();
-        self.ft.storage_deposit(Some(receiver_id.clone()), None);
+        self.register_if_not_exists(&receiver_id);
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
 
@@ -388,7 +388,7 @@ impl EngineFungibleToken for EthConnectorContract {
         memo: Option<String>,
     ) {
         self.assert_aurora_engine_access_right();
-        self.ft.storage_deposit(Some(receiver_id.clone()), None);
+        self.register_if_not_exists(&receiver_id);
 
         assert_one_yocto();
         let amount: Balance = amount.into();
@@ -413,7 +413,7 @@ impl EngineFungibleToken for EthConnectorContract {
             env::prepaid_gas() > GAS_FOR_FT_TRANSFER_CALL,
             "More gas is required"
         );
-        self.ft.storage_deposit(Some(receiver_id.clone()), None);
+        self.register_if_not_exists(&receiver_id);
         self.internal_ft_transfer_call(sender_id, receiver_id, amount, memo, msg)
     }
 }
