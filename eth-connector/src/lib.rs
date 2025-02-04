@@ -67,7 +67,7 @@ pub enum Role {
     UpgradableCodeDeployer,
     DAO,
     Migrator,
-    Factory
+    Factory,
 }
 
 /// Eth-connector contract data. It's stored in the storage.
