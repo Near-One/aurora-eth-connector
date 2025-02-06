@@ -1,23 +1,7 @@
-use crate::{
-    connector::{ext_funds_finish, ext_proof_verifier},
-    deposit_event::{DepositedEvent, TokenMessageData},
-    errors, log, panic_err,
-    proof::{Proof, VerifyProofArgs},
-    types::SdkUnwrap,
-};
-use aurora_engine_types::types::Address;
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env,
-    serde::Serialize,
-    AccountId, Balance, Gas, Promise,
+    AccountId, Balance,
 };
-
-/// NEAR Gas for calling `finish_deposit` promise. Used in the `deposit` logic.
-pub const GAS_FOR_FINISH_DEPOSIT: Gas = Gas(50 * Gas::ONE_TERA.0);
-/// NEAR Gas for calling `verify_log_entry` promise. Used in the `deposit` logic.
-// Note: Is 40 TGas always enough?
-const GAS_FOR_VERIFY_LOG_ENTRY: Gas = Gas(40 * Gas::ONE_TERA.0);
 
 /// transfer eth-connector call args
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
@@ -26,126 +10,6 @@ pub struct TransferCallCallArgs {
     pub amount: Balance,
     pub memo: Option<String>,
     pub msg: String,
-}
-
-/// Finish deposit NEAR eth-connector call args
-#[derive(Debug, Clone, BorshSerialize, BorshDeserialize, PartialEq, Eq)]
-pub struct FinishDepositCallArgs {
-    pub new_owner_id: AccountId,
-    pub amount: Balance,
-    pub proof_key: String,
-    pub msg: Option<Vec<u8>>,
-}
-
-/// withdraw result for eth-connector
-#[derive(BorshSerialize, BorshDeserialize)]
-pub struct WithdrawResult {
-    pub amount: Balance,
-    pub recipient_id: Address,
-    pub eth_custodian_address: Address,
-}
-
-/// Connector specific data. It always should contain `prover account` -
-#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize)]
-pub struct EthConnector {
-    /// The account is used in the Deposit flow to verify the incoming proof's log entry.
-    pub prover_account: AccountId,
-    /// The ETH address is used in the Deposit and Withdraw logic.
-    pub eth_custodian_address: Address,
-    /// Account with access right for the current contract.
-    pub aurora_engine_account_id: AccountId,
-    /// Proofs from blocks that are below the acceptance height will be rejected.
-    // If `minBlockAcceptanceHeight` value is zero - proofs from block with any height are accepted.
-    pub min_proof_acceptance_height: u64,
-}
-
-impl EthConnector {
-    pub(crate) fn deposit(&mut self, proof: Proof) -> Promise {
-        let current_account_id = env::current_account_id();
-
-        log!("[Deposit tokens]");
-
-        // Fetch event data from Proof
-        let event = DepositedEvent::from_log_entry_data(&proof.log_entry_data).sdk_unwrap();
-
-        log!(
-            "Deposit started: from {} to recipient {:?} with amount: {:?}",
-            event.sender.encode(),
-            event.token_message_data.get_recipient(),
-            event.amount,
-        );
-
-        log!(
-            "Event's address {}, custodian address {}",
-            event.eth_custodian_address.encode(),
-            self.eth_custodian_address.encode(),
-        );
-
-        if event.eth_custodian_address != self.eth_custodian_address {
-            panic_err(error::FtDepositError::CustodianAddressMismatch);
-        }
-
-        // Verify proof data with cross-contract call to prover account
-        log!(
-            "Deposit verify_log_entry for prover: {}",
-            self.prover_account,
-        );
-
-        // Finalize deposit
-        let finish_deposit_data = match event.token_message_data {
-            // Deposit to NEAR accounts
-            TokenMessageData::Near(account_id) => FinishDepositCallArgs {
-                new_owner_id: account_id,
-                amount: event.amount,
-                proof_key: proof.get_key(),
-                msg: None,
-            },
-            // Deposit to Eth accounts
-            TokenMessageData::Eth {
-                mut receiver_id,
-                message,
-            } => {
-                // The 'EthCustodian' contract produces events with the 'eth-connector'
-                // account as the recipient when depositing to the EVM,
-                // so here we override the receiver_id for backward compatibility.
-                if receiver_id == current_account_id {
-                    receiver_id = self.aurora_engine_account_id.clone();
-                }
-                // Transfer to self and then transfer ETH in `ft_on_transfer`
-                // address - is NEAR account
-                let transfer_data = TransferCallCallArgs {
-                    receiver_id,
-                    amount: event.amount,
-                    memo: None,
-                    msg: message.encode(),
-                }
-                .try_to_vec()
-                .map_err(|_| errors::ERR_BORSH_SERIALIZE)
-                .sdk_unwrap();
-
-                // Send to self - current account id
-                FinishDepositCallArgs {
-                    new_owner_id: current_account_id.clone(),
-                    amount: event.amount,
-                    proof_key: proof.get_key(),
-                    msg: Some(transfer_data),
-                }
-            }
-        };
-
-        let mut verify_log_args: VerifyProofArgs = proof.into();
-        verify_log_args.min_header_height = Some(self.min_proof_acceptance_height);
-
-        ext_proof_verifier::ext(self.prover_account.clone())
-            .with_static_gas(GAS_FOR_VERIFY_LOG_ENTRY)
-            .verify_log_entry_in_bound(verify_log_args)
-            .then(
-                ext_funds_finish::ext(current_account_id)
-                    .with_static_gas(GAS_FOR_FINISH_DEPOSIT)
-                    .with_attached_deposit(env::attached_deposit())
-                    .finish_deposit(finish_deposit_data),
-            )
-    }
 }
 
 pub mod error {
@@ -233,11 +97,6 @@ pub mod error {
         }
     }
 
-    pub enum FinishDepositError {
-        TransferCall(FtTransferCallError),
-        ProofUsed,
-    }
-
     impl From<DepositError> for FtTransferCallError {
         fn from(e: DepositError) -> Self {
             Self::Transfer(e.into())
@@ -247,15 +106,6 @@ pub mod error {
     impl From<ParseOnTransferMessageError> for FtTransferCallError {
         fn from(e: ParseOnTransferMessageError) -> Self {
             Self::MessageParseFailed(e)
-        }
-    }
-
-    impl AsRef<[u8]> for FinishDepositError {
-        fn as_ref(&self) -> &[u8] {
-            match self {
-                Self::ProofUsed => ERR_PROOF_EXIST,
-                Self::TransferCall(e) => e.as_ref(),
-            }
         }
     }
 
