@@ -67,7 +67,7 @@ pub enum Role {
     UpgradableCodeDeployer,
     DAO,
     Migrator,
-    Factory,
+    Controller,
 }
 
 /// Eth-connector contract data. It's stored in the storage.
@@ -338,7 +338,7 @@ impl EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::Factory))]
+    #[access_control_any(roles(Role::Controller))]
     pub fn mint(
         &mut self,
         account_id: AccountId,
@@ -355,7 +355,7 @@ impl EthConnectorContract {
         }
     }
 
-    #[access_control_any(roles(Role::Factory))]
+    #[access_control_any(roles(Role::Controller))]
     pub fn burn(&mut self, amount: U128) {
         self.ft
             .internal_withdraw(&env::predecessor_account_id(), amount.into());
