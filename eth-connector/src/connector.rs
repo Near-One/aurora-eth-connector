@@ -6,7 +6,6 @@ use near_sdk::{
 
 #[ext_contract(ext_withdraw)]
 pub trait Withdraw {
-    #[result_serializer(borsh)]
     fn withdraw(
         &mut self,
         #[serializer(borsh)] recipient_address: Address,

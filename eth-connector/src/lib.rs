@@ -2,13 +2,12 @@
 #![allow(clippy::module_name_repetitions)]
 
 use crate::connector::{
-    ext_engine_connector, ext_migrate, EngineConnectorWithdraw, EngineFungibleToken,
-    EngineStorageManagement, Withdraw,
+    EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, Withdraw,
 };
 use crate::deposit_event::FtTransferMessageData;
 use crate::types::SdkUnwrap;
-use aurora_engine_types::types::Address;
 use aurora_engine_types::HashMap;
+use aurora_engine_types::types::Address;
 use connector::ext_omni_bridge;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
@@ -36,7 +35,6 @@ use near_sdk::{
 use serde::{Deserialize, Serialize};
 
 pub mod connector;
-pub mod connector_impl;
 pub mod deposit_event;
 pub mod errors;
 pub mod log_entry;
@@ -63,7 +61,6 @@ pub enum Role {
     UpgradableCodeDeployer,
     DAO,
     Migrator,
-    Controller,
 }
 
 /// Eth-connector contract data. It's stored in the storage.
@@ -170,6 +167,13 @@ impl EthConnectorContract {
             "Method can be called only by aurora engine"
         );
     }
+
+    fn assert_controller(&self) {
+        require!(
+            env::predecessor_account_id() == self.controller,
+            "Method can be called only by controller"
+        );
+    }
 }
 
 #[near_bindgen]
@@ -234,13 +238,13 @@ impl EthConnectorContract {
     }
 
     #[payable]
-    #[access_control_any(roles(Role::Controller))]
     pub fn mint(
         &mut self,
         account_id: AccountId,
         amount: U128,
         msg: Option<String>,
     ) -> PromiseOrValue<U128> {
+        self.assert_controller();
         self.register_if_not_exists(&account_id);
         if let Some(msg) = msg {
             self.mint_eth_on_near(&env::predecessor_account_id(), amount.into());
@@ -251,8 +255,8 @@ impl EthConnectorContract {
         }
     }
 
-    #[access_control_any(roles(Role::Controller))]
     pub fn burn(&mut self, amount: U128) {
+        self.assert_controller();
         self.ft
             .internal_withdraw(&env::predecessor_account_id(), amount.into());
     }
@@ -536,7 +540,6 @@ impl FungibleTokenMetadataProvider for EthConnectorContract {
 #[near_bindgen]
 impl Withdraw for EthConnectorContract {
     #[payable]
-    #[result_serializer(borsh)]
     #[pause(except(roles(Role::DAO)))]
     fn withdraw(
         &mut self,
@@ -582,6 +585,9 @@ impl EngineConnectorWithdraw for EthConnectorContract {
             .finish_withdraw_v2(sender_id, amount.into(), recipient_address.encode())
     }
 }
+
+#[cfg(feature = "migration")]
+use crate::connector::{ext_engine_connector, ext_migrate};
 
 #[cfg(feature = "migration")]
 use crate::migration::{CheckResult, InputData, Migration};
