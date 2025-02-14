@@ -565,7 +565,6 @@ impl Withdraw for EthConnectorContract {
 #[near_bindgen]
 impl EngineConnectorWithdraw for EthConnectorContract {
     #[payable]
-    #[result_serializer(borsh)]
     #[pause]
     fn engine_withdraw(
         &mut self,

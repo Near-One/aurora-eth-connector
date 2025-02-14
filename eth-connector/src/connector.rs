@@ -26,7 +26,6 @@ pub trait Migrate {
 /// Withdraw method for legacy implementation in Engine
 #[ext_contract(ext_engine_withdraw)]
 pub trait EngineConnectorWithdraw {
-    #[result_serializer(borsh)]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,

@@ -3,7 +3,6 @@ use crate::utils::{
     DEPOSITED_CONTRACT, DEPOSITED_RECIPIENT,
     RECIPIENT_ETH_ADDRESS,
 };
-use aurora_engine_types::types::Address;
 use aurora_engine_types::U256;
 use aurora_workspace_utils::ContractId;
 use byte_slice_cast::AsByteSlice;
@@ -89,110 +88,6 @@ async fn test_ft_transfer_user() {
         transfer_amount.0
     );
     assert_eq!(contract.total_supply().await.unwrap().0, DEPOSITED_AMOUNT);
-}
-
-#[tokio::test]
-async fn test_withdraw_eth_from_near() {
-    let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
-
-    let withdraw_amount = 100;
-    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
-    let res = contract
-        .contract
-        .withdraw(recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let balance = contract
-        .get_eth_on_near_balance(contract.contract.id())
-        .await
-        .unwrap();
-    assert_eq!(balance.0, DEPOSITED_CONTRACT - withdraw_amount);
-
-    let balance = contract.total_supply().await.unwrap();
-    assert_eq!(balance.0, DEPOSITED_CONTRACT - withdraw_amount);
-}
-
-#[tokio::test]
-async fn test_withdraw_eth_from_near_user() {
-    let contract = TestContract::new().await.unwrap();
-    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
-
-    let withdraw_amount = 100;
-    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
-
-    let res = user_acc
-        .withdraw(recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    assert_eq!(
-        contract
-            .get_eth_on_near_balance(user_acc.id())
-            .await
-            .unwrap()
-            .0,
-        DEPOSITED_AMOUNT - withdraw_amount
-    );
-    assert_eq!(
-        contract.total_supply().await.unwrap().0,
-        DEPOSITED_AMOUNT - withdraw_amount
-    );
-}
-
-#[tokio::test]
-async fn test_withdraw_eth_from_near_engine() {
-    let contract = TestContract::new().await.unwrap();
-    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
-
-    let withdraw_amount = 100;
-    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
-
-    // Only approved accounts can call this function
-    let res = user_acc
-        .engine_withdraw(user_acc.id(), recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
-
-    // The purpose of this withdraw variant is that it can withdraw on behalf of a user.
-    // In this example the contract itself withdraws on behalf of the user
-    let res = contract
-        .contract
-        .engine_withdraw(user_acc.id(), recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    assert_eq!(
-        contract
-            .get_eth_on_near_balance(user_acc.id())
-            .await
-            .unwrap()
-            .0,
-        DEPOSITED_AMOUNT - withdraw_amount
-    );
-    assert_eq!(
-        contract.total_supply().await.unwrap().0,
-        DEPOSITED_AMOUNT - withdraw_amount
-    );
 }
 
 #[tokio::test]
@@ -288,10 +183,6 @@ async fn test_ft_transfer_call_without_message() {
     let transfer_amount: U128 = 50.into();
     let memo: Option<String> = None;
     let message = "";
-    contract
-        .set_engine_account(contract.contract.id())
-        .await
-        .unwrap();
     // Send to Engine contract with wrong message should failed
     let res = contract
         .contract
@@ -364,13 +255,6 @@ async fn test_ft_transfer_call_user_message() {
     let memo: Option<String> = None;
     let message = "";
 
-    let is_exist = contract
-        .contract
-        .is_engine_account_exist(receiver_id)
-        .await
-        .unwrap();
-    assert!(is_exist.result);
-
     // Send to engine contract with wrong message should failed
     let res = user_acc
         .ft_transfer_call(
@@ -399,68 +283,6 @@ async fn test_ft_transfer_call_user_message() {
         .await
         .unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
-
-    contract.remove_engine_account(receiver_id).await.unwrap();
-
-    // Send to non-engine contract with wrong message should not failed
-    let res = user_acc
-        .ft_transfer_call(
-            &receiver_id,
-            transfer_amount,
-            memo.clone(),
-            message.to_string(),
-        )
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
-    assert_eq!(balance.0, DEPOSITED_CONTRACT + transfer_amount.0);
-    let balance = contract
-        .get_eth_on_near_balance(user_acc.id())
-        .await
-        .unwrap();
-    assert_eq!(balance.0, DEPOSITED_AMOUNT - transfer_amount.0);
-}
-
-#[tokio::test]
-async fn test_set_and_check_engine_account() {
-    let contract = TestContract::new().await.unwrap();
-    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
-
-    let res = user_acc
-        .set_engine_account(contract.contract.id())
-        .max_gas()
-        .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "Insufficient permissions for method"));
-
-    contract
-        .set_and_check_access_right(user_acc.id())
-        .await
-        .unwrap();
-
-    let res = contract
-        .contract
-        .set_engine_account(contract.contract.id())
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let is_exist = contract
-        .contract
-        .is_engine_account_exist(contract.contract.id())
-        .await
-        .unwrap();
-    assert!(is_exist.result);
 }
 
 #[tokio::test]
@@ -514,171 +336,6 @@ async fn test_admin_controlled_only_admin_can_pause() {
     let res = owner_acc
         .pa_pause_feature("deposit".to_string())
         .max_gas()
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-}
-
-#[tokio::test]
-async fn test_admin_controlled_admin_can_perform_actions_when_paused() {
-    // 1st deposit call when unpaused - should succeed
-    let contract = TestContract::new_with_options("owner.root")
-        .await
-        .unwrap();
-    let owner_acc = contract.contract_account("owner").await.unwrap();
-    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
-
-    let sender_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
-    let recipient_addr: Address = str_to_address(RECIPIENT_ETH_ADDRESS);
-    let withdraw_amount = 100;
-
-    // 1st withdraw call when unpaused  - should succeed
-    let res = contract
-        .contract
-        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let res = user_acc
-        .ft_transfer(&owner_acc.id().to_string(), U128(2 * withdraw_amount), None)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-
-    // 2nd deposit call when paused, but the admin is calling it - should succeed
-    // NB: We can use `PROOF_DATA_ETH` this will be just a different proof but the same deposit
-    // method which should be paused
-    owner_acc
-        .set_engine_account(contract.contract.id())
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-
-    // Pause withdraw
-    let res = owner_acc
-        .pa_pause_feature("withdraw".to_string())
-        .max_gas()
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let res = owner_acc
-        .pa_pause_feature("engine_withdraw".to_string())
-        .max_gas()
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    // 2nd withdraw call when paused, but the admin is calling it - should succeed
-    let res = owner_acc
-        .withdraw(recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let res = user_acc
-        .engine_withdraw(&sender_id, recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
-
-    let res = owner_acc
-        .withdraw(recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-}
-
-#[tokio::test]
-async fn test_withdraw_from_near_pausability() {
-    let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
-    let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
-
-    contract
-        .set_and_check_access_right(user_acc.id())
-        .await
-        .unwrap();
-
-    let recipient_addr: Address = str_to_address(RECIPIENT_ETH_ADDRESS);
-    let withdraw_amount = 100;
-    // 1st withdraw - should succeed
-    let res = contract.contract
-        .withdraw(recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    // Pause withdraw
-    let res = contract
-        .contract
-        .pa_pause_feature("withdraw".to_string())
-        .max_gas()
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    // 2nd withdraw - should fail
-    let res = user_acc
-        .withdraw(recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "Pausable: Method is paused"));
-
-    // Unpause all
-    let res = contract
-        .contract
-        .pa_unpause_feature("withdraw".to_string())
-        .max_gas()
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let res = contract
-        .contract
-        .pa_unpause_feature("deposit".to_string())
-        .max_gas()
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-
-    let res = user_acc
-        .withdraw(recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
         .transact()
         .await
         .unwrap();
@@ -803,17 +460,6 @@ async fn test_access_rights() {
             .0
     );
 
-    let withdraw_amount = 100;
-    let recipient_addr = str_to_address(RECIPIENT_ETH_ADDRESS);
-    let res = user_acc
-        .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap_err();
-    assert!(contract.check_error_message(&res, "Method can be called only by aurora engine"));
-
     assert_eq!(
         DEPOSITED_AMOUNT + transfer_amount1.0,
         contract
@@ -843,15 +489,6 @@ async fn test_access_rights() {
         .set_and_check_access_right(user_acc.id())
         .await
         .unwrap();
-
-    let res = user_acc
-        .engine_withdraw(contract.contract.id(), recipient_addr, withdraw_amount)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
 }
 
 #[tokio::test]
@@ -1226,48 +863,6 @@ async fn test_engine_storage_unregister() {
             contract.check_error_message(&err, "The account eth_recipient.root is not registered")
         );
     }
-}
-
-#[tokio::test]
-async fn test_manage_engine_accounts() {
-    let contract = TestContract::new().await.unwrap();
-    contract
-        .set_and_check_access_right(contract.contract.id())
-        .await
-        .unwrap();
-
-    let acc1 = "acc1.root".parse().unwrap();
-    let acc2 = "acc2.root".parse().unwrap();
-    contract.set_engine_account(&acc1).await.unwrap();
-    contract.set_engine_account(&acc2).await.unwrap();
-    let is_exist = contract
-        .contract
-        .is_engine_account_exist(&acc1)
-        .await
-        .unwrap();
-    assert!(is_exist.result);
-    let is_exist = contract
-        .contract
-        .is_engine_account_exist(&acc2)
-        .await
-        .unwrap();
-    assert!(is_exist.result);
-
-    let res = contract
-        .contract
-        .remove_engine_account(&acc1)
-        .max_gas()
-        .deposit(ONE_YOCTO)
-        .transact()
-        .await
-        .unwrap();
-    assert!(res.is_success());
-    let is_exist = contract
-        .contract
-        .is_engine_account_exist(&acc1)
-        .await
-        .unwrap();
-    assert!(!is_exist.result);
 }
 
 #[tokio::test]

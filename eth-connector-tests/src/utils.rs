@@ -208,32 +208,6 @@ impl TestContract {
         self.user_set_and_check_access_right(acc, &self.contract)
             .await
     }
-
-    pub async fn set_engine_account(&self, engine_account: &AccountId) -> anyhow::Result<()> {
-        let res = self
-            .contract
-            .set_engine_account(engine_account)
-            .max_gas()
-            .deposit(ONE_YOCTO)
-            .transact()
-            .await
-            .unwrap();
-        assert!(res.is_success());
-        Ok(())
-    }
-
-    pub async fn remove_engine_account(&self, engine_account: &AccountId) -> anyhow::Result<()> {
-        let res = self
-            .contract
-            .remove_engine_account(engine_account)
-            .max_gas()
-            .deposit(ONE_YOCTO)
-            .transact()
-            .await
-            .unwrap();
-        assert!(res.is_success());
-        Ok(())
-    }
 }
 
 pub fn print_logs(res: &ExecutionFinalResult) {
