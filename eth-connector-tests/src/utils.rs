@@ -30,21 +30,14 @@ impl TestContract {
         Self::new_with_options(CONTRACT_ACC).await
     }
 
-    pub async fn new_with_options(
-        owner_id: &str
-    ) -> anyhow::Result<Self> {
+    pub async fn new_with_options(owner_id: &str) -> anyhow::Result<Self> {
         let (contract, root_account) = Self::deploy_eth_connector().await?;
         let owner_id: AccountId = owner_id.parse().unwrap();
 
         let metadata = Self::metadata_default();
         // Init eth-connector
         let res = contract
-            .init(
-                metadata,
-                &contract.id(),
-                &owner_id,
-                &contract.id(),
-            )
+            .init(metadata, &contract.id(), &owner_id, &contract.id())
             .transact()
             .await?;
         assert!(res.is_success());
@@ -99,7 +92,11 @@ impl TestContract {
             .into_result()?)
     }
 
-    pub async fn mint_tokens(&self, account_id: &AccountId, amount: u128) -> anyhow::Result<ExecutionResult<()>> {
+    pub async fn mint_tokens(
+        &self,
+        account_id: &AccountId,
+        amount: u128,
+    ) -> anyhow::Result<ExecutionResult<()>> {
         self.contract
             .mint(account_id.to_string(), amount)
             .max_gas()

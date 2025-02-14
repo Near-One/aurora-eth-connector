@@ -1,7 +1,6 @@
 use crate::utils::{
-    str_to_address, TestContract, CONTRACT_ACC, DEPOSITED_AMOUNT,
-    DEPOSITED_CONTRACT, DEPOSITED_RECIPIENT,
-    RECIPIENT_ETH_ADDRESS,
+    str_to_address, TestContract, CONTRACT_ACC, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT,
+    DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
 };
 use aurora_engine_types::U256;
 use aurora_workspace_utils::ContractId;
@@ -15,7 +14,10 @@ const ONE_YOCTO: NearToken = NearToken::from_yoctonear(near_sdk::ONE_YOCTO);
 #[tokio::test]
 async fn test_ft_transfer() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     let transfer_amount: U128 = 70.into();
     let receiver_id = contract.register_user(DEPOSITED_RECIPIENT).await.unwrap();
@@ -53,7 +55,10 @@ async fn test_ft_transfer() {
 async fn test_ft_transfer_user() {
     let contract = TestContract::new().await.unwrap();
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(user_acc.id(), DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
 
     let transfer_amount: U128 = 70.into();
     contract
@@ -93,10 +98,16 @@ async fn test_ft_transfer_user() {
 #[tokio::test]
 async fn test_deposit_eth_to_near_balance_total_supply() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
-    contract.mint_tokens(&receiver_id, DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(&receiver_id, DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
     let balance = contract
         .get_eth_on_near_balance(&receiver_id)
         .await
@@ -118,10 +129,16 @@ async fn test_deposit_eth_to_near_balance_total_supply() {
 #[tokio::test]
 async fn test_ft_transfer_call_eth() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     let receiver_id = DEPOSITED_RECIPIENT.parse().unwrap();
-    contract.mint_tokens(&receiver_id, DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(&receiver_id, DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
 
     let balance = contract
         .get_eth_on_near_balance(&receiver_id)
@@ -169,7 +186,10 @@ async fn test_ft_transfer_call_eth() {
 #[tokio::test]
 async fn test_ft_transfer_call_without_message() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     assert_eq!(
         DEPOSITED_CONTRACT,
@@ -241,14 +261,20 @@ async fn test_ft_transfer_call_without_message() {
 #[tokio::test]
 async fn test_ft_transfer_call_user_message() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
     contract
         .set_and_check_access_right(contract.contract.id())
         .await
         .unwrap();
 
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(user_acc.id(), DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
 
     let receiver_id = contract.contract.id();
     let transfer_amount: U128 = 50.into();
@@ -288,7 +314,10 @@ async fn test_ft_transfer_call_user_message() {
 #[tokio::test]
 async fn test_ft_transfer_call_without_relayer() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     let balance = contract
         .get_eth_on_near_balance(contract.contract.id())
@@ -320,9 +349,7 @@ async fn test_ft_transfer_call_without_relayer() {
 
 #[tokio::test]
 async fn test_admin_controlled_only_admin_can_pause() {
-    let contract = TestContract::new_with_options( "owner.root")
-        .await
-        .unwrap();
+    let contract = TestContract::new_with_options("owner.root").await.unwrap();
     let owner_acc = contract.contract_account("owner").await.unwrap();
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
     let res = user_acc
@@ -345,7 +372,10 @@ async fn test_admin_controlled_only_admin_can_pause() {
 #[tokio::test]
 async fn test_ft_transfer_max_value() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     let transfer_amount: U128 = u128::MAX.into();
     let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
@@ -375,7 +405,10 @@ async fn test_ft_transfer_max_value() {
 #[tokio::test]
 async fn test_ft_transfer_empty_value() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     let transfer_amount = "";
     let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
@@ -396,7 +429,10 @@ async fn test_ft_transfer_empty_value() {
 #[tokio::test]
 async fn test_ft_transfer_wrong_u128_json_type() {
     let contract = TestContract::new().await.unwrap();
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
 
     let transfer_amount = 200;
     let receiver_id: AccountId = DEPOSITED_RECIPIENT.parse().unwrap();
@@ -418,9 +454,15 @@ async fn test_ft_transfer_wrong_u128_json_type() {
 async fn test_access_rights() {
     let contract = TestContract::new().await.unwrap();
 
-    contract.mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT).await.unwrap();
+    contract
+        .mint_tokens(contract.contract.id(), DEPOSITED_CONTRACT)
+        .await
+        .unwrap();
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(user_acc.id(), DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
 
     let transfer_amount1: U128 = 50.into();
     let receiver_id = contract.register_user("test.root").await.unwrap();
@@ -552,7 +594,10 @@ async fn test_engine_ft_transfer() {
     let contract = TestContract::new().await.unwrap();
 
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(user_acc.id(), DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
 
     let transfer_amount: U128 = 50.into();
     let receiver_id = contract.register_user("test.root").await.unwrap();
@@ -623,7 +668,10 @@ async fn test_engine_ft_transfer_call() {
     let contract = TestContract::new().await.unwrap();
 
     let user_acc = contract.contract_account("eth_recipient").await.unwrap();
-    contract.mint_tokens(user_acc.id(), DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(user_acc.id(), DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
 
     let receiver_id = contract.contract.id();
     let transfer_amount: U128 = 50.into();
@@ -870,7 +918,10 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
     let contract = TestContract::new().await.unwrap();
 
     let recipient_id = DEPOSITED_RECIPIENT.parse().unwrap();
-    contract.mint_tokens(&recipient_id, DEPOSITED_AMOUNT).await.unwrap();
+    contract
+        .mint_tokens(&recipient_id, DEPOSITED_AMOUNT)
+        .await
+        .unwrap();
 
     let balance = contract
         .get_eth_on_near_balance(&recipient_id)
