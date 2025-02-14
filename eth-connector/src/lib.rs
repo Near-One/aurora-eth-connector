@@ -556,7 +556,7 @@ impl Withdraw for EthConnectorContract {
             .with_static_gas(GAS_FINISH_WITHDRAW)
             .finish_withdraw_v2(
                 env::predecessor_account_id(),
-                amount.into(),
+                amount,
                 recipient_address.encode(),
             )
     }
@@ -581,7 +581,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
         ext_omni_bridge::ext(self.controller.clone())
             .with_static_gas(GAS_FINISH_WITHDRAW)
-            .finish_withdraw_v2(sender_id, amount.into(), recipient_address.encode())
+            .finish_withdraw_v2(sender_id, amount, recipient_address.encode())
     }
 }
 
