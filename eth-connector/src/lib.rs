@@ -585,6 +585,33 @@ impl EngineConnectorWithdraw for EthConnectorContract {
     }
 }
 
+#[cfg(feature = "migration_testnet")]
+use near_sdk::collections::LookupSet;
+
+#[cfg(feature = "migration_testnet")]
+#[derive(BorshDeserialize, BorshSerialize)]
+pub struct EthConnectorContractV0 {
+    connector: EthConnector,
+    ft: FungibleToken,
+    metadata: LazyOption<FungibleTokenMetadata>,
+    used_proofs: LookupSet<String>,
+    known_engine_accounts: LookupSet<AccountId>,
+}
+
+#[cfg(feature = "migration_testnet")]
+impl EthConnectorContract {
+    #[init(ignore_state)]
+    pub fn migrate_testnet(controller: AccountId, aurora_engine_account_id: AccountId) -> Self {
+        let old_state: EthConnectorContractV0 = env::state_read().expect("Contract isn't initialized");
+        EthConnectorContract {
+            controller,
+            ft: old_state.ft,
+            metadata: old_state.metadata,
+            aurora_engine_account_id
+        }
+    }
+}
+
 #[cfg(feature = "migration")]
 use crate::connector::{ext_engine_connector, ext_migrate};
 
