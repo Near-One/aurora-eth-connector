@@ -38,3 +38,4 @@ integration-test = ["log"]
 # Makefile.toml profiles to indicate basic features
 mainnet = ["log"]
 migration = ["log"]
+migration_testnet = ["log"]

@@ -13,8 +13,10 @@ docker run \
      -e RUSTFLAGS='-C link-arg=-s' \
      rust:latest \
      /bin/bash -c "rustup target add wasm32-unknown-unknown; cargo install --force cargo-make; \
-     cargo make --profile mainnet build; cargo make --profile mainnet build-migration"
+     cargo make --profile mainnet build; cargo make --profile mainnet build-migration; \
+     cargo make --profile mainnet build-migration-testnet"
 
 mkdir -p res
 cp $DIR/bin/aurora-eth-connector-mainnet.wasm $DIR/res/
 cp $DIR/bin/aurora-eth-connector-mainnet-migration.wasm $DIR/res/
+cp $DIR/bin/aurora-eth-connector-mainnet-migration-testnet.wasm $DIR/res/
