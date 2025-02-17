@@ -166,6 +166,12 @@ env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATUR
 category = "Build"
 run_task = "build-contract-flow"
 
+[tasks.build-migration-testnet]
+condition = { profiles = ["mainnet", "testnet", "localnet", "development", "custom"] }
+env = { "RUSTFLAGS" = "${RUSTC_FLAGS_BUILD}", "CARGO_FEATURES" = "${CARGO_FEATURES_BUILD_MIGRATION_TESTNET}", "WASM_FILE" = "${WASM_FILE_MIGRATION_TESTNET}", "RELEASE" = "--release", "TARGET_DIR" = "release" }
+category = "Build"
+run_task = "build-contract-flow"
+
 [tasks.test-workspace]
 condition = { profiles = ["mainnet", "testnet", "development", "custom"] }
 category = "Test"

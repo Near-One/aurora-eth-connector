@@ -589,6 +589,15 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 use near_sdk::collections::LookupSet;
 
 #[cfg(feature = "migration_testnet")]
+#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize)]
+pub struct EthConnector {
+    pub prover_account: AccountId,
+    pub eth_custodian_address: Address,
+    pub aurora_engine_account_id: AccountId,
+    pub min_proof_acceptance_height: u64,
+}
+
+#[cfg(feature = "migration_testnet")]
 #[derive(BorshDeserialize, BorshSerialize)]
 pub struct EthConnectorContractV0 {
     connector: EthConnector,
@@ -599,6 +608,7 @@ pub struct EthConnectorContractV0 {
 }
 
 #[cfg(feature = "migration_testnet")]
+#[near_bindgen]
 impl EthConnectorContract {
     #[init(ignore_state)]
     pub fn migrate_testnet(controller: AccountId, aurora_engine_account_id: AccountId) -> Self {
