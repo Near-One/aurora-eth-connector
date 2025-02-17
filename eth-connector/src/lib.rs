@@ -617,12 +617,13 @@ pub struct EthConnectorContractV0 {
 impl EthConnectorContract {
     #[init(ignore_state)]
     pub fn migrate_testnet(controller: AccountId, aurora_engine_account_id: AccountId) -> Self {
-        let old_state: EthConnectorContractV0 = env::state_read().expect("Contract isn't initialized");
+        let old_state: EthConnectorContractV0 =
+            env::state_read().expect("Contract isn't initialized");
         EthConnectorContract {
             controller,
             ft: old_state.ft,
             metadata: old_state.metadata,
-            aurora_engine_account_id
+            aurora_engine_account_id,
         }
     }
 }
