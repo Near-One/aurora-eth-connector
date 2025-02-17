@@ -237,6 +237,11 @@ impl EthConnectorContract {
         self.aurora_engine_account_id.clone()
     }
 
+    #[must_use]
+    pub fn get_controller(&self) -> AccountId {
+        self.controller.clone()
+    }
+
     #[payable]
     pub fn mint(
         &mut self,
