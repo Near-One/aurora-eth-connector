@@ -1,8 +1,5 @@
 use crate::log_entry::LogEntry;
-use aurora_engine_types::{
-    types::{address::error::AddressError, Address, Fee, NEP141Wei},
-    U256,
-};
+use aurora_engine_types::types::{address::error::AddressError, Address, Fee, NEP141Wei};
 use ethabi::{Event, EventParam, Hash, Log, ParamType, RawLog};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -18,8 +15,6 @@ pub type EventParams = Vec<EventParam>;
 #[derive(BorshSerialize, BorshDeserialize)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
 pub struct FtTransferMessageData {
-    pub relayer: AccountId,
-    pub fee: Fee,
     pub recipient: Address,
 }
 
@@ -33,58 +28,17 @@ impl FtTransferMessageData {
     pub fn parse_on_transfer_message(
         message: &str,
     ) -> Result<Self, error::ParseOnTransferMessageError> {
-        // Split message by separator
-        let data: Vec<_> = message.split(':').collect();
-        // Message data array should contain 2 elements
-        if data.len() != 2 {
-            return Err(error::ParseOnTransferMessageError::TooManyParts);
-        }
-        // Check relayer account id from 1-th data element
-        let account_id = data[0]
-            .parse()
-            .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
-
-        // Decode message array from 2-th element of data array
-        let msg =
-            hex::decode(data[1]).map_err(|_| error::ParseOnTransferMessageError::InvalidHexData)?;
-        // Length = fee[32] + eth_address[20] bytes
-        if msg.len() != 52 {
-            return Err(error::ParseOnTransferMessageError::WrongMessageFormat);
-        }
-
-        // Parse fee from message slice. It should contain 32 bytes
-        // But after that in will be parse to u128
-        // That logic for compatability.
-        let mut raw_fee: [u8; 32] = Default::default();
-        raw_fee.copy_from_slice(&msg[..32]);
-        let fee_u128: u128 = U256::from_little_endian(&raw_fee)
-            .try_into()
-            .map_err(|_| error::ParseOnTransferMessageError::OverflowNumber)?;
-        let fee: Fee = fee_u128.into();
-
         // Get recipient Eth address from message slice
-        let recipient = Address::try_from_slice(&msg[32..52])
+        let recipient = Address::decode(message)
             .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
 
-        Ok(Self {
-            relayer: account_id,
-            recipient,
-            fee,
-        })
+        Ok(Self { recipient })
     }
 
     /// Encode to String with specific rules.
     #[must_use]
     pub fn encode(&self) -> String {
-        // The first data section should contain fee data.
-        // Pay attention, that for compatibility reasons we used U256 type
-        // it means 32 bytes for fee data
-        let mut data = [0; 52];
-        U256::from(self.fee.as_u128()).to_little_endian(&mut data[..32]);
-        // Second data section should contain Eth address
-        data[32..].copy_from_slice(self.recipient.as_bytes());
-        // Add `:` separator between relayer_id and data message
-        [self.relayer.as_ref(), &hex::encode(data)].join(":")
+        self.recipient.encode()
     }
 
     /// Prepare message for `ft_transfer_call` -> `ft_on_transfer`
@@ -93,8 +47,6 @@ impl FtTransferMessageData {
     ///
     /// Will return an error if the `recipient` has wrong format of `Address`.
     pub fn prepare_message_for_on_transfer(
-        relayer_account_id: &AccountId,
-        fee: Fee,
         recipient: String,
     ) -> Result<Self, error::ParseEventMessageError> {
         // Check message length.
@@ -112,9 +64,7 @@ impl FtTransferMessageData {
             .map_err(error::ParseEventMessageError::EthAddressValidationError)?;
 
         Ok(Self {
-            relayer: relayer_account_id.clone(),
             recipient: recipient_address,
-            fee,
         })
     }
 }
@@ -163,11 +113,7 @@ impl TokenMessageData {
             Ok(Self::Near(account_id))
         } else {
             let raw_message = data[1].into();
-            let message = FtTransferMessageData::prepare_message_for_on_transfer(
-                &account_id,
-                fee,
-                raw_message,
-            )?;
+            let message = FtTransferMessageData::prepare_message_for_on_transfer(raw_message)?;
 
             Ok(Self::Eth {
                 receiver_id: account_id,
