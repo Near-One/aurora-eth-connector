@@ -1,5 +1,5 @@
 use crate::log_entry::LogEntry;
-use aurora_engine_types::types::{address::error::AddressError, Address, Fee, NEP141Wei};
+use aurora_engine_types::types::{address::error::AddressError, Address};
 use ethabi::{Event, EventParam, Hash, Log, ParamType, RawLog};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
@@ -97,7 +97,6 @@ impl TokenMessageData {
     /// Will return an error if the message has wrong format.
     pub fn parse_event_message_and_prepare_token_message_data(
         message: &str,
-        fee: Fee,
     ) -> Result<Self, error::ParseEventMessageError> {
         let data: Vec<_> = message.split(':').collect();
         // Data array can contain 1 or 2 elements
@@ -239,19 +238,10 @@ impl DepositedEvent {
             .ok_or(error::ParseError::InvalidAmount)?
             .try_into()
             .map_err(|_| error::ParseError::OverflowNumber)?;
-        let fee = event.log.params[3]
-            .value
-            .clone()
-            .into_uint()
-            .ok_or(error::ParseError::InvalidFee)?
-            .try_into()
-            .map(|v| Fee::new(NEP141Wei::new(v)))
-            .map_err(|_| error::ParseError::OverflowNumber)?;
 
         let token_message_data =
             TokenMessageData::parse_event_message_and_prepare_token_message_data(
                 &event_message_data,
-                fee,
             )?;
 
         Ok(Self {
