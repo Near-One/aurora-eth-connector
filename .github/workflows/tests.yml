@@ -19,13 +19,10 @@ jobs:
       - name: Install sandbox
         run: |
           if [[ ! -f ${{ env.NEAR_SANDBOX_BIN_PATH }} ]]; then
-            rm -rf nearcore
-            git clone --depth 1 --branch 1.35.0 https://github.com/near/nearcore
-            cd nearcore
-            make sandbox-release
-            cp target/release/near-sandbox ${{ env.NEAR_SANDBOX_BIN_PATH }}          
-            cd ../
-            rm -rf nearcore
+            wget https://s3-us-west-1.amazonaws.com/build.nearprotocol.com/nearcore/Linux-x86_64/2.5.1/near-sandbox.tar.gz
+            tar -xzf near-sandbox.tar.gz
+            cp Linux-x86_64/near-sandbox ${{ env.NEAR_SANDBOX_BIN_PATH }}  
+            rm -r Linux-x86_64
           fi
       - name: Test mainnet
         run: cargo make --profile mainnet test
