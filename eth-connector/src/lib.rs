@@ -7,7 +7,6 @@ use crate::connector::{
 use crate::deposit_event::FtTransferMessageData;
 use crate::types::SdkUnwrap;
 use aurora_engine_types::types::Address;
-use aurora_engine_types::HashMap;
 use connector::ext_omni_bridge;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
@@ -615,11 +614,15 @@ pub struct EthConnectorContractV0 {
 #[cfg(feature = "migration_testnet")]
 #[near_bindgen]
 impl EthConnectorContract {
+    /// # Panics
+    ///
+    /// Panics in case of an incorrect contract state.
     #[init(ignore_state)]
+    #[must_use]
     pub fn migrate_testnet(controller: AccountId, aurora_engine_account_id: AccountId) -> Self {
         let old_state: EthConnectorContractV0 =
             env::state_read().expect("Contract isn't initialized");
-        EthConnectorContract {
+        Self {
             controller,
             ft: old_state.ft,
             metadata: old_state.metadata,
@@ -633,6 +636,9 @@ use crate::connector::{ext_engine_connector, ext_migrate};
 
 #[cfg(feature = "migration")]
 use crate::migration::{CheckResult, InputData, Migration};
+
+#[cfg(feature = "migration")]
+use aurora_engine_types::HashMap;
 
 #[cfg(feature = "migration")]
 #[near_bindgen]
