@@ -1,6 +1,5 @@
 use crate::utils::{
-    TestContract, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT,
-    DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
+    TestContract, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT, DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
 };
 use aurora_workspace_utils::ContractId;
 use near_sdk::json_types::U128;
