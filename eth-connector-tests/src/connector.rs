@@ -1,10 +1,8 @@
 use crate::utils::{
-    str_to_address, TestContract, CONTRACT_ACC, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT,
+    TestContract, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT,
     DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
 };
-use aurora_engine_types::U256;
 use aurora_workspace_utils::ContractId;
-use byte_slice_cast::AsByteSlice;
 use near_sdk::json_types::U128;
 use near_workspaces::types::NearToken;
 use near_workspaces::AccountId;
@@ -153,8 +151,7 @@ async fn test_ft_transfer_call_eth() {
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
 
     let transfer_amount: U128 = 50.into();
-    let fee: u128 = 30;
-    let message = create_message(CONTRACT_ACC, RECIPIENT_ETH_ADDRESS, fee);
+    let message = RECIPIENT_ETH_ADDRESS.to_string();
     let memo: Option<String> = None;
     let res = contract
         .contract
@@ -217,7 +214,7 @@ async fn test_ft_transfer_call_without_message() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+        assert!(contract.check_error_message(&err, "ERR_INVALID_ACCOUNT_ID"));
     }
 
     // Assert balances remain unchanged
@@ -294,7 +291,7 @@ async fn test_ft_transfer_call_user_message() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT"));
+        assert!(contract.check_error_message(&err, "ERR_INVALID_ACCOUNT_ID"));
     }
     let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
@@ -326,8 +323,7 @@ async fn test_ft_transfer_call_without_relayer() {
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
 
     let transfer_amount: U128 = 50.into();
-    let fee: u128 = 30;
-    let message = create_message("relayer.root", RECIPIENT_ETH_ADDRESS, fee);
+    let message = RECIPIENT_ETH_ADDRESS.to_string();
     let memo: Option<String> = None;
     let res = contract
         .contract
@@ -675,8 +671,7 @@ async fn test_engine_ft_transfer_call() {
 
     let receiver_id = contract.contract.id();
     let transfer_amount: U128 = 50.into();
-    let fee: u128 = 30;
-    let message = create_message(CONTRACT_ACC, RECIPIENT_ETH_ADDRESS, fee);
+    let message = RECIPIENT_ETH_ADDRESS.to_string();
     let memo: Option<String> = Some("some memo".to_string());
 
     let res = user_acc
@@ -935,8 +930,7 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
         .unwrap();
     assert_eq!(balance.0, 0);
 
-    let fee: u128 = 0;
-    let message = create_message(CONTRACT_ACC, RECIPIENT_ETH_ADDRESS, fee);
+    let message = RECIPIENT_ETH_ADDRESS.to_string();
     let memo: Option<String> = Some("some memp".to_string());
 
     let transfer_amount: U128 = 1.into();
@@ -979,14 +973,4 @@ async fn test_ft_transfer_call_insufficient_sender_balance() {
         .await
         .unwrap();
     assert_eq!(balance.0, 0);
-}
-
-fn create_message(account_id: &str, address: &str, fee: u128) -> String {
-    let msg = [
-        U256::from(fee).as_byte_slice(),
-        str_to_address(address).as_bytes(),
-    ]
-    .concat();
-
-    [account_id, hex::encode(msg).as_str()].join(":")
 }
