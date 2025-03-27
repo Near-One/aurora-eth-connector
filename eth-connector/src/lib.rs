@@ -7,6 +7,8 @@ use crate::connector::{
 use crate::deposit_event::FtTransferMessageData;
 use crate::types::SdkUnwrap;
 use aurora_engine_types::types::Address;
+#[cfg(any(feature = "integration-test", feature = "migration"))]
+use aurora_engine_types::HashMap;
 use connector::ext_omni_bridge;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
@@ -636,9 +638,6 @@ use crate::connector::{ext_engine_connector, ext_migrate};
 
 #[cfg(feature = "migration")]
 use crate::migration::{CheckResult, InputData, Migration};
-
-#[cfg(feature = "migration")]
-use aurora_engine_types::HashMap;
 
 #[cfg(feature = "migration")]
 #[near_bindgen]
