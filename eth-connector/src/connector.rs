@@ -1,7 +1,7 @@
 use aurora_engine_types::types::{Address, NEP141Wei};
 use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::{
-    borsh, ext_contract, json_types::U128, AccountId, Balance, Promise, PromiseOrValue,
+    ext_contract, json_types::U128, AccountId, Promise, PromiseOrValue, NearToken
 };
 
 #[ext_contract(ext_withdraw)]
@@ -9,7 +9,7 @@ pub trait Withdraw {
     fn withdraw(
         &mut self,
         #[serializer(borsh)] recipient_address: Address,
-        #[serializer(borsh)] amount: Balance,
+        #[serializer(borsh)] amount: NearToken,
     ) -> Promise;
 }
 
@@ -30,7 +30,7 @@ pub trait EngineConnectorWithdraw {
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
         #[serializer(borsh)] recipient_address: Address,
-        #[serializer(borsh)] amount: Balance,
+        #[serializer(borsh)] amount: NearToken,
     ) -> Promise;
 }
 
@@ -61,7 +61,7 @@ pub trait EngineConnector {
     fn ft_balances_of(
         &mut self,
         #[serializer(borsh)] accounts: Vec<AccountId>,
-    ) -> std::collections::HashMap<AccountId, Balance>;
+    ) -> std::collections::HashMap<AccountId, u128>;
 }
 
 #[ext_contract(ext_omni_bridge)]
@@ -69,7 +69,7 @@ pub trait OmniBridge {
     fn finish_withdraw_v2(
         &self,
         #[serializer(borsh)] sender_id: AccountId,
-        #[serializer(borsh)] amount: Balance,
+        #[serializer(borsh)] amount: NearToken,
         #[serializer(borsh)] recipient: String,
     );
 }
