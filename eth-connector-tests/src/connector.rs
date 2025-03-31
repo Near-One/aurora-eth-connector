@@ -6,7 +6,7 @@ use near_sdk::json_types::U128;
 use near_workspaces::types::NearToken;
 use near_workspaces::AccountId;
 
-const ONE_YOCTO: NearToken = NearToken::from_yoctonear(near_sdk::ONE_YOCTO);
+const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
 
 #[tokio::test]
 async fn test_ft_transfer() {
@@ -545,14 +545,14 @@ async fn test_storage_deposit() {
         .contract
         .storage_deposit(Some(user_acc.id()), None)
         .max_gas()
-        .deposit(NearToken::from_yoctonear(bounds.min.0))
+        .deposit(bounds.min)
         .transact()
         .await
         .unwrap();
     assert!(res.is_success());
     let balance = res.into_value();
-    assert_eq!(balance.available.0, 0);
-    assert!(balance.total.0 >= bounds.min.0);
+    assert_eq!(balance.available, NearToken::from_yoctonear(0));
+    assert!(balance.total >= bounds.min);
 
     let balance = contract
         .contract
@@ -560,8 +560,8 @@ async fn test_storage_deposit() {
         .await
         .unwrap()
         .result;
-    assert_eq!(balance.available.0, 0);
-    assert!(balance.total.0 >= bounds.min.0);
+    assert_eq!(balance.available, NearToken::from_yoctonear(0));
+    assert!(balance.total >= bounds.min);
 }
 
 #[tokio::test]
@@ -748,7 +748,7 @@ async fn test_engine_storage_deposit() {
     let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(NearToken::from_yoctonear(bounds.min.0))
+        .deposit(bounds.min)
         .transact()
         .await;
     if let Err(err) = res {
@@ -763,14 +763,14 @@ async fn test_engine_storage_deposit() {
     let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(NearToken::from_yoctonear(bounds.min.0))
+        .deposit(bounds.min)
         .transact()
         .await
         .unwrap();
     assert!(res.is_success());
     let balance = res.into_value();
-    assert_eq!(balance.available.0, 0);
-    assert!(balance.total.0 >= bounds.min.0);
+    assert_eq!(balance.available, NearToken::from_yoctonear(0));
+    assert!(balance.total >= bounds.min);
 
     let balance = contract
         .contract
@@ -778,8 +778,8 @@ async fn test_engine_storage_deposit() {
         .await
         .unwrap()
         .result;
-    assert_eq!(balance.available.0, 0);
-    assert!(balance.total.0 >= bounds.min.0);
+    assert_eq!(balance.available, NearToken::from_yoctonear(0));
+    assert!(balance.total >= bounds.min);
 }
 
 #[tokio::test]
@@ -814,7 +814,7 @@ async fn test_engine_storage_withdraw() {
     let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(NearToken::from_yoctonear(bounds.min.0))
+        .deposit(bounds.min)
         .transact()
         .await
         .unwrap();
@@ -865,7 +865,7 @@ async fn test_engine_storage_unregister() {
     let res = user_acc
         .engine_storage_deposit(user_acc.id(), Some(user_acc.id()), None)
         .max_gas()
-        .deposit(NearToken::from_yoctonear(bounds.min.0))
+        .deposit(bounds.min)
         .transact()
         .await
         .unwrap();

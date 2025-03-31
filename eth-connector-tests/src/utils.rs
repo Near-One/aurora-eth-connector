@@ -18,7 +18,7 @@ pub const DEPOSITED_EVM_FEE: u128 = 200;
 pub const DEPOSITED_EVM_AMOUNT: u128 = 10200;
 pub const CONTRACT_ACC: &str = "eth_connector.root";
 
-const ONE_YOCTO: NearToken = NearToken::from_yoctonear(near_sdk::ONE_YOCTO);
+const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
 
 pub struct TestContract {
     pub contract: EthConnectorContract,
@@ -114,16 +114,6 @@ impl TestContract {
         format!("{:?}", res.to_string()).contains(error_msg)
     }
 
-    pub async fn call_is_used_proof(&self, proof_str: &str) -> anyhow::Result<bool> {
-        let proof = self.get_proof(proof_str);
-        Ok(self
-            .contract
-            .is_used_proof(proof)
-            .await
-            .expect("call_is_used_proof")
-            .result)
-    }
-
     pub async fn get_eth_on_near_balance(&self, account: &AccountId) -> anyhow::Result<U128> {
         Ok(self
             .contract
@@ -162,7 +152,7 @@ impl TestContract {
             .contract
             .storage_deposit(Some(&account_id.clone()), None)
             .max_gas()
-            .deposit(NearToken::from_yoctonear(bounds.min.into()))
+            .deposit(bounds.min)
             .transact()
             .await?;
         assert!(res.is_success());

@@ -150,7 +150,7 @@ impl EthConnectorContract {
             .unwrap_or_else(|| env::panic_str("Prepaid gas overflow"));
         // Initiating receiver's call and the callback
         ext_ft_receiver::ext(receiver_id.clone())
-            .with_static_gas(receiver_gas.into())
+            .with_static_gas(receiver_gas)
             .ft_on_transfer(sender_id.clone(), amount.into(), msg)
             .then(
                 ext_ft_resolver::ext(env::current_account_id())
@@ -180,6 +180,7 @@ impl EthConnectorContract {
 impl EthConnectorContract {
     #[init]
     #[must_use]
+    #[allow(clippy::use_self)]
     pub fn new(
         metadata: &FungibleTokenMetadata,
         aurora_engine_account_id: AccountId,
@@ -266,7 +267,7 @@ impl EthConnectorContract {
     pub fn burn(&mut self, amount: U128) {
         self.assert_controller();
         self.ft
-            .internal_withdraw(&env::predecessor_account_id(), amount.0.into());
+            .internal_withdraw(&env::predecessor_account_id(), amount.0);
     }
 }
 
@@ -532,7 +533,7 @@ impl StorageManagement for EthConnectorContract {
 #[near_bindgen]
 impl FungibleTokenMetadataProvider for EthConnectorContract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
-        self.metadata.get().map_or(FungibleTokenMetadata {
+        self.metadata.get().map_or_else(|| FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
             name: "Ether".to_string(),
             symbol: "ETH".to_string(),
@@ -622,6 +623,7 @@ impl EthConnectorContract {
     /// Panics in case of an incorrect contract state.
     #[init(ignore_state)]
     #[must_use]
+    #[allow(clippy::use_self)]
     pub fn migrate_testnet(controller: AccountId, aurora_engine_account_id: AccountId) -> Self {
         let old_state: EthConnectorContractV0 =
             env::state_read().expect("Contract isn't initialized");
@@ -735,8 +737,8 @@ mod tests {
         let storage_balance = contract
             .storage_balance_of(contract.acl_get_grantees("DAO".to_string(), 0, 1)[0].clone())
             .unwrap();
-        assert_eq!(storage_balance.total.0, 0);
-        assert_eq!(storage_balance.available.0, 0);
+        assert_eq!(storage_balance.total.as_yoctonear(), 0);
+        assert_eq!(storage_balance.available.as_yoctonear(), 0);
     }
 
     fn create_contract() -> EthConnectorContract {
