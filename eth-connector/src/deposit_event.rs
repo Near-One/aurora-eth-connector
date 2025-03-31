@@ -1,7 +1,10 @@
 use crate::log_entry::LogEntry;
 use aurora_engine_types::types::{address::error::AddressError, Address};
 use ethabi::{Event, EventParam, Hash, Log, ParamType, RawLog};
-use near_sdk::{borsh::{self, BorshDeserialize, BorshSerialize}, AccountId};
+use near_sdk::{
+    borsh::{self, BorshDeserialize, BorshSerialize},
+    AccountId,
+};
 
 pub const DEPOSITED_EVENT: &str = "Deposited";
 

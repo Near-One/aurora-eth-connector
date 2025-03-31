@@ -24,14 +24,13 @@ use near_plugins::{
     Upgradable,
 };
 use near_sdk::{
-    near,
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
     json_types::U128,
-    near_bindgen, NearToken, require, AccountId, BorshStorageKey, Gas, PanicOnDefault, Promise,
-    PromiseOrValue,
+    near, near_bindgen, require, AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault,
+    Promise, PromiseOrValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -253,7 +252,10 @@ impl EthConnectorContract {
         self.assert_controller();
         self.register_if_not_exists(&account_id);
         if let Some(msg) = msg {
-            self.mint_eth_on_near(&env::predecessor_account_id(), NearToken::from_yoctonear(amount.0));
+            self.mint_eth_on_near(
+                &env::predecessor_account_id(),
+                NearToken::from_yoctonear(amount.0),
+            );
             self.ft_transfer_call(account_id, amount, None, msg)
         } else {
             self.mint_eth_on_near(&account_id, NearToken::from_yoctonear(amount.0));
