@@ -1,40 +1,14 @@
-use crate::{connector_impl::FinishDepositCallArgs, Proof, VerifyProofArgs, WithdrawResult};
-use aurora_engine_types::types::{Address, NEP141Wei};
+use aurora_engine_types::types::NEP141Wei;
 use near_contract_standards::storage_management::StorageBalance;
-use near_sdk::{
-    borsh, ext_contract, json_types::U128, AccountId, Balance, Promise, PromiseOrValue,
-};
-
-#[ext_contract(ext_deposit)]
-pub trait Deposit {
-    fn deposit(&mut self, #[serializer(borsh)] raw_proof: Proof) -> Promise;
-}
+use near_sdk::{ext_contract, json_types::U128, AccountId, NearToken, Promise, PromiseOrValue};
 
 #[ext_contract(ext_withdraw)]
 pub trait Withdraw {
-    #[result_serializer(borsh)]
     fn withdraw(
         &mut self,
-        #[serializer(borsh)] recipient_address: Address,
-        #[serializer(borsh)] amount: Balance,
-    ) -> WithdrawResult;
-}
-
-#[ext_contract(ext_funds_finish)]
-pub trait FundsFinish {
-    fn finish_deposit(
-        &mut self,
-        #[serializer(borsh)] deposit_call: FinishDepositCallArgs,
-        #[callback_unwrap]
-        #[serializer(borsh)]
-        verify_log_result: bool,
-    ) -> PromiseOrValue<Option<U128>>;
-}
-
-#[ext_contract(ext_proof_verifier)]
-pub trait ProofVerifier {
-    #[result_serializer(borsh)]
-    fn verify_log_entry_in_bound(&self, #[serializer(borsh)] args: VerifyProofArgs) -> bool;
+        #[serializer(borsh)] recipient_address: [u8; 20],
+        #[serializer(borsh)] amount: NearToken,
+    ) -> Promise;
 }
 
 #[ext_contract(ext_migrate)]
@@ -50,13 +24,12 @@ pub trait Migrate {
 /// Withdraw method for legacy implementation in Engine
 #[ext_contract(ext_engine_withdraw)]
 pub trait EngineConnectorWithdraw {
-    #[result_serializer(borsh)]
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
-        #[serializer(borsh)] recipient_address: Address,
-        #[serializer(borsh)] amount: Balance,
-    ) -> WithdrawResult;
+        #[serializer(borsh)] recipient_address: [u8; 20],
+        #[serializer(borsh)] amount: NearToken,
+    ) -> Promise;
 }
 
 /// Engin compatible methods for NEP-141
@@ -86,7 +59,17 @@ pub trait EngineConnector {
     fn ft_balances_of(
         &mut self,
         #[serializer(borsh)] accounts: Vec<AccountId>,
-    ) -> std::collections::HashMap<AccountId, Balance>;
+    ) -> std::collections::HashMap<AccountId, u128>;
+}
+
+#[ext_contract(ext_omni_bridge)]
+pub trait OmniBridge {
+    fn finish_withdraw_v2(
+        &self,
+        #[serializer(borsh)] sender_id: AccountId,
+        #[serializer(borsh)] amount: NearToken,
+        #[serializer(borsh)] recipient: String,
+    );
 }
 
 /// Engin compatible methods for NEP-141
@@ -106,13 +89,4 @@ pub trait EngineStorageManagement {
     ) -> StorageBalance;
 
     fn engine_storage_unregister(&mut self, sender_id: AccountId, force: Option<bool>) -> bool;
-}
-
-#[ext_contract(ext_known_engine_accounts)]
-pub trait KnownEngineAccountsManagement {
-    fn set_engine_account(&mut self, engine_account: &AccountId);
-
-    fn remove_engine_account(&mut self, engine_account: &AccountId);
-
-    fn is_engine_account_exist(&self, engine_account: &AccountId) -> bool;
 }
