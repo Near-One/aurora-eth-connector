@@ -14,14 +14,6 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v4
-      - name: Install sandbox
-        run: |
-          if [[ ! -f ${{ env.NEAR_SANDBOX_BIN_PATH }} ]]; then
-            wget https://s3-us-west-1.amazonaws.com/build.nearprotocol.com/nearcore/Linux-x86_64/2.5.1/near-sandbox.tar.gz
-            tar -xzf near-sandbox.tar.gz
-            cp Linux-x86_64/near-sandbox ${{ env.NEAR_SANDBOX_BIN_PATH }}  
-            rm -r Linux-x86_64
-          fi
       - name: Test mainnet
         run: make test
 
@@ -33,7 +25,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build  
-        run: ./build.sh
+        run: make build
+      - name: Build migration contract
+        run: make build-migration 
 
       - name: Diff
         run: |
