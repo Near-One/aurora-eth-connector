@@ -29,7 +29,7 @@ jobs:
       - name: Archive built WASM files
         run: |
           mkdir -p artifacts
-          find ./target/near/aurora_eth_connector -name "*.wasm" -exec cp {} artifacts/ \;
+          find ./bin -name "*.wasm" -exec cp {} artifacts/ \;
           zip -j contract.zip artifacts/*
         shell: bash
 
