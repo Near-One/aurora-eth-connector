@@ -5,6 +5,7 @@ MANIFEST := $(MAKEFILE_DIR)/eth-connector/Cargo.toml
 
 build-migration:
 	cargo near build non-reproducible-wasm --manifest-path $(MANIFEST) --out-dir $(OUT_DIR) --features migration
+	mv $(OUT_DIR)/aurora_eth_connector.wasm $(OUT_DIR)/aurora_eth_connector_migration.wasm
 
 build:
 	cargo near build reproducible-wasm --manifest-path $(MANIFEST) --out-dir $(OUT_DIR)
