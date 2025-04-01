@@ -26,3 +26,5 @@ node_modules/*
 cache
 
 neardev/
+res/aurora_eth_connector_abi.json
+res/aurora_eth_connector_abi.zst
