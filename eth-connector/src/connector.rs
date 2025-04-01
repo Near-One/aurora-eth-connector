@@ -1,4 +1,4 @@
-use aurora_engine_types::types::{Address, NEP141Wei};
+use aurora_engine_types::types::NEP141Wei;
 use near_contract_standards::storage_management::StorageBalance;
 use near_sdk::{ext_contract, json_types::U128, AccountId, NearToken, Promise, PromiseOrValue};
 
@@ -6,7 +6,7 @@ use near_sdk::{ext_contract, json_types::U128, AccountId, NearToken, Promise, Pr
 pub trait Withdraw {
     fn withdraw(
         &mut self,
-        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] recipient_address: [u8; 20],
         #[serializer(borsh)] amount: NearToken,
     ) -> Promise;
 }
@@ -27,7 +27,7 @@ pub trait EngineConnectorWithdraw {
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
-        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] recipient_address: [u8; 20],
         #[serializer(borsh)] amount: NearToken,
     ) -> Promise;
 }

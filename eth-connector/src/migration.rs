@@ -1,14 +1,15 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::near;
 use near_sdk::{ext_contract, AccountId, Promise, StorageUsage};
 use std::collections::HashMap;
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[near(serializers = [borsh])]
 pub struct InputData {
     pub accounts: HashMap<AccountId, u128>,
     pub total_supply: Option<u128>,
 }
 
-#[derive(Debug, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
+#[near(serializers = [borsh])]
+#[derive(Debug, Eq, PartialEq)]
 pub enum CheckResult {
     Success,
     AccountNotExist(Vec<AccountId>),
