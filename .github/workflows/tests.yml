@@ -21,6 +21,11 @@ jobs:
     name: Build and diff
     runs-on: ubuntu-latest
     steps:
+      - name: Install Cargo Near
+        uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-near
+
       - name: Clone the repository
         uses: actions/checkout@v4
 

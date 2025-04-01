@@ -218,10 +218,10 @@ impl EthConnectorContract {
     pub fn ft_balances_of(
         &self,
         #[serializer(borsh)] accounts: Vec<AccountId>,
-    ) -> HashMap<AccountId, aurora_engine_types::types::NEP141Wei> {
-        let mut balances = HashMap::new();
+    ) -> std::collections::HashMap<AccountId, U128> {
+        let mut balances = std::collections::HashMap::new();
         for account_id in accounts {
-            balances.insert(account_id, aurora_engine_types::types::NEP141Wei::new(10));
+            balances.insert(account_id, U128(10));
         }
         balances
     }
@@ -551,7 +551,7 @@ impl Withdraw for EthConnectorContract {
     #[pause(except(roles(Role::DAO)))]
     fn withdraw(
         &mut self,
-        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] recipient_address: [u8; 20],
         #[serializer(borsh)] amount: NearToken,
     ) -> Promise {
         assert_one_yocto();
@@ -565,7 +565,7 @@ impl Withdraw for EthConnectorContract {
             .finish_withdraw_v2(
                 env::predecessor_account_id(),
                 amount,
-                recipient_address.encode(),
+                Address::from_array(recipient_address).encode(),
             )
     }
 }
@@ -577,7 +577,7 @@ impl EngineConnectorWithdraw for EthConnectorContract {
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
-        #[serializer(borsh)] recipient_address: Address,
+        #[serializer(borsh)] recipient_address: [u8; 20],
         #[serializer(borsh)] amount: NearToken,
     ) -> Promise {
         self.assert_aurora_engine_access_right();
@@ -589,50 +589,11 @@ impl EngineConnectorWithdraw for EthConnectorContract {
 
         ext_omni_bridge::ext(self.controller.clone())
             .with_static_gas(GAS_FINISH_WITHDRAW)
-            .finish_withdraw_v2(sender_id, amount, recipient_address.encode())
-    }
-}
-
-#[cfg(feature = "migration_testnet")]
-use near_sdk::collections::LookupSet;
-
-#[cfg(feature = "migration_testnet")]
-#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize)]
-pub struct EthConnector {
-    pub prover_account: AccountId,
-    pub eth_custodian_address: Address,
-    pub aurora_engine_account_id: AccountId,
-    pub min_proof_acceptance_height: u64,
-}
-
-#[cfg(feature = "migration_testnet")]
-#[derive(BorshDeserialize, BorshSerialize)]
-pub struct EthConnectorContractV0 {
-    connector: EthConnector,
-    ft: FungibleToken,
-    metadata: LazyOption<FungibleTokenMetadata>,
-    used_proofs: LookupSet<String>,
-    known_engine_accounts: LookupSet<AccountId>,
-}
-
-#[cfg(feature = "migration_testnet")]
-#[near_bindgen]
-impl EthConnectorContract {
-    /// # Panics
-    ///
-    /// Panics in case of an incorrect contract state.
-    #[init(ignore_state)]
-    #[must_use]
-    #[allow(clippy::use_self)]
-    pub fn migrate_testnet(controller: AccountId, aurora_engine_account_id: AccountId) -> Self {
-        let old_state: EthConnectorContractV0 =
-            env::state_read().expect("Contract isn't initialized");
-        Self {
-            controller,
-            ft: old_state.ft,
-            metadata: old_state.metadata,
-            aurora_engine_account_id,
-        }
+            .finish_withdraw_v2(
+                sender_id,
+                amount,
+                Address::from_array(recipient_address).encode(),
+            )
     }
 }
 
