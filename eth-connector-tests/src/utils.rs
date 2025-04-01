@@ -37,7 +37,7 @@ pub static CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
         ),
         no_abi: true,
         no_locked: true,
-        features: Some("mainnet,integration-test,migration".to_owned()),
+        features: Some("integration-test,migration".to_owned()),
         ..Default::default()
     })
     .unwrap();
