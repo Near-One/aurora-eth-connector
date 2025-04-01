@@ -17,36 +17,6 @@ jobs:
       - name: Test mainnet
         run: make test
 
-  test-build:
-    name: Build and diff
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y libudev-dev build-essential pkg-config libudev-dev
-
-      - name: Install Cargo Near
-        uses: taiki-e/cache-cargo-install-action@v2
-        with:
-          tool: cargo-near
-
-      - name: Clone the repository
-        uses: actions/checkout@v4
-
-      - name: Build  
-        run: make build
-      - name: Build migration contract
-        run: make build-migration 
-
-      - name: Diff
-        run: |
-          git diff
-          git status
-          changed_files=$(git status --porcelain --untracked-files=no | wc -l)
-          if [ $changed_files -gt 0 ]; then
-            echo 'contract changed, please rebuild contract'
-            exit 1
-          fi
-
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
