@@ -7,7 +7,7 @@ const INVALID_UTF8_ERR_STRING: &str = "INVALID_UTF8_ERR_STRING";
 macro_rules! log {
     ($($args:tt)*) => {
         #[cfg(feature = "log")]
-        near_sdk::log!(&aurora_engine_types::format!("{}", format_args!($($args)*)))
+        near_sdk::log!("{}", format_args!($($args)*))
     };
 }
 

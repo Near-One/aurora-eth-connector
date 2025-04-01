@@ -14,40 +14,9 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v4
-      - name: Install cargo-make
-        run: cargo make -V || cargo install cargo-make
-      - name: Install sandbox
-        run: |
-          if [[ ! -f ${{ env.NEAR_SANDBOX_BIN_PATH }} ]]; then
-            wget https://s3-us-west-1.amazonaws.com/build.nearprotocol.com/nearcore/Linux-x86_64/2.5.1/near-sandbox.tar.gz
-            tar -xzf near-sandbox.tar.gz
-            cp Linux-x86_64/near-sandbox ${{ env.NEAR_SANDBOX_BIN_PATH }}  
-            rm -r Linux-x86_64
-          fi
       - name: Test mainnet
-        run: cargo make --profile mainnet test
-
-  test-build:
-    name: Build and diff
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone the repository
-        uses: actions/checkout@v4
-
-      - name: Build  
-        run: ./build.sh
-
-      - name: Diff
-        run: |
-          git diff
-          git status
-          changed_files=$(git status --porcelain --untracked-files=no | wc -l)
-          if [ $changed_files -gt 0 ]; then
-            echo 'contract changed, please rebuild contract'
-            exit 1
-          fi
+        run: make test
 
 env:
-  NEAR_SANDBOX_BIN_PATH: /usr/local/bin/near-sandbox
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0

@@ -1,6 +1,5 @@
 #![deny(clippy::pedantic, clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
-
 use crate::connector::{
     EngineConnectorWithdraw, EngineFungibleToken, EngineStorageManagement, Withdraw,
 };
@@ -30,8 +29,8 @@ use near_sdk::{
     collections::LazyOption,
     env,
     json_types::U128,
-    near_bindgen, require, AccountId, Balance, BorshStorageKey, Gas, PanicOnDefault, Promise,
-    PromiseOrValue,
+    near, near_bindgen, require, AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault,
+    Promise, PromiseOrValue,
 };
 use serde::{Deserialize, Serialize};
 
@@ -42,11 +41,12 @@ pub mod log_entry;
 pub mod migration;
 pub mod types;
 
-const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5 * Gas::ONE_TERA.0);
-const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas(25 * Gas::ONE_TERA.0 + GAS_FOR_RESOLVE_TRANSFER.0);
-const GAS_FINISH_WITHDRAW: Gas = Gas(5 * Gas::ONE_TERA.0);
+const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas::from_tgas(5);
+const GAS_FOR_FT_TRANSFER_CALL: Gas = Gas::from_tgas(25).saturating_add(GAS_FOR_RESOLVE_TRANSFER);
+const GAS_FINISH_WITHDRAW: Gas = Gas::from_tgas(5);
 
 #[derive(BorshSerialize, BorshStorageKey)]
+#[borsh(use_discriminant = true)]
 enum StorageKey {
     FungibleToken = 0x1,
     _Proof = 0x2,
@@ -89,10 +89,10 @@ pub struct EthConnectorContract {
 
 impl EthConnectorContract {
     ///  Mint `nETH` tokens
-    fn mint_eth_on_near(&mut self, owner_id: &AccountId, amount: Balance) {
+    fn mint_eth_on_near(&mut self, owner_id: &AccountId, amount: NearToken) {
         log!("Mint {} nETH tokens for: {}", amount, owner_id);
         // Create account to avoid panic with deposit
-        self.ft.internal_deposit(owner_id, amount);
+        self.ft.internal_deposit(owner_id, amount.as_yoctonear());
     }
 
     // Register user and calculate counter
@@ -110,7 +110,7 @@ impl EthConnectorContract {
         memo: Option<String>,
         msg: String,
     ) -> PromiseOrValue<U128> {
-        let amount: Balance = amount.into();
+        let amount: u128 = amount.into();
         log!(
             "Transfer call from {} to {} amount {}",
             sender_id,
@@ -146,12 +146,11 @@ impl EthConnectorContract {
         }
 
         let receiver_gas = env::prepaid_gas()
-            .0
-            .checked_sub(GAS_FOR_FT_TRANSFER_CALL.0)
+            .checked_sub(GAS_FOR_FT_TRANSFER_CALL)
             .unwrap_or_else(|| env::panic_str("Prepaid gas overflow"));
         // Initiating receiver's call and the callback
         ext_ft_receiver::ext(receiver_id.clone())
-            .with_static_gas(receiver_gas.into())
+            .with_static_gas(receiver_gas)
             .ft_on_transfer(sender_id.clone(), amount.into(), msg)
             .then(
                 ext_ft_resolver::ext(env::current_account_id())
@@ -181,6 +180,7 @@ impl EthConnectorContract {
 impl EthConnectorContract {
     #[init]
     #[must_use]
+    #[allow(clippy::use_self)]
     pub fn new(
         metadata: &FungibleTokenMetadata,
         aurora_engine_account_id: AccountId,
@@ -218,10 +218,10 @@ impl EthConnectorContract {
     pub fn ft_balances_of(
         &self,
         #[serializer(borsh)] accounts: Vec<AccountId>,
-    ) -> HashMap<AccountId, aurora_engine_types::types::NEP141Wei> {
-        let mut balances = HashMap::new();
+    ) -> std::collections::HashMap<AccountId, U128> {
+        let mut balances = std::collections::HashMap::new();
         for account_id in accounts {
-            balances.insert(account_id, aurora_engine_types::types::NEP141Wei::new(10));
+            balances.insert(account_id, U128(10));
         }
         balances
     }
@@ -253,10 +253,13 @@ impl EthConnectorContract {
         self.assert_controller();
         self.register_if_not_exists(&account_id);
         if let Some(msg) = msg {
-            self.mint_eth_on_near(&env::predecessor_account_id(), amount.into());
+            self.mint_eth_on_near(
+                &env::predecessor_account_id(),
+                NearToken::from_yoctonear(amount.0),
+            );
             self.ft_transfer_call(account_id, amount, None, msg)
         } else {
-            self.mint_eth_on_near(&account_id, amount.into());
+            self.mint_eth_on_near(&account_id, NearToken::from_yoctonear(amount.0));
             PromiseOrValue::Value(amount)
         }
     }
@@ -264,7 +267,7 @@ impl EthConnectorContract {
     pub fn burn(&mut self, amount: U128) {
         self.assert_controller();
         self.ft
-            .internal_withdraw(&env::predecessor_account_id(), amount.into());
+            .internal_withdraw(&env::predecessor_account_id(), amount.0);
     }
 }
 
@@ -325,7 +328,7 @@ impl EngineFungibleToken for EthConnectorContract {
         self.register_if_not_exists(&receiver_id);
 
         assert_one_yocto();
-        let amount: Balance = amount.into();
+        let amount: u128 = amount.into();
         self.ft
             .internal_transfer(&sender_id, &receiver_id, amount, memo);
     }
@@ -358,7 +361,7 @@ impl EthConnectorContract {
         if self.ft.accounts.contains_key(account_id) {
             Some(StorageBalance {
                 total: self.storage_balance_bounds().min,
-                available: 0.into(),
+                available: NearToken::from_yoctonear(0),
             })
         } else {
             None
@@ -369,7 +372,7 @@ impl EthConnectorContract {
         &mut self,
         sender_id: AccountId,
         force: Option<bool>,
-    ) -> Option<(AccountId, Balance)> {
+    ) -> Option<(AccountId, NearToken)> {
         assert_one_yocto();
         let account_id = sender_id;
         let force = force.unwrap_or(false);
@@ -380,11 +383,10 @@ impl EthConnectorContract {
                 let withdraw_amount = self
                     .storage_balance_bounds()
                     .min
-                    .0
-                    .checked_add(1)
+                    .checked_add(NearToken::from_yoctonear(1))
                     .expect("Overflow in withdrawal amount calculation");
                 Promise::new(account_id.clone()).transfer(withdraw_amount);
-                Some((account_id, balance))
+                Some((account_id, NearToken::from_yoctonear(balance)))
             } else {
                 env::panic_str(
                     "Can't unregister the account with the positive balance without force",
@@ -419,22 +421,22 @@ impl EngineStorageManagement for EthConnectorContract {
     ) -> StorageBalance {
         self.assert_aurora_engine_access_right();
 
-        let amount: Balance = env::attached_deposit();
+        let amount: NearToken = env::attached_deposit();
         let account_id = account_id.unwrap_or_else(|| sender_id.clone());
         if self.ft.accounts.contains_key(&account_id) {
             log!("The account is already registered, refunding the deposit");
-            if amount > 0 {
+            if amount > NearToken::from_yoctonear(0) {
                 Promise::new(sender_id).transfer(amount);
             }
         } else {
-            let min_balance = self.storage_balance_bounds().min.0;
+            let min_balance = self.storage_balance_bounds().min;
             if amount < min_balance {
                 env::panic_str("The attached deposit is less than the minimum storage balance");
             }
 
             self.ft.internal_register_account(&account_id);
-            let refund = amount - min_balance;
-            if refund > 0 {
+            let refund = amount.saturating_sub(min_balance);
+            if refund > NearToken::from_yoctonear(0) {
                 Promise::new(sender_id).transfer(refund);
             }
         }
@@ -503,7 +505,7 @@ impl StorageManagement for EthConnectorContract {
     }
 
     #[payable]
-    fn storage_withdraw(&mut self, amount: Option<U128>) -> StorageBalance {
+    fn storage_withdraw(&mut self, amount: Option<NearToken>) -> StorageBalance {
         self.ft.storage_withdraw(amount)
     }
 
@@ -519,8 +521,8 @@ impl StorageManagement for EthConnectorContract {
     fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
         if self.ft.account_storage_usage == 0 {
             Some(StorageBalance {
-                total: 0.into(),
-                available: 0.into(),
+                total: NearToken::from_yoctonear(0),
+                available: NearToken::from_yoctonear(0),
             })
         } else {
             self.ft.storage_balance_of(account_id)
@@ -531,7 +533,7 @@ impl StorageManagement for EthConnectorContract {
 #[near_bindgen]
 impl FungibleTokenMetadataProvider for EthConnectorContract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
-        self.metadata.get().map_or(FungibleTokenMetadata {
+        self.metadata.get().map_or_else(|| FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
             name: "Ether".to_string(),
             symbol: "ETH".to_string(),
@@ -549,21 +551,21 @@ impl Withdraw for EthConnectorContract {
     #[pause(except(roles(Role::DAO)))]
     fn withdraw(
         &mut self,
-        #[serializer(borsh)] recipient_address: Address,
-        #[serializer(borsh)] amount: Balance,
+        #[serializer(borsh)] recipient_address: [u8; 20],
+        #[serializer(borsh)] amount: NearToken,
     ) -> Promise {
         assert_one_yocto();
 
         let sender_id = env::predecessor_account_id();
         // Burn tokens to recipient
-        self.ft.internal_withdraw(&sender_id, amount);
+        self.ft.internal_withdraw(&sender_id, amount.as_yoctonear());
 
         ext_omni_bridge::ext(self.controller.clone())
             .with_static_gas(GAS_FINISH_WITHDRAW)
             .finish_withdraw_v2(
                 env::predecessor_account_id(),
                 amount,
-                recipient_address.encode(),
+                Address::from_array(recipient_address).encode(),
             )
     }
 }
@@ -575,61 +577,23 @@ impl EngineConnectorWithdraw for EthConnectorContract {
     fn engine_withdraw(
         &mut self,
         #[serializer(borsh)] sender_id: AccountId,
-        #[serializer(borsh)] recipient_address: Address,
-        #[serializer(borsh)] amount: Balance,
+        #[serializer(borsh)] recipient_address: [u8; 20],
+        #[serializer(borsh)] amount: NearToken,
     ) -> Promise {
         self.assert_aurora_engine_access_right();
 
         assert_one_yocto();
 
         // Burn tokens to recipient
-        self.ft.internal_withdraw(&sender_id, amount);
+        self.ft.internal_withdraw(&sender_id, amount.as_yoctonear());
 
         ext_omni_bridge::ext(self.controller.clone())
             .with_static_gas(GAS_FINISH_WITHDRAW)
-            .finish_withdraw_v2(sender_id, amount, recipient_address.encode())
-    }
-}
-
-#[cfg(feature = "migration_testnet")]
-use near_sdk::collections::LookupSet;
-
-#[cfg(feature = "migration_testnet")]
-#[derive(Clone, BorshSerialize, BorshDeserialize, Serialize)]
-pub struct EthConnector {
-    pub prover_account: AccountId,
-    pub eth_custodian_address: Address,
-    pub aurora_engine_account_id: AccountId,
-    pub min_proof_acceptance_height: u64,
-}
-
-#[cfg(feature = "migration_testnet")]
-#[derive(BorshDeserialize, BorshSerialize)]
-pub struct EthConnectorContractV0 {
-    connector: EthConnector,
-    ft: FungibleToken,
-    metadata: LazyOption<FungibleTokenMetadata>,
-    used_proofs: LookupSet<String>,
-    known_engine_accounts: LookupSet<AccountId>,
-}
-
-#[cfg(feature = "migration_testnet")]
-#[near_bindgen]
-impl EthConnectorContract {
-    /// # Panics
-    ///
-    /// Panics in case of an incorrect contract state.
-    #[init(ignore_state)]
-    #[must_use]
-    pub fn migrate_testnet(controller: AccountId, aurora_engine_account_id: AccountId) -> Self {
-        let old_state: EthConnectorContractV0 =
-            env::state_read().expect("Contract isn't initialized");
-        Self {
-            controller,
-            ft: old_state.ft,
-            metadata: old_state.metadata,
-            aurora_engine_account_id,
-        }
+            .finish_withdraw_v2(
+                sender_id,
+                amount,
+                Address::from_array(recipient_address).encode(),
+            )
     }
 }
 
@@ -645,7 +609,7 @@ impl Migration for EthConnectorContract {
     /// Migrate accounts balances
     #[access_control_any(roles(Role::Migrator, Role::DAO))]
     fn migrate(&mut self, #[serializer(borsh)] accounts: Vec<AccountId>) -> Promise {
-        const GAS_FOR_CALLS: Gas = Gas(140 * Gas::ONE_TERA.0);
+        const GAS_FOR_CALLS: Gas = Gas::from_tgas(140);
         ext_engine_connector::ext(self.aurora_engine_account_id.clone())
             .with_static_gas(GAS_FOR_CALLS)
             .ft_balances_of(accounts)
@@ -661,7 +625,7 @@ impl Migration for EthConnectorContract {
         &mut self,
         #[callback]
         #[serializer(borsh)]
-        balances: HashMap<AccountId, Balance>,
+        balances: HashMap<AccountId, u128>,
     ) {
         for (account, amount) in &balances {
             if let Some(previous_balance) = self.ft.accounts.insert(account, amount) {
@@ -734,8 +698,8 @@ mod tests {
         let storage_balance = contract
             .storage_balance_of(contract.acl_get_grantees("DAO".to_string(), 0, 1)[0].clone())
             .unwrap();
-        assert_eq!(storage_balance.total.0, 0);
-        assert_eq!(storage_balance.available.0, 0);
+        assert_eq!(storage_balance.total.as_yoctonear(), 0);
+        assert_eq!(storage_balance.available.as_yoctonear(), 0);
     }
 
     fn create_contract() -> EthConnectorContract {

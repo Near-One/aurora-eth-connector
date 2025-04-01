@@ -1,3 +1,6 @@
+use std::str::FromStr;
+use std::sync::LazyLock;
+
 use aurora_engine_types::types::Address;
 use aurora_workspace_eth_connector::contract::EthConnectorContract;
 use aurora_workspace_eth_connector::types::Proof;
@@ -18,12 +21,31 @@ pub const DEPOSITED_EVM_FEE: u128 = 200;
 pub const DEPOSITED_EVM_AMOUNT: u128 = 10200;
 pub const CONTRACT_ACC: &str = "eth_connector.root";
 
-const ONE_YOCTO: NearToken = NearToken::from_yoctonear(near_sdk::ONE_YOCTO);
+const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
 
 pub struct TestContract {
     pub contract: EthConnectorContract,
     pub root_account: Account,
 }
+
+pub static CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
+    let path = std::path::Path::new("../eth-connector").join("Cargo.toml");
+    let artifact = cargo_near_build::build(cargo_near_build::BuildOpts {
+        manifest_path: Some(
+            cargo_near_build::camino::Utf8PathBuf::from_str(path.to_str().unwrap())
+                .expect("camino PathBuf from str"),
+        ),
+        no_abi: true,
+        no_locked: true,
+        features: Some("integration-test,migration".to_owned()),
+        ..Default::default()
+    })
+    .unwrap();
+
+    std::fs::read(artifact.path.into_std_path_buf())
+        .map_err(|e| anyhow::anyhow!("failed read wasm file: {e}"))
+        .unwrap()
+});
 
 impl TestContract {
     pub async fn new() -> anyhow::Result<Self> {
@@ -65,14 +87,7 @@ impl TestContract {
             .await?
             .into_result()?;
         // Explicitly read contract file
-        let contract_data =
-            std::fs::read("../bin/aurora-eth-connector-test.wasm").unwrap_or_else(|_| {
-                panic!(
-                    "Failed read contract in path: {:?} file: bin/aurora-eth-connector-test.wasm",
-                    std::env::current_dir().unwrap()
-                )
-            });
-        let contract = Contract::deploy(&eth_connector, contract_data).await?;
+        let contract = Contract::deploy(&eth_connector, CONTRACT_WASM.to_owned()).await?;
         Ok((EthConnectorContract::new(contract), root_account))
     }
 
@@ -114,16 +129,6 @@ impl TestContract {
         format!("{:?}", res.to_string()).contains(error_msg)
     }
 
-    pub async fn call_is_used_proof(&self, proof_str: &str) -> anyhow::Result<bool> {
-        let proof = self.get_proof(proof_str);
-        Ok(self
-            .contract
-            .is_used_proof(proof)
-            .await
-            .expect("call_is_used_proof")
-            .result)
-    }
-
     pub async fn get_eth_on_near_balance(&self, account: &AccountId) -> anyhow::Result<U128> {
         Ok(self
             .contract
@@ -162,7 +167,7 @@ impl TestContract {
             .contract
             .storage_deposit(Some(&account_id.clone()), None)
             .max_gas()
-            .deposit(NearToken::from_yoctonear(bounds.min.into()))
+            .deposit(bounds.min)
             .transact()
             .await?;
         assert!(res.is_success());

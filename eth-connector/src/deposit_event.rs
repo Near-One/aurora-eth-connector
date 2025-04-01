@@ -3,7 +3,7 @@ use aurora_engine_types::types::{address::error::AddressError, Address};
 use ethabi::{Event, EventParam, Hash, Log, ParamType, RawLog};
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    AccountId, Balance,
+    AccountId,
 };
 
 pub const DEPOSITED_EVENT: &str = "Deposited";
@@ -181,7 +181,7 @@ pub struct DepositedEvent {
     pub eth_custodian_address: Address,
     pub sender: Address,
     pub token_message_data: TokenMessageData,
-    pub amount: Balance,
+    pub amount: u128,
 }
 
 impl DepositedEvent {

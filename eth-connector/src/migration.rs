@@ -1,19 +1,20 @@
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{ext_contract, AccountId, Balance, Promise, StorageUsage};
+use near_sdk::near;
+use near_sdk::{ext_contract, AccountId, Promise, StorageUsage};
 use std::collections::HashMap;
 
-#[derive(BorshDeserialize, BorshSerialize)]
+#[near(serializers = [borsh])]
 pub struct InputData {
-    pub accounts: HashMap<AccountId, Balance>,
-    pub total_supply: Option<Balance>,
+    pub accounts: HashMap<AccountId, u128>,
+    pub total_supply: Option<u128>,
 }
 
-#[derive(Debug, BorshSerialize, BorshDeserialize, Eq, PartialEq)]
+#[near(serializers = [borsh])]
+#[derive(Debug, Eq, PartialEq)]
 pub enum CheckResult {
     Success,
     AccountNotExist(Vec<AccountId>),
-    AccountAmount(HashMap<AccountId, Balance>),
-    TotalSupply(Balance),
+    AccountAmount(HashMap<AccountId, u128>),
+    TotalSupply(u128),
     StorageUsage(StorageUsage),
     Proof(Vec<String>),
 }
@@ -25,7 +26,7 @@ pub trait Migration {
         &mut self,
         #[callback]
         #[serializer(borsh)]
-        balances: aurora_engine_types::HashMap<AccountId, Balance>,
+        balances: aurora_engine_types::HashMap<AccountId, u128>,
     );
 
     #[result_serializer(borsh)]
