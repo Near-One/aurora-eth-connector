@@ -14,8 +14,6 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v4
-      - name: Install cargo-make
-        run: cargo make -V || cargo install cargo-make
       - name: Install sandbox
         run: |
           if [[ ! -f ${{ env.NEAR_SANDBOX_BIN_PATH }} ]]; then
@@ -25,7 +23,7 @@ jobs:
             rm -r Linux-x86_64
           fi
       - name: Test mainnet
-        run: cargo make --profile mainnet test
+        run: make test
 
   test-build:
     name: Build and diff

@@ -1,3 +1,6 @@
+use std::str::FromStr;
+use std::sync::LazyLock;
+
 use aurora_engine_types::types::Address;
 use aurora_workspace_eth_connector::contract::EthConnectorContract;
 use aurora_workspace_eth_connector::types::Proof;
@@ -24,6 +27,25 @@ pub struct TestContract {
     pub contract: EthConnectorContract,
     pub root_account: Account,
 }
+
+pub static CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
+    let path = std::path::Path::new("../eth-connector").join("Cargo.toml");
+    let artifact = cargo_near_build::build(cargo_near_build::BuildOpts {
+        manifest_path: Some(
+            cargo_near_build::camino::Utf8PathBuf::from_str(path.to_str().unwrap())
+                .expect("camino PathBuf from str"),
+        ),
+        no_abi: true,
+        no_locked: true,
+        features: Some("mainnet,integration-test,migration".to_owned()),
+        ..Default::default()
+    })
+    .unwrap();
+
+    std::fs::read(artifact.path.into_std_path_buf())
+        .map_err(|e| anyhow::anyhow!("failed read wasm file: {e}"))
+        .unwrap()
+});
 
 impl TestContract {
     pub async fn new() -> anyhow::Result<Self> {
@@ -65,14 +87,7 @@ impl TestContract {
             .await?
             .into_result()?;
         // Explicitly read contract file
-        let contract_data =
-            std::fs::read("../bin/aurora-eth-connector-test.wasm").unwrap_or_else(|_| {
-                panic!(
-                    "Failed read contract in path: {:?} file: bin/aurora-eth-connector-test.wasm",
-                    std::env::current_dir().unwrap()
-                )
-            });
-        let contract = Contract::deploy(&eth_connector, contract_data).await?;
+        let contract = Contract::deploy(&eth_connector, CONTRACT_WASM.to_owned()).await?;
         Ok((EthConnectorContract::new(contract), root_account))
     }
 

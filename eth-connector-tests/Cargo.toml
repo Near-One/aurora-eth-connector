@@ -19,6 +19,7 @@ near-sdk.workspace = true
 near-primitives.workspace = true
 near-contract-standards.workspace = true
 byte-slice-cast.workspace = true
+cargo-near-build.workspace = true
 
 anyhow = "1.0"
 near-units = "0.2.0"

@@ -213,6 +213,7 @@ dependencies = [
  "aurora-workspace-eth-connector",
  "aurora-workspace-utils",
  "byte-slice-cast",
+ "cargo-near-build",
  "ethabi",
  "hex",
  "near-contract-standards",
@@ -227,6 +228,7 @@ dependencies = [
 [[package]]
 name = "aurora-workspace-eth-connector"
 version = "0.4.1"
+source = "git+https://github.com/aurora-is-near/aurora-workspace?rev=c27d3e59523f2012b102d8780b8748942fe308e8#c27d3e59523f2012b102d8780b8748942fe308e8"
 dependencies = [
  "anyhow",
  "aurora-engine-types",
@@ -242,6 +244,7 @@ dependencies = [
 [[package]]
 name = "aurora-workspace-utils"
 version = "0.4.1"
+source = "git+https://github.com/aurora-is-near/aurora-workspace?rev=c27d3e59523f2012b102d8780b8748942fe308e8#c27d3e59523f2012b102d8780b8748942fe308e8"
 dependencies = [
  "anyhow",
  "aurora-engine-types",

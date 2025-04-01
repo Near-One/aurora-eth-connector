@@ -418,7 +418,7 @@ async fn test_ft_transfer_empty_value() {
         .transact()
         .await
         .unwrap();
-    assert!(format!("{res:?}").contains("cannot parse integer from empty string"));
+    assert!(format!("{res:?}").contains("Failed to deserialize input from JSON"));
 }
 
 #[tokio::test]
@@ -442,7 +442,7 @@ async fn test_ft_transfer_wrong_u128_json_type() {
         .transact()
         .await
         .unwrap();
-    assert!(format!("{res:?}").contains("invalid type: integer `200`, expected a string"));
+    assert!(format!("{res:?}").contains("Failed to deserialize input from JSON"));
 }
 
 #[tokio::test]
