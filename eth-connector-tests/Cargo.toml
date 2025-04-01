@@ -13,21 +13,14 @@ publish = false
 autobenches = false
 
 [dev-dependencies]
-aurora-eth-connector = { path = "../eth-connector", features = ["integration-test"] }
-aurora-engine-types = { workspace = true, features = ["impl-serde"] }
-near-sdk.workspace = true
-near-primitives.workspace = true
-near-contract-standards.workspace = true
-byte-slice-cast.workspace = true
-cargo-near-build.workspace = true
-
 anyhow = "1.0"
-near-units = "0.2.0"
-tokio = { version = "1", features = ["full"] }
+aurora-engine-types = { workspace = true, features = ["impl-serde"] }
+cargo-near-build.workspace = true
+near-contract-standards.workspace = true
+near-sdk.workspace = true
 near-workspaces = "0.17.0"
-hex = "0.4.3"
-ethabi = "18.0"
-rlp = { version = "0.5.0", default-features = false }
+tokio = { version = "1", features = ["full"] }
+
 aurora-engine-migration-tool = { git = "https://github.com/aurora-is-near/aurora-engine-migration-tool.git", rev = "9b37ec2dc628bfa861840ce3d121ea4952faa4e2" }
 aurora-workspace-eth-connector = { git = "https://github.com/aurora-is-near/aurora-workspace", rev = "c27d3e59523f2012b102d8780b8748942fe308e8" }
 aurora-workspace-utils = { git = "https://github.com/aurora-is-near/aurora-workspace", rev = "c27d3e59523f2012b102d8780b8748942fe308e8" }
