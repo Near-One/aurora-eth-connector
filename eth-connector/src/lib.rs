@@ -190,7 +190,7 @@ impl EthConnectorContract {
         metadata.assert_valid();
 
         let mut this = Self {
-            controller,
+            controller: controller.clone(),
             ft: FungibleToken {
                 accounts: near_sdk::collections::LookupMap::new(StorageKey::FungibleToken),
                 total_supply: 0,
@@ -202,6 +202,7 @@ impl EthConnectorContract {
 
         this.register_if_not_exists(&env::current_account_id());
         this.register_if_not_exists(owner_id);
+        this.register_if_not_exists(&controller);
 
         this.acl_init_super_admin(env::predecessor_account_id());
         this.acl_grant_role("DAO".to_string(), owner_id.clone());
