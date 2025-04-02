@@ -716,6 +716,6 @@ mod tests {
         let account_with_access_right = "engine.near".parse().unwrap();
         let owner_id = "owner.near".parse().unwrap();
         let controller = "controller.near".parse().unwrap();
-        EthConnectorContract::new(&metadata, account_with_access_right, &owner_id, controller)
+        EthConnectorContract::new(&metadata, account_with_access_right, &owner_id, &controller)
     }
 }
