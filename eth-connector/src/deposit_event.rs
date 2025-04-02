@@ -30,7 +30,7 @@ impl FtTransferMessageData {
     ) -> Result<Self, error::ParseOnTransferMessageError> {
         // Get recipient Eth address from message slice
         let recipient = Address::decode(message)
-            .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
+            .map_err(|_| error::ParseOnTransferMessageError::WrongMessageFormat)?;
 
         Ok(Self { recipient })
     }
