@@ -30,7 +30,7 @@ impl FtTransferMessageData {
     ) -> Result<Self, error::ParseOnTransferMessageError> {
         // Get recipient Eth address from message slice
         let recipient = Address::decode(message)
-            .map_err(|_| error::ParseOnTransferMessageError::WrongMessageFormat)?;
+            .map_err(|_| error::ParseOnTransferMessageError::InvalidAddress)?;
 
         Ok(Self { recipient })
     }
@@ -325,6 +325,7 @@ pub mod error {
         WrongMessageFormat,
         InvalidAccount,
         OverflowNumber,
+        InvalidAddress,
     }
 
     impl AsRef<[u8]> for ParseOnTransferMessageError {
@@ -335,6 +336,7 @@ pub mod error {
                 Self::WrongMessageFormat => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
                 Self::InvalidAccount => errors::ERR_INVALID_ACCOUNT_ID,
                 Self::OverflowNumber => errors::ERR_OVERFLOW_NUMBER,
+                Self::InvalidAddress => errors::ERR_INVALID_ADDRESS,
             }
         }
     }

@@ -213,7 +213,7 @@ async fn test_ft_transfer_call_without_message() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_INVALID_ACCOUNT_ID"));
+        assert!(contract.check_error_message(&err, "ERR_INVALID_ADDRESS"));
     }
 
     // Assert balances remain unchanged
@@ -290,7 +290,7 @@ async fn test_ft_transfer_call_user_message() {
         .transact()
         .await;
     if let Err(err) = res {
-        assert!(contract.check_error_message(&err, "ERR_INVALID_ACCOUNT_ID"));
+        assert!(contract.check_error_message(&err, "ERR_INVALID_ADDRESS"));
     }
     let balance = contract.get_eth_on_near_balance(receiver_id).await.unwrap();
     assert_eq!(balance.0, DEPOSITED_CONTRACT);
