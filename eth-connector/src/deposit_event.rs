@@ -354,7 +354,9 @@ pub mod error {
     impl AsRef<[u8]> for ParseOnTransferMessageError {
         fn as_ref(&self) -> &[u8] {
             match self {
-                Self::InvalidTransferMessageFormat => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT,
+                Self::InvalidTransferMessageFormat => {
+                    errors::ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT
+                }
                 Self::InvalidHexData => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_HEX,
                 Self::WrongMessageFormat => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
                 Self::InvalidAccount => errors::ERR_INVALID_ACCOUNT_ID,
