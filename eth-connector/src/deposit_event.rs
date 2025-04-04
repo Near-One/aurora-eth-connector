@@ -28,9 +28,32 @@ impl FtTransferMessageData {
     pub fn parse_on_transfer_message(
         message: &str,
     ) -> Result<Self, error::ParseOnTransferMessageError> {
-        // Get recipient Eth address from message slice
-        let recipient = Address::decode(message)
-            .map_err(|_| error::ParseOnTransferMessageError::InvalidAddress)?;
+        // Split message by separator
+        let data: Vec<_> = message.split(':').collect();
+
+        let recipient = match data.len() {
+            1 => Address::decode(message)
+                .map_err(|_| error::ParseOnTransferMessageError::InvalidAddress)?,
+            2 => {
+                // Check relayer account id from 1-th data element
+                let _: AccountId = data[0]
+                    .parse()
+                    .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
+
+                // Decode message array from 2-th element of data array
+                let msg = hex::decode(data[1])
+                    .map_err(|_| error::ParseOnTransferMessageError::InvalidHexData)?;
+                // Length = fee[32] + eth_address[20] bytes
+                if msg.len() != 52 {
+                    return Err(error::ParseOnTransferMessageError::WrongMessageFormat);
+                }
+
+                // Get recipient Eth address from message slice
+                Address::try_from_slice(&msg[32..52])
+                    .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?
+            }
+            _ => return Err(error::ParseOnTransferMessageError::TooManyParts),
+        };
 
         Ok(Self { recipient })
     }
