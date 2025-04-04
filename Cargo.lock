@@ -216,6 +216,7 @@ dependencies = [
  "aurora-engine-types 1.2.0",
  "borsh",
  "ethabi",
+ "hex",
  "near-contract-standards",
  "near-plugins",
  "near-sdk",

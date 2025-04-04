@@ -28,9 +28,32 @@ impl FtTransferMessageData {
     pub fn parse_on_transfer_message(
         message: &str,
     ) -> Result<Self, error::ParseOnTransferMessageError> {
-        // Get recipient Eth address from message slice
-        let recipient = Address::decode(message)
-            .map_err(|_| error::ParseOnTransferMessageError::InvalidAddress)?;
+        // Split message by separator
+        let data: Vec<_> = message.split(':').collect();
+
+        let recipient = match data.len() {
+            1 => Address::decode(message)
+                .map_err(|_| error::ParseOnTransferMessageError::InvalidAddress)?,
+            2 => {
+                // Check relayer account id from 1-th data element
+                let _: AccountId = data[0]
+                    .parse()
+                    .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?;
+
+                // Decode message array from 2-th element of data array
+                let msg = hex::decode(data[1])
+                    .map_err(|_| error::ParseOnTransferMessageError::InvalidHexData)?;
+                // Length = fee[32] + eth_address[20] bytes
+                if msg.len() != 52 {
+                    return Err(error::ParseOnTransferMessageError::WrongMessageFormat);
+                }
+
+                // Get recipient Eth address from message slice
+                Address::try_from_slice(&msg[32..52])
+                    .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?
+            }
+            _ => return Err(error::ParseOnTransferMessageError::InvalidTransferMessageFormat),
+        };
 
         Ok(Self { recipient })
     }
@@ -320,7 +343,7 @@ pub mod error {
 
     #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
     pub enum ParseOnTransferMessageError {
-        TooManyParts,
+        InvalidTransferMessageFormat,
         InvalidHexData,
         WrongMessageFormat,
         InvalidAccount,
@@ -331,7 +354,9 @@ pub mod error {
     impl AsRef<[u8]> for ParseOnTransferMessageError {
         fn as_ref(&self) -> &[u8] {
             match self {
-                Self::TooManyParts => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT,
+                Self::InvalidTransferMessageFormat => {
+                    errors::ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT
+                }
                 Self::InvalidHexData => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_HEX,
                 Self::WrongMessageFormat => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
                 Self::InvalidAccount => errors::ERR_INVALID_ACCOUNT_ID,
