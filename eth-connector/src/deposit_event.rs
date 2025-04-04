@@ -52,7 +52,7 @@ impl FtTransferMessageData {
                 Address::try_from_slice(&msg[32..52])
                     .map_err(|_| error::ParseOnTransferMessageError::InvalidAccount)?
             }
-            _ => return Err(error::ParseOnTransferMessageError::TooManyParts),
+            _ => return Err(error::ParseOnTransferMessageError::InvalidTransferMessageFormat),
         };
 
         Ok(Self { recipient })
@@ -343,7 +343,7 @@ pub mod error {
 
     #[cfg_attr(not(target_arch = "wasm32"), derive(Debug))]
     pub enum ParseOnTransferMessageError {
-        TooManyParts,
+        InvalidTransferMessageFormat,
         InvalidHexData,
         WrongMessageFormat,
         InvalidAccount,
@@ -354,7 +354,7 @@ pub mod error {
     impl AsRef<[u8]> for ParseOnTransferMessageError {
         fn as_ref(&self) -> &[u8] {
             match self {
-                Self::TooManyParts => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT,
+                Self::InvalidTransferMessageFormat => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_FORMAT,
                 Self::InvalidHexData => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_HEX,
                 Self::WrongMessageFormat => errors::ERR_INVALID_ON_TRANSFER_MESSAGE_DATA,
                 Self::InvalidAccount => errors::ERR_INVALID_ACCOUNT_ID,
