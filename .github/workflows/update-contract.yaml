@@ -36,7 +36,7 @@ jobs:
           find ./bin -name "*.wasm" -exec cp {} artifacts/ \;
           zip -j "$ZIP_NAME" artifacts/*
         shell: bash
-        
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
