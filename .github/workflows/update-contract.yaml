@@ -1,7 +1,7 @@
 on:
   push:
     tags:
-      - 'contract-v[0-9]+.[0-9]+.[0-9]+*'
+      - 'eth-connector-v[0-9]+.[0-9]+.[0-9]+*'
   
   workflow_dispatch:
 
@@ -30,11 +30,11 @@ jobs:
         run: |
           mkdir -p artifacts
           find ./bin -name "*.wasm" -exec cp {} artifacts/ \;
-          zip -j contract.zip artifacts/*
+          zip -j ${{ github.ref_name }}.zip artifacts/*
         shell: bash
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: contract.zip
+          files: ${{ github.ref_name }}.zip
