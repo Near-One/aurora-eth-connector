@@ -27,14 +27,18 @@ jobs:
         timeout-minutes: 60
 
       - name: Archive built WASM files
+        env:
+          RAW_TAG: ${{ github.ref_name }}
         run: |
+          SAFE_TAG="${RAW_TAG//./-}"
+          ZIP_NAME="${SAFE_TAG}.zip"
           mkdir -p artifacts
           find ./bin -name "*.wasm" -exec cp {} artifacts/ \;
-          zip -j "${{ github.ref_name }}".zip artifacts/*
+          zip -j "$ZIP_NAME" artifacts/*
         shell: bash
-
+        
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: "${{ github.ref_name }}".zip
+          files: "*.zip"
