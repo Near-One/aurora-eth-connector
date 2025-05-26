@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Clone the repository
         uses: actions/checkout@v4
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/latest/download/cargo-near-installer.sh | sh
       - name: Test mainnet
         run: make test
 
