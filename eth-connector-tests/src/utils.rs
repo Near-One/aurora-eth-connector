@@ -6,10 +6,10 @@ use aurora_workspace_eth_connector::contract::EthConnectorContract;
 use aurora_workspace_eth_connector::types::Proof;
 use aurora_workspace_utils::results::ExecutionResult;
 use aurora_workspace_utils::{Contract, ContractId};
-use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
+use near_contract_standards::fungible_token::metadata::{FT_METADATA_SPEC, FungibleTokenMetadata};
 use near_sdk::{json_types::U128, serde_json};
 use near_workspaces::types::NearToken;
-use near_workspaces::{result::ExecutionFinalResult, Account, AccountId};
+use near_workspaces::{Account, AccountId, result::ExecutionFinalResult};
 
 pub const DEPOSITED_RECIPIENT: &str = "eth_recipient.root";
 pub const DEFAULT_GAS: u64 = 300_000_000_000_000;
@@ -30,7 +30,7 @@ pub struct TestContract {
 
 pub static CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     let path = std::path::Path::new("../eth-connector").join("Cargo.toml");
-    let artifact = cargo_near_build::build(cargo_near_build::BuildOpts {
+    let artifact = cargo_near_build::build_with_cli(cargo_near_build::BuildOpts {
         manifest_path: Some(
             cargo_near_build::camino::Utf8PathBuf::from_str(path.to_str().unwrap())
                 .expect("camino PathBuf from str"),
@@ -42,7 +42,7 @@ pub static CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     })
     .unwrap();
 
-    std::fs::read(artifact.path.into_std_path_buf())
+    std::fs::read(artifact.into_std_path_buf())
         .map_err(|e| anyhow::anyhow!("failed read wasm file: {e}"))
         .unwrap()
 });
