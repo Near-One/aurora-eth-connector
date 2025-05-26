@@ -30,7 +30,7 @@ pub struct TestContract {
 
 pub static CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     let path = std::path::Path::new("../eth-connector").join("Cargo.toml");
-    let artifact = cargo_near_build::build(cargo_near_build::BuildOpts {
+    let artifact = cargo_near_build::build_with_cli(cargo_near_build::BuildOpts {
         manifest_path: Some(
             cargo_near_build::camino::Utf8PathBuf::from_str(path.to_str().unwrap())
                 .expect("camino PathBuf from str"),
@@ -42,7 +42,7 @@ pub static CONTRACT_WASM: LazyLock<Vec<u8>> = LazyLock::new(|| {
     })
     .unwrap();
 
-    std::fs::read(artifact.path.into_std_path_buf())
+    std::fs::read(artifact.into_std_path_buf())
         .map_err(|e| anyhow::anyhow!("failed read wasm file: {e}"))
         .unwrap()
 });
