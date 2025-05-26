@@ -1,6 +1,6 @@
 use aurora_engine_types::types::NEP141Wei;
 use near_contract_standards::storage_management::StorageBalance;
-use near_sdk::{ext_contract, json_types::U128, AccountId, NearToken, Promise, PromiseOrValue};
+use near_sdk::{AccountId, NearToken, Promise, PromiseOrValue, ext_contract, json_types::U128};
 
 #[ext_contract(ext_withdraw)]
 pub trait Withdraw {

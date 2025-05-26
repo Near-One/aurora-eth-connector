@@ -1,18 +1,18 @@
 [workspace.package]
 authors = ["Aurora Labs <hello@aurora.dev>", "Evgeny Ukhanov <evgeny@aurora.dev>"]
-edition = "2021"
-version = "0.6.5"
+edition = "2024"
+version = "0.6.6"
 homepage = "https://github.com/aurora-is-near/aurora-eth-connector"
 repository = "https://github.com/aurora-is-near/aurora-eth-connector"
 license = "CC0 1.0"
 
 [workspace.dependencies]
-aurora-engine-types = { version = "1", default-features = false }
+aurora-engine-types = { version = "2", default-features = false }
 borsh = "1"
 near-sdk = { version = "5.9.0", features = ["unit-testing"] }
 near-plugins = { git = "https://github.com/aurora-is-near/near-plugins", tag = "v0.4.1" }
 near-contract-standards = "5.9.0"
-cargo-near-build = "0.4.5"
+cargo-near-build = "0.7"
 
 [profile.release]
 opt-level = 3

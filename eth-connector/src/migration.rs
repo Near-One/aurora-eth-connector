@@ -1,5 +1,5 @@
 use near_sdk::near;
-use near_sdk::{ext_contract, AccountId, Promise, StorageUsage};
+use near_sdk::{AccountId, Promise, StorageUsage, ext_contract};
 use std::collections::HashMap;
 
 #[near(serializers = [borsh])]

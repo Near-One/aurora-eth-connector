@@ -5,32 +5,32 @@ use crate::connector::{
 };
 use crate::deposit_event::FtTransferMessageData;
 use crate::types::SdkUnwrap;
-use aurora_engine_types::types::Address;
 #[cfg(any(feature = "integration-test", feature = "migration"))]
 use aurora_engine_types::HashMap;
+use aurora_engine_types::types::Address;
 use connector::ext_omni_bridge;
+use near_contract_standards::fungible_token::FungibleToken;
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
 use near_contract_standards::fungible_token::metadata::{
-    FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
+    FT_METADATA_SPEC, FungibleTokenMetadata, FungibleTokenMetadataProvider,
 };
 use near_contract_standards::fungible_token::receiver::ext_ft_receiver;
-use near_contract_standards::fungible_token::resolver::{ext_ft_resolver, FungibleTokenResolver};
-use near_contract_standards::fungible_token::FungibleToken;
+use near_contract_standards::fungible_token::resolver::{FungibleTokenResolver, ext_ft_resolver};
 use near_contract_standards::storage_management::{
     StorageBalance, StorageBalanceBounds, StorageManagement,
 };
 use near_plugins::{
-    access_control, access_control_any, pause, AccessControlRole, AccessControllable, Pausable,
-    Upgradable,
+    AccessControlRole, AccessControllable, Pausable, Upgradable, access_control,
+    access_control_any, pause,
 };
 use near_sdk::{
+    AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, PromiseOrValue,
     assert_one_yocto,
     borsh::{self, BorshDeserialize, BorshSerialize},
     collections::LazyOption,
     env,
     json_types::U128,
-    near, near_bindgen, require, AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault,
-    Promise, PromiseOrValue,
+    near, near_bindgen, require,
 };
 use serde::{Deserialize, Serialize};
 

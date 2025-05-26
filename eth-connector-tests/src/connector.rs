@@ -1,10 +1,10 @@
 use crate::utils::{
-    TestContract, DEPOSITED_AMOUNT, DEPOSITED_CONTRACT, DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS,
+    DEPOSITED_AMOUNT, DEPOSITED_CONTRACT, DEPOSITED_RECIPIENT, RECIPIENT_ETH_ADDRESS, TestContract,
 };
 use aurora_workspace_utils::ContractId;
 use near_sdk::json_types::U128;
-use near_workspaces::types::NearToken;
 use near_workspaces::AccountId;
+use near_workspaces::types::NearToken;
 
 const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
 

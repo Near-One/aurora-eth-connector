@@ -6,10 +6,10 @@ use aurora_workspace_eth_connector::contract::EthConnectorContract;
 use aurora_workspace_eth_connector::types::Proof;
 use aurora_workspace_utils::results::ExecutionResult;
 use aurora_workspace_utils::{Contract, ContractId};
-use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FT_METADATA_SPEC};
+use near_contract_standards::fungible_token::metadata::{FT_METADATA_SPEC, FungibleTokenMetadata};
 use near_sdk::{json_types::U128, serde_json};
 use near_workspaces::types::NearToken;
-use near_workspaces::{result::ExecutionFinalResult, Account, AccountId};
+use near_workspaces::{Account, AccountId, result::ExecutionFinalResult};
 
 pub const DEPOSITED_RECIPIENT: &str = "eth_recipient.root";
 pub const DEFAULT_GAS: u64 = 300_000_000_000_000;
